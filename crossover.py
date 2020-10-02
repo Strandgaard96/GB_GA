@@ -82,6 +82,16 @@ def mol_OK(mol):
   except:
     return False
 
+def amine_OK(mol):
+  '''
+  Checks if there is at least on tertiary amine
+  '''
+  if mol.HasSubstructMatch(Chem.MolFromSmarts('[NX3;H0;D3;!+1]')):
+    return True
+  else:
+    return False
+
+
 
 def crossover_ring(parent_A,parent_B):
   ring_smarts = Chem.MolFromSmarts('[R]')
@@ -155,7 +165,7 @@ def crossover(parent_A,parent_B):
   except:
   	pass
   for i in range(10):
-    if random.random() <= 0.5:
+    if random.random() <= 1:#org 0.5
       #print 'non-ring crossover'
       new_mol = crossover_non_ring(parent_A,parent_B)
       if new_mol != None:

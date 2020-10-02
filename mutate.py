@@ -98,7 +98,8 @@ def mutate(mol,mutation_rate):
     return mol
   
   Chem.Kekulize(mol,clearAromaticFlags=True)
-  p = [0.15,0.14,0.14,0.14,0.14,0.14,0.15]
+  #p = [0.15,0.14,0.14,0.14,0.14,0.14,0.15]
+  p = [0.2, 0.2, 0.0, 0.0, 0.2, 0.2, 0.2]
   for i in range(10):
     rxn_smarts_list = 7*['']
     rxn_smarts_list[0] = insert_atom()
@@ -120,7 +121,7 @@ def mutate(mol,mutation_rate):
     for m in new_mol_trial:
       m = m[0]
       #print Chem.MolToSmiles(mol),mol_OK(mol)
-      if co.mol_OK(m) and co.ring_OK(m):
+      if co.mol_OK(m) and co.ring_OK(m) and co.amine_OK(m):
         new_mols.append(m)
     
     if len(new_mols) > 0:

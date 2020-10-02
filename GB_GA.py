@@ -36,10 +36,11 @@ def make_initial_population(population_size,file_name):
     
   return population
 
-def calculate_normalized_fitness(scores):
-  sum_scores = sum(scores)
-  normalized_fitness = [score/sum_scores for score in scores]
-
+def calculate_normalized_fitness(scores): 
+  min_score = np.min(scores)
+  shifted_scores = [score-min_score for score in scores]
+  sum_scores = sum(shifted_scores) 
+  normalized_fitness = [score/sum_scores for score in shifted_scores]
   return normalized_fitness
 
 def make_mating_pool(population,fitness,mating_pool_size):
@@ -47,8 +48,8 @@ def make_mating_pool(population,fitness,mating_pool_size):
   for i in range(mating_pool_size):
   	mating_pool.append(np.random.choice(population, p=fitness))
 
-  return mating_pool
- 
+  return mating_pool 
+
 
 def reproduce(mating_pool,population_size,mutation_rate):
   new_population = []
@@ -88,7 +89,7 @@ def GA(args):
 
   np.random.seed(seed)
   random.seed(seed)
-  
+
   high_scores = [] 
   population = make_initial_population(population_size,file_name)
   scores = sc.calculate_scores(population,scoring_function,scoring_args)

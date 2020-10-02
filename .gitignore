@@ -8,7 +8,6 @@ Tanimoto250K.smi
 *.out
 *.stderr
 *.stdout
-*.smi
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

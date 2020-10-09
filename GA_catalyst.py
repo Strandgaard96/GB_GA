@@ -9,32 +9,24 @@ from multiprocessing import Pool
 import random
 
 scoring_function = sc.cat_scoring
-target = 200. # nm
-sigma = 50. # nm
-threshold = 0.3
-n_confs = 20
-xtb_path = '/home/jhjensen/stda'
+n_confs = None # calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
-max_score = 1.99
 
-population_size = 20 
-mating_pool_size = 20
-generations = 50
+population_size = 12
+mating_pool_size = 12
+generations = 10
 mutation_rate = 0.05
 co.average_size = 50. 
 co.size_stdev = 5.
 prune_population = False
-n_tries = 10
-n_cpus = 8
-seeds = np.random.randint(100_000, size=2*n_tries)
+n_tries = 1
+n_cpus = 12
+seeds = np.random.randint(100000, size=2*n_tries)
 
 file_name = sys.argv[1]
 
-print('target', target)
-print('sigma', sigma)
-print('threshold', threshold)
+
 print('n_confs', n_confs)
-print('max_score', max_score)
 print('population_size', population_size)
 print('mating_pool_size', mating_pool_size)
 print('generations', generations)
@@ -54,13 +46,16 @@ generations_list = []
 
 index = slice(0,n_tries) if prune_population else slice(n_tries,2*n_tries)
 temp_args = [[population_size, file_name,scoring_function,generations,mating_pool_size,
-                  mutation_rate,scoring_args, max_score, prune_population] for i in range(n_tries)]
+                  mutation_rate,scoring_args, prune_population, n_cpus] for i in range(n_tries)]
 args = []
 for x,y in zip(temp_args,seeds[index]):
     x.append(y)
     args.append(x)
-with Pool(n_cpus) as pool:
-    output = pool.map(ga.GA, args)
+
+output = []
+for i in range(n_tries):
+    output.append(ga.GA(args[i]))
+
 
 for i in range(n_tries):     
     #(scores, population) = ga.GA([population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate,scoring_args,prune_population])
@@ -72,10 +67,10 @@ for i in range(n_tries):
     #size.append(Chem.MolFromSmiles(sc.max_score[1]).GetNumAtoms())
 
 t1 = time.time()
-print('')
+# print('')
 print(f'max score {max(results):.2f}, mean {np.array(results).mean():.2f} +/- {np.array(results).std():.2f}')
 print(f'mean generations {np.array(generations_list).mean():.2f} +/- {np.array(generations_list).std():.2f}')
-print(f'time {(t1-t0)/60.0:.2f} minutes')
+print(f'Total duration: {(t1-t0)/60.0:.2f} minutes')
 #print(max(size),np.array(size).mean(),np.array(size).std())
-
-#print(all_scores)
+print(generations_list)
+print(all_scores)

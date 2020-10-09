@@ -85,30 +85,33 @@ def sanitize(population,scores,population_size, prune_population):
 
 def GA(args):
   population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate, \
-  scoring_args, max_score, prune_population, seed = args
+  scoring_args , prune_population, n_cpus, seed = args
 
   np.random.seed(seed)
   random.seed(seed)
 
   high_scores = [] 
   population = make_initial_population(population_size,file_name)
-  scores = sc.calculate_scores(population,scoring_function,scoring_args)
+  print(f'Initial Population')
+  start = time.time()
+  scores = sc.calculate_scores_parallel(population,scoring_function,scoring_args,n_cpus)
   #reorder so best score comes first
   population, scores = sanitize(population, scores, population_size, False)  
   high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
   fitness = calculate_normalized_fitness(scores)
+  print(f'Total Duration: {time.time()- start:.2f} s')
 
   for generation in range(generations):
+    start = time.time()
+    print(f'\nGeneration {generation+1}/{generations}')
     mating_pool = make_mating_pool(population,fitness,mating_pool_size)
     new_population = reproduce(mating_pool,population_size,mutation_rate)
-    new_scores = sc.calculate_scores(new_population,scoring_function,scoring_args)
+    new_scores = sc.calculate_scores_parallel(new_population,scoring_function,scoring_args, n_cpus)
     population, scores = sanitize(population+new_population, scores+new_scores, population_size, prune_population)  
     fitness = calculate_normalized_fitness(scores)
     high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
-    if scores[0] >= max_score:
-      break
-
-  return (scores, population, high_scores, generation+1)
+    print(f'Duration: {time.time()- start:.2f} s')
+  return (scores, population, high_scores)
 
 
 if __name__ == "__main__":

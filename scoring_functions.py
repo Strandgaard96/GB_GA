@@ -17,6 +17,7 @@ import os
 import shutil
 import string
 import random
+import time
 
 
 def calculate_score(args):
@@ -74,11 +75,20 @@ def write_xtb_input_file(fragment, fragment_name):
 				file.write("chrg "+str(charge)+"\n")
 				file.write("$end")
 
-def get_structure(mol,n_confs):
-	mol = Chem.AddHs(mol)
+def get_structure(start_mol,n_confs):
+	mol = Chem.AddHs(start_mol)
 	new_mol = Chem.Mol(mol)
 
-	AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000)
+	confIDs = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000)
+	if (-1 in confIDs):
+		print(f'Embedding failed, try again with random coordinates')
+		mol = Chem.AddHs(start_mol)
+		confIDs_rand = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useRandomCoords=True,maxAttempts=5000)
+		if (-1 in confIDs_rand):
+			print(f'Failed again, proceed with less conformers')
+			mol = Chem.AddHs(start_mol)
+			confIDs_rand = AllChem.EmbedMultipleConfs(mol,numConfs=5,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000)
+
 	energies = AllChem.MMFFOptimizeMoleculeConfs(mol,maxIters=2000, nonBondedThresh=100.0)
 
 	energies_list = [e[1] for e in energies]
@@ -112,7 +122,7 @@ def compute_energy(mol,n_confs):
 def connect_amine_with_struc(amine, structure_smi='[H]c1c([H])c([C@]([H])([O-])[C@@]([H])(C(=O)OC([H])([H])[H])C([H])([H])[N@+]23C([H])([H])C([H])([H])[C@]([H])(C([H])([H])C2([H])[H])C([H])([H])C3([H])[H])c([H])c([H])c1[N+](=O)[O-]'):
 	'''	Takes mol that contains amine and connects it to 5-sr, returns list of 6*n_amine products (n_amine = number of amine substructe in input mol)	'''
 	struc = Chem.MolFromSmiles(structure_smi)
-	connect_smarts = '[NX3;H0;D3;!+1]([*:1])([*:2])[*:3].[C$([*]([NX4;H0;D4&+1])([CH1])):4][NX4;H0;D4&+1:9]>>[NX4;H0;D4&+1]([*:1])([*:2])([*:3])[C:4]'
+	connect_smarts = '[NX3;H0;D3;!+1]([*:1])([*:2])[*:3].[C$([*]([NX4;H0;D4&+1])([CH1])):4][NX4;H0;D4&+1]>>[NX4;H0;D4&+1]([*:1])([*:2])([*:3])[C:4]'
 	rxn = AllChem.ReactionFromSmarts(connect_smarts)
 	ps = rxn.RunReactants((amine,struc))
 	return ps
@@ -124,9 +134,9 @@ def number_of_conformers(mol):
 
 def compute_energy_diff(amine, n_confs=None):
 	'''	Takes mol containing amine and calculates its energy as well as the energy of amine+5-st molecule and returns energy difference 	'''	
+	start = time.time()
 	if n_confs is None:
 		n_confs = number_of_conformers(amine)
-	print(f'Calculate Energy Difference for {Chem.MolToSmiles(amine)} from {n_confs} Conformers')
 	e_cat = compute_energy(amine,n_confs)
 	products = connect_amine_with_struc(amine)
 	unique = get_unique_amine_products(amine,products)
@@ -135,7 +145,8 @@ def compute_energy_diff(amine, n_confs=None):
 		conf = cleanup(conf)
 		energy_of_conformers.append(compute_energy(conf,n_confs))
 	min_e_conf = min(energy_of_conformers)
-	energy_diff = (-52.277827212938 + e_cat) - min_e_conf 
+	energy_diff = (-52.277827212938 + e_cat) - min_e_conf
+	print(f'{Chem.MolToSmiles(amine)} \n\tCOnformers: {n_confs} \n\tUnique products: {len(unique)} \n\tEnergy Difference: {energy_diff} \n\t Duration: {time.time()- start:.2f} s')
 	return energy_diff
 
 def energydiff2score(energy):

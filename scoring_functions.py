@@ -19,6 +19,8 @@ import string
 import random
 import time
 
+seed=123
+
 
 def calculate_score(args):
 	'''Parallelize at the score level (not currently in use)'''
@@ -38,7 +40,7 @@ def calculate_scores_parallel(population,function,scoring_args, n_cpus):
 
 	return scores
 
-def calculate_scores(population,function,scoring_args):
+def calculate_scores(population,function,scoring_args,n_cpus):
 	scores = []
 	for gene in population:
 		score = function(gene,scoring_args)
@@ -79,15 +81,15 @@ def get_structure(start_mol,n_confs):
 	mol = Chem.AddHs(start_mol)
 	new_mol = Chem.Mol(mol)
 
-	confIDs = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000)
+	confIDs = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000,randomSeed=seed)
 	if (-1 in confIDs):
 		print(f'Embedding failed, try again with random coordinates')
 		mol = Chem.AddHs(start_mol)
-		confIDs_rand = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useRandomCoords=True,maxAttempts=5000)
+		confIDs_rand = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useRandomCoords=True,maxAttempts=5000,randomSeed=seed)
 		if (-1 in confIDs_rand):
 			print(f'Failed again, proceed with less conformers')
 			mol = Chem.AddHs(start_mol)
-			confIDs_rand = AllChem.EmbedMultipleConfs(mol,numConfs=5,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000)
+			confIDs_short = AllChem.EmbedMultipleConfs(mol,numConfs=5,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000,randomSeed=seed)
 
 	energies = AllChem.MMFFOptimizeMoleculeConfs(mol,maxIters=2000, nonBondedThresh=100.0)
 

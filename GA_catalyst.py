@@ -8,6 +8,8 @@ import sys
 from multiprocessing import Pool
 import random
 
+random.seed(123)
+
 scoring_function = sc.cat_scoring
 n_confs = None # calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
@@ -21,21 +23,23 @@ co.size_stdev = 5.
 prune_population = False
 n_tries = 1
 n_cpus = 12
-seeds = np.random.randint(100000, size=2*n_tries)
+seeds = np.random.randint(100_000, size=2*n_tries)
 
 file_name = sys.argv[1]
 
 
-print('n_confs', n_confs)
-print('population_size', population_size)
-print('mating_pool_size', mating_pool_size)
-print('generations', generations)
-print('mutation_rate', mutation_rate)
-print('average_size/size_stdev', co.average_size, co.size_stdev)
-print('initial pool', file_name)
-print('prune population', prune_population)
-print('number of tries', n_tries)
-print('number of CPUs', n_cpus)
+print('* n_confs', n_confs)
+print('* population_size', population_size)
+print('* mating_pool_size', mating_pool_size)
+print('* generations', generations)
+print('* mutation_rate', mutation_rate)
+print('* average_size/size_stdev', co.average_size, co.size_stdev)
+print('* initial pool', file_name)
+print('* prune population', prune_population)
+print('* number of tries', n_tries)
+print('* number of CPUs', n_cpus)
+print('* SMILES input file', file_name)
+print('* seeds', ','.join(map(str, seeds)))
 print('')
 
 results = []

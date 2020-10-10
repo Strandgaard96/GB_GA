@@ -1,6 +1,7 @@
 #!bin/bash
 
-smiles_file=$(basename $1)
+smiles_file=$(basename $2)
+
 
 SUBMIT=qsub.tmp
 
@@ -33,7 +34,7 @@ cd /scratch/\$SLURM_JOB_ID
 
 cp $PWD/$smiles_file .
 
-/home/julius/soft/miniconda3/envs/default/bin/python /home/julius/soft/GB-GA/GA_catalyst.py $1
+/home/julius/soft/miniconda3/envs/default/bin/python /home/julius/soft/GB-GA/GA_catalyst.py $2
 
 tar -cvzf out.tar.gz comp* *.result
 cp out.tar.gz $PWD

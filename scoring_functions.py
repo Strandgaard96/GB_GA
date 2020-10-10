@@ -148,7 +148,7 @@ def compute_energy_diff(amine, n_confs=None):
 		energy_of_conformers.append(compute_energy(conf,n_confs))
 	min_e_conf = min(energy_of_conformers)
 	energy_diff = (-52.277827212938 + e_cat) - min_e_conf
-	print(f'{Chem.MolToSmiles(amine)} \n\tCOnformers: {n_confs} \n\tUnique products: {len(unique)} \n\tEnergy Difference: {energy_diff} \n\t Duration: {time.time()- start:.2f} s')
+	print(f'{Chem.MolToSmiles(amine)} \n\tConformers: {n_confs} \n\tUnique products: {len(unique)} \n\tEnergy Difference: {energy_diff} \n\tDuration: {time.time()- start:.2f} s')
 	return energy_diff
 
 def energydiff2score(energy):

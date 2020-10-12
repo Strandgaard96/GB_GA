@@ -14,16 +14,16 @@ scoring_function = sc.cat_scoring
 n_confs = None # calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
 
-population_size = 12
-mating_pool_size = 12
-generations = 10
+population_size = 20
+mating_pool_size = 20
+generations = 50
 mutation_rate = 0.05
-co.average_size = 50. 
+co.average_size = 25. 
 co.size_stdev = 5.
-prune_population = False
+prune_population = True
 n_tries = 1
-n_cpus = 12
-seeds = np.random.randint(100_000, size=2*n_tries)
+n_cpus = 20
+seeds = np.random.randint(100000, size=2*n_tries)
 
 file_name = sys.argv[1]
 
@@ -65,7 +65,7 @@ for i in range(n_tries):
     #(scores, population) = ga.GA([population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate,scoring_args,prune_population])
     (scores, population, generation) = output[i]
     all_scores.append(scores)
-    print(f'{i} {scores[0]:.2f} {Chem.MolToSmiles(population[0])} {generation}')
+    print(f'Run {i+1}: Highest Scorer: {scores[0]:.2f} {Chem.MolToSmiles(population[0])} \nBest Mol in each Generation: {generation}')
     results.append(scores[0])
     generations_list.append(generation)
     #size.append(Chem.MolFromSmiles(sc.max_score[1]).GetNumAtoms())
@@ -73,8 +73,8 @@ for i in range(n_tries):
 t1 = time.time()
 # print('')
 print(f'max score {max(results):.2f}, mean {np.array(results).mean():.2f} +/- {np.array(results).std():.2f}')
-print(f'mean generations {np.array(generations_list).mean():.2f} +/- {np.array(generations_list).std():.2f}')
+# print(f'mean generations {np.array(generations_list).mean():.2f} +/- {np.array(generations_list).std():.2f}')
 print(f'Total duration: {(t1-t0)/60.0:.2f} minutes')
 #print(max(size),np.array(size).mean(),np.array(size).std())
-print(generations_list)
-print(all_scores)
+print(f'Generation list: {generations_list}')
+print(f'All scores:{all_scores}')

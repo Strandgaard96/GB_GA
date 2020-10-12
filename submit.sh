@@ -12,8 +12,8 @@ echo $JOB_NAME
 
 PARTITION=shortcoms
 TIME=24:00:00
-NCPUS=12
-MEM=12GB
+NCPUS=20
+MEM=20GB
 
 cat > $SUBMIT <<!EOF
 #!/bin/sh

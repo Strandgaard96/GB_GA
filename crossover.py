@@ -126,7 +126,7 @@ def crossover_ring(parent_A,parent_B):
     new_mols2 = []
     for m in new_mols:
       m = m[0]
-      if mol_OK(m) and ring_OK(m) and amine_OK(mol):
+      if mol_OK(m) and ring_OK(m) and amine_OK(m):
         new_mols2.append(m)
     
     if len(new_mols2) > 0:
@@ -165,7 +165,7 @@ def crossover(parent_A,parent_B):
   except:
   	pass
   for i in range(10):
-    if random.random() <= 1:#org 0.5
+    if random.random() <= 0.5:
       #print 'non-ring crossover'
       new_mol = crossover_non_ring(parent_A,parent_B)
       if new_mol != None:

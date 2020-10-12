@@ -94,7 +94,7 @@ def GA(args):
   population = make_initial_population(population_size,file_name)
   print(f'Initial Population')
   start = time.time()
-  scores = sc.calculate_scores(population,scoring_function,scoring_args,n_cpus)
+  scores = sc.calculate_scores_parallel(population,scoring_function,scoring_args,n_cpus)
   #reorder so best score comes first
   population, scores = sanitize(population, scores, population_size, False)  
   high_scores.append((scores[0],Chem.MolToSmiles(population[0])))

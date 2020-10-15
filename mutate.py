@@ -98,8 +98,8 @@ def mutate(mol,mutation_rate):
     return mol
   
   Chem.Kekulize(mol,clearAromaticFlags=True)
-  #p = [0.15,0.14,0.14,0.14,0.14,0.14,0.15]
-  p = [0.2, 0.2, 0.0, 0.0, 0.2, 0.2, 0.2]
+  p = [0.15,0.14,0.14,0.14,0.14,0.14,0.15]
+  # p = [0.2, 0.2, 0.0, 0.0, 0.2, 0.2, 0.2]
   for i in range(10):
     rxn_smarts_list = 7*['']
     rxn_smarts_list[0] = insert_atom()

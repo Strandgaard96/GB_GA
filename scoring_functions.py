@@ -127,12 +127,12 @@ def compute_energy(mol,n_confs):
 	shutil.rmtree(dir)
 	return energy
 
-def connect_amine_with_struc(amine, structure_smi='[H]c1c([H])c([C@]([H])([O-])[C@@]([H])(C(=O)OC([H])([H])[H])C([H])([H])[N@+]23C([H])([H])C([H])([H])[C@]([H])(C([H])([H])C2([H])[H])C([H])([H])C3([H])[H])c([H])c([H])c1[N+](=O)[O-]'):
+def connect_amine_with_struc(rdkit_mol, structure_smi='[H]c1c([H])c([C@]([H])([O-])[C@@]([H])(C(=O)OC([H])([H])[H])C([H])([H])[N@+]23C([H])([H])C([H])([H])[C@]([H])(C([H])([H])C2([H])[H])C([H])([H])C3([H])[H])c([H])c([H])c1[N+](=O)[O-]'):
 	'''	Takes mol that contains amine and connects it to 5-sr, returns list of 6*n_amine products (n_amine = number of amine substructe in input mol)	'''
 	struc = Chem.MolFromSmiles(structure_smi)
 	connect_smarts = '[NX3;H0;D3;!+1]([*:1])([*:2])[*:3].[C$([*]([NX4;H0;D4&+1])([CH1])):4][NX4;H0;D4&+1]>>[NX4;H0;D4&+1]([*:1])([*:2])([*:3])[C:4]'
 	rxn = AllChem.ReactionFromSmarts(connect_smarts)
-	ps = rxn.RunReactants((amine,struc))
+	ps = rxn.RunReactants((rdkit_mol,struc))
 	return ps
 
 def number_of_conformers(mol):
@@ -140,30 +140,30 @@ def number_of_conformers(mol):
 	n_confs = 5 + 5*n_rot
 	return n_confs
 
-def compute_energy_diff(amine, n_confs=None):
+def compute_energy_diff(rdkit_mol, n_confs=None):
 	'''	Takes mol containing amine and calculates its energy as well as the energy of amine+5-st molecule and returns energy difference 	'''	
 	start = time.time()
 	if n_confs is None:
-		n_confs = number_of_conformers(amine)
-	e_cat = compute_energy(amine,n_confs)
-	products = connect_amine_with_struc(amine)
-	unique = get_unique_amine_products(amine,products)
+		n_confs = number_of_conformers(rdkit_mol)
+	e_cat = compute_energy(rdkit_mol,n_confs)
+	products = connect_amine_with_struc(rdkit_mol)
+	unique = get_unique_amine_products(rdkit_mol,products)
 	energy_of_conformers = []
 	for conf in unique:
 		conf = cleanup(conf)
 		energy_of_conformers.append(compute_energy(conf,n_confs))
 	min_e_conf = min(energy_of_conformers)
 	energy_diff = (-52.277827212938 + e_cat) - min_e_conf
-	# print(f'{Chem.MolToSmiles(amine)} \n\tConformers: {n_confs} \n\tUnique products: {len(unique)} \n\tEnergy Difference: {energy_diff} \n\tDuration: {time.time()- start:.2f} s')
+	# print(f'{Chem.MolToSmiles(rdkit_mol)} \n\tConformers: {n_confs} \n\tUnique products: {len(unique)} \n\tEnergy Difference: {energy_diff} \n\tDuration: {time.time()- start:.2f} s')
 	return energy_diff
 
 def energydiff2score(energy):
 	score = -energy 
 	return score
 
-def cat_scoring(amine, n_cpus=None):
-	energy_diff = compute_energy_diff(amine, n_confs=None)
-	SA_score = -sascorer.calculateScore(amine)
+def cat_scoring(rdkit_mol, n_cpus=None):
+	energy_diff = compute_energy_diff(rdkit_mol, n_confs=None)
+	SA_score = -sascorer.calculateScore(rdkit_mol)
 	SA_score_norm=(SA_score-SA_mean)/SA_std
 	score = energydiff2score(energy_diff) + SA_score_norm
 	return score
@@ -173,11 +173,11 @@ def count_substruc_match(mol, pattern):
 	count = len(mol.GetSubstructMatches(pattern))
 	return count
 
-def get_unique_amine_products(amine, products):
+def get_unique_amine_products(rdkit_mol, products):
 	'''	Returns unique products from connect_amine_with_struc '''
 	tert_amine = Chem.MolFromSmarts('[NX3;H0;D3;!+1]')
 	quart_amine = Chem.MolFromSmarts('[NX4;H0;D4&+1]')
-	n = count_substruc_match(amine, tert_amine)
+	n = count_substruc_match(rdkit_mol, tert_amine)
 	unique = []
 	for n in np.arange(n):
 		unique.append(products[n*6][0])

@@ -6,6 +6,7 @@ tiotixene_1000_100.smi
 TanimotoGuacamol.smi
 Tanimoto250K.smi
 *.out
+*.err
 *.stderr
 *.stdout
 *.smi

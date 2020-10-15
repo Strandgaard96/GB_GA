@@ -19,7 +19,13 @@ import string
 import random
 import time
 
+import sascorer
+
 seed=123
+
+SA_scores = np.loadtxt('SA_scores.txt')
+SA_mean =  np.mean(SA_scores)
+SA_std=np.std(SA_scores)
 
 
 def calculate_score(args):
@@ -81,15 +87,15 @@ def get_structure(start_mol,n_confs):
 	mol = Chem.AddHs(start_mol)
 	new_mol = Chem.Mol(mol)
 
-	confIDs = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000,randomSeed=seed)
+	confIDs = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000)#,randomSeed=seed)
 	if (-1 in confIDs):
 		print(f'Embedding failed, try again with random coordinates')
 		mol = Chem.AddHs(start_mol)
-		confIDs_rand = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useRandomCoords=True,maxAttempts=5000,randomSeed=seed)
+		confIDs_rand = AllChem.EmbedMultipleConfs(mol,numConfs=n_confs,useRandomCoords=True,maxAttempts=5000)#,randomSeed=seed)
 		if (-1 in confIDs_rand):
 			print(f'Failed again, proceed with less conformers')
 			mol = Chem.AddHs(start_mol)
-			confIDs_short = AllChem.EmbedMultipleConfs(mol,numConfs=5,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000,randomSeed=seed)
+			confIDs_short = AllChem.EmbedMultipleConfs(mol,numConfs=5,useExpTorsionAnglePrefs=True,useBasicKnowledge=True,maxAttempts=5000)#,randomSeed=seed)
 
 	energies = AllChem.MMFFOptimizeMoleculeConfs(mol,maxIters=2000, nonBondedThresh=100.0)
 
@@ -148,7 +154,7 @@ def compute_energy_diff(amine, n_confs=None):
 		energy_of_conformers.append(compute_energy(conf,n_confs))
 	min_e_conf = min(energy_of_conformers)
 	energy_diff = (-52.277827212938 + e_cat) - min_e_conf
-	print(f'{Chem.MolToSmiles(amine)} \n\tConformers: {n_confs} \n\tUnique products: {len(unique)} \n\tEnergy Difference: {energy_diff} \n\tDuration: {time.time()- start:.2f} s')
+	# print(f'{Chem.MolToSmiles(amine)} \n\tConformers: {n_confs} \n\tUnique products: {len(unique)} \n\tEnergy Difference: {energy_diff} \n\tDuration: {time.time()- start:.2f} s')
 	return energy_diff
 
 def energydiff2score(energy):
@@ -157,7 +163,9 @@ def energydiff2score(energy):
 
 def cat_scoring(amine, n_cpus=None):
 	energy_diff = compute_energy_diff(amine, n_confs=None)
-	score = energydiff2score(energy_diff)
+	SA_score = -sascorer.calculateScore(amine)
+	SA_score_norm=(SA_score-SA_mean)/SA_std
+	score = energydiff2score(energy_diff) + SA_score_norm
 	return score
 
 def count_substruc_match(mol, pattern):
@@ -166,7 +174,7 @@ def count_substruc_match(mol, pattern):
 	return count
 
 def get_unique_amine_products(amine, products):
-	'''	Returns unique products from connect_amine_with_struc	'''
+	'''	Returns unique products from connect_amine_with_struc '''
 	tert_amine = Chem.MolFromSmarts('[NX3;H0;D3;!+1]')
 	quart_amine = Chem.MolFromSmarts('[NX4;H0;D4&+1]')
 	n = count_substruc_match(amine, tert_amine)
@@ -176,7 +184,7 @@ def get_unique_amine_products(amine, products):
 	return unique
 
 def cleanup(mol):
-	'''	Returns nice 2D mol'''
+	'''	Returns nice 2D mol '''
 	Chem.SanitizeMol(mol)
 	smi = Chem.MolToSmiles(mol)
 	new_mol = Chem.MolFromSmiles(smi)

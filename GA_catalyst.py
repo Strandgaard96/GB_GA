@@ -8,15 +8,17 @@ import sys
 from multiprocessing import Pool
 import random
 
-random.seed(123)
+seed=101
+random.seed(seed)
+np.random.seed(seed)
 
 scoring_function = sc.cat_scoring
-n_confs = None # calculates how many conformers based on 5+5*n_rot
+n_confs = 5 # calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
 
 population_size = 20
 mating_pool_size = 20
-generations = 50
+generations = 25
 mutation_rate = 0.05
 co.average_size = 25. 
 co.size_stdev = 5.
@@ -39,6 +41,7 @@ print('* prune population', prune_population)
 print('* number of tries', n_tries)
 print('* number of CPUs', n_cpus)
 print('* SMILES input file', file_name)
+print('* seeds seed', seed)
 print('* seeds', ','.join(map(str, seeds)))
 print('')
 
@@ -63,18 +66,18 @@ for i in range(n_tries):
 
 for i in range(n_tries):     
     #(scores, population) = ga.GA([population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate,scoring_args,prune_population])
-    (scores, population, generation) = output[i]
+    (scores, population, high_scores) = output[i]
     all_scores.append(scores)
-    print(f'Run {i+1}: Highest Scorer: {scores[0]:.2f} {Chem.MolToSmiles(population[0])} \nBest Mol in each Generation: {generation}')
+    print(f'# Run {i+1}: Highest Scorer: {scores[0]:.2f} {Chem.MolToSmiles(population[0])} \nBest Mol in each Generation: {high_scores}')
     results.append(scores[0])
-    generations_list.append(generation)
+    generations_list.append(high_scores)
     #size.append(Chem.MolFromSmiles(sc.max_score[1]).GetNumAtoms())
 
 t1 = time.time()
 # print('')
-print(f'max score {max(results):.2f}, mean {np.array(results).mean():.2f} +/- {np.array(results).std():.2f}')
+print(f'# max score {max(results):.2f}, mean {np.array(results).mean():.2f} +/- {np.array(results).std():.2f}')
 # print(f'mean generations {np.array(generations_list).mean():.2f} +/- {np.array(generations_list).std():.2f}')
-print(f'Total duration: {(t1-t0)/60.0:.2f} minutes')
+print(f'# Total duration: {(t1-t0)/60.0:.2f} minutes')
 #print(max(size),np.array(size).mean(),np.array(size).std())
-print(f'Generation list: {generations_list}')
-print(f'All scores:{all_scores}')
+print(f'# Generation list: {generations_list}')
+# print(f'All scores:{all_scores}')

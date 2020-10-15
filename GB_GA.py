@@ -92,25 +92,25 @@ def GA(args):
 
   high_scores = [] 
   population = make_initial_population(population_size,file_name)
-  print(f'Initial Population')
+  print(f'# Initial Population')
   start = time.time()
   scores = sc.calculate_scores_parallel(population,scoring_function,scoring_args,n_cpus)
   #reorder so best score comes first
   population, scores = sanitize(population, scores, population_size, False)  
   high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
   fitness = calculate_normalized_fitness(scores)
-  print(f'Total Duration: {time.time()- start:.2f} s')
+  print(f'{list(zip(scores,[Chem.MolToSmiles(mol) for mol in population]))}')
 
   for generation in range(generations):
     start = time.time()
-    print(f'\nGeneration {generation+1}/{generations}')
+    print(f'# Generation {generation+1}/{generations}')
     mating_pool = make_mating_pool(population,fitness,mating_pool_size)
     new_population = reproduce(mating_pool,population_size,mutation_rate)
     new_scores = sc.calculate_scores_parallel(new_population,scoring_function,scoring_args, n_cpus)
     population, scores = sanitize(population+new_population, scores+new_scores, population_size, prune_population)  
     fitness = calculate_normalized_fitness(scores)
     high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
-    print(f'Duration: {time.time()- start:.2f} s')
+    print(f'{list(zip(scores,[Chem.MolToSmiles(mol) for mol in population]))}')
   return (scores, population, high_scores)
 
 

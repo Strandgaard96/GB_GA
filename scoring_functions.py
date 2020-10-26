@@ -19,7 +19,7 @@ import string
 import random
 import time
 
-import sascorer
+from sa import calculateScore
 
 seed=123
 
@@ -163,7 +163,7 @@ def energydiff2score(energy):
 
 def cat_scoring(rdkit_mol, n_cpus=None):
 	energy_diff = compute_energy_diff(rdkit_mol, n_confs=None)
-	SA_score = -sascorer.calculateScore(rdkit_mol)
+	SA_score = -calculateScore(rdkit_mol)
 	SA_score_norm=(SA_score-SA_mean)/SA_std
 	score = energydiff2score(energy_diff) + SA_score_norm
 	return score

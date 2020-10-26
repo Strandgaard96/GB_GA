@@ -19,6 +19,7 @@ import sys
 import crossover as co
 import mutate as mu
 import scoring_functions as sc
+from sa import reweigh_scores_by_sa, neutralize_molecules
 
 def read_file(file_name):
   mol_list = []
@@ -85,7 +86,7 @@ def sanitize(population,scores,population_size, prune_population):
 
 def GA(args):
   population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate, \
-  scoring_args , prune_population, n_cpus, seed = args
+  scoring_args , prune_population, n_cpus, sa_screening, seed = args
 
   np.random.seed(seed)
   random.seed(seed)
@@ -95,10 +96,12 @@ def GA(args):
   print(f'# Initial Population')
   start = time.time()
   scores = sc.calculate_scores_parallel(population,scoring_function,scoring_args,n_cpus)
+  if sa_screening:
+        scores = reweigh_scores_by_sa(neutralize_molecules(population), scores)
   #reorder so best score comes first
   population, scores = sanitize(population, scores, population_size, False)  
-  high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
   fitness = calculate_normalized_fitness(scores)
+  high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
   print(f'{list(zip(scores,[Chem.MolToSmiles(mol) for mol in population]))}')
 
   for generation in range(generations):
@@ -107,6 +110,9 @@ def GA(args):
     mating_pool = make_mating_pool(population,fitness,mating_pool_size)
     new_population = reproduce(mating_pool,population_size,mutation_rate)
     new_scores = sc.calculate_scores_parallel(new_population,scoring_function,scoring_args, n_cpus)
+    if sa_screening:
+            new_scores = reweigh_scores_by_sa(neutralize_molecules(new_population), new_scores)
+            assert len(new_scores) == len(new_population)
     population, scores = sanitize(population+new_population, scores+new_scores, population_size, prune_population)  
     fitness = calculate_normalized_fitness(scores)
     high_scores.append((scores[0],Chem.MolToSmiles(population[0])))

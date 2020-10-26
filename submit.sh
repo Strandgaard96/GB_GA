@@ -12,7 +12,7 @@ echo $JOB_NAME
 
 PARTITION=shortcoms
 TIME=24:00:00
-NCPUS=20
+NCPUS=24
 MEM=20GB
 
 cat > $SUBMIT <<!EOF
@@ -33,6 +33,9 @@ mkdir /scratch/\$SLURM_JOB_ID
 cd /scratch/\$SLURM_JOB_ID
 
 cp $PWD/$smiles_file .
+cp $PWD/SA_scores.txt .
+cp $PWD/sa/fpscores.pkl.gz .
+cp $PWD/sa/neutralize.json .
 
 /home/julius/soft/miniconda3/envs/default/bin/python /home/julius/soft/GB-GA/GA_catalyst.py $2
 

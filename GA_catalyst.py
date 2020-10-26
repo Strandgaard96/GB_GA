@@ -16,15 +16,16 @@ scoring_function = sc.cat_scoring
 n_confs = 5 # calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
 
-population_size = 20
-mating_pool_size = 20
-generations = 25
+population_size = 12
+mating_pool_size = 12
+generations = 5
 mutation_rate = 0.05
 co.average_size = 25. 
 co.size_stdev = 5.
 prune_population = True
 n_tries = 1
-n_cpus = 20
+n_cpus = 24
+sa_screening = True
 seeds = np.random.randint(100000, size=2*n_tries)
 
 file_name = sys.argv[1]
@@ -41,6 +42,7 @@ print('* prune population', prune_population)
 print('* number of tries', n_tries)
 print('* number of CPUs', n_cpus)
 print('* SMILES input file', file_name)
+print('* SA screening', sa_screening)
 print('* seeds seed', seed)
 print('* seeds', ','.join(map(str, seeds)))
 print('')
@@ -53,7 +55,7 @@ generations_list = []
 
 index = slice(0,n_tries) if prune_population else slice(n_tries,2*n_tries)
 temp_args = [[population_size, file_name,scoring_function,generations,mating_pool_size,
-                  mutation_rate,scoring_args, prune_population, n_cpus] for i in range(n_tries)]
+                  mutation_rate,scoring_args, prune_population, n_cpus, sa_screening] for i in range(n_tries)]
 args = []
 for x,y in zip(temp_args,seeds[index]):
     x.append(y)

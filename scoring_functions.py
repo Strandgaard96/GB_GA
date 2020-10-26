@@ -22,15 +22,15 @@ import random
 
 import sascorer
 
-logP_values = np.loadtxt('logP_values.txt')
-SA_scores = np.loadtxt('SA_scores.txt')
-cycle_scores = np.loadtxt('cycle_scores.txt')
-SA_mean =  np.mean(SA_scores)
-SA_std=np.std(SA_scores)
-logP_mean = np.mean(logP_values)
-logP_std= np.std(logP_values)
-cycle_mean = np.mean(cycle_scores)
-cycle_std=np.std(cycle_scores)
+# logP_values = np.loadtxt('logP_values.txt')
+# SA_scores = np.loadtxt('SA_scores.txt')
+# cycle_scores = np.loadtxt('cycle_scores.txt')
+# SA_mean =  np.mean(SA_scores)
+# SA_std=np.std(SA_scores)
+# logP_mean = np.mean(logP_values)
+# logP_std= np.std(logP_values)
+# cycle_mean = np.mean(cycle_scores)
+# cycle_std=np.std(cycle_scores)
 
 def calculate_score(args):
   '''Parallelize at the score level (not currently in use)'''
@@ -58,45 +58,45 @@ def calculate_scores(population,function,scoring_args):
 
   return scores 
 
-def logP_max(m, dummy):
-  score = logP_score(m)
-  return max(0.0, score)
+# def logP_max(m, dummy):
+#   score = logP_score(m)
+#   return max(0.0, score)
 
-def logP_target(m,args):
-  target, sigma = args
-  score = logP_score(m)
-  score = GaussianModifier(score, target, sigma)
-  return score
+# def logP_target(m,args):
+#   target, sigma = args
+#   score = logP_score(m)
+#   score = GaussianModifier(score, target, sigma)
+#   return score
 
 
-def logP_score(m):
-  try:
-  	logp = Descriptors.MolLogP(m)
-  except:
-    print (m, Chem.MolToSmiles(m))
-    sys.exit('failed to make a molecule')
+# def logP_score(m):
+#   try:
+#   	logp = Descriptors.MolLogP(m)
+#   except:
+#     print (m, Chem.MolToSmiles(m))
+#     sys.exit('failed to make a molecule')
 
-  SA_score = -sascorer.calculateScore(m)
-  #cycle_list = nx.cycle_basis(nx.Graph(rdmolops.GetAdjacencyMatrix(m)))
-  cycle_list = m.GetRingInfo().AtomRings() #remove networkx dependence
-  if len(cycle_list) == 0:
-      cycle_length = 0
-  else:
-      cycle_length = max([ len(j) for j in cycle_list ])
-  if cycle_length <= 6:
-      cycle_length = 0
-  else:
-      cycle_length = cycle_length - 6
-  cycle_score = -cycle_length
-  #print cycle_score
-  #print SA_score
-  #print logp
-  SA_score_norm=(SA_score-SA_mean)/SA_std
-  logp_norm=(logp-logP_mean)/logP_std
-  cycle_score_norm=(cycle_score-cycle_mean)/cycle_std
-  score_one = SA_score_norm + logp_norm + cycle_score_norm
+#   SA_score = -sascorer.calculateScore(m)
+#   #cycle_list = nx.cycle_basis(nx.Graph(rdmolops.GetAdjacencyMatrix(m)))
+#   cycle_list = m.GetRingInfo().AtomRings() #remove networkx dependence
+#   if len(cycle_list) == 0:
+#       cycle_length = 0
+#   else:
+#       cycle_length = max([ len(j) for j in cycle_list ])
+#   if cycle_length <= 6:
+#       cycle_length = 0
+#   else:
+#       cycle_length = cycle_length - 6
+#   cycle_score = -cycle_length
+#   #print cycle_score
+#   #print SA_score
+#   #print logp
+#   SA_score_norm=(SA_score-SA_mean)/SA_std
+#   logp_norm=(logp-logP_mean)/logP_std
+#   cycle_score_norm=(cycle_score-cycle_mean)/cycle_std
+#   score_one = SA_score_norm + logp_norm + cycle_score_norm
   
-  return score_one
+#   return score_one
 
 def shell(cmd, shell=False):
 

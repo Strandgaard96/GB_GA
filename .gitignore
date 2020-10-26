@@ -11,6 +11,11 @@ Tanimoto250K.smi
 *.stderr
 *.stdout
 *.smi
+*.xyz
+*.sdf
+*.gz
+*.inp
+*.mol
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

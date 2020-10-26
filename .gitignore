@@ -122,4 +122,4 @@ venv.bak/
 # mypy
 .mypy_cache/
 ga_catalyst.ipynb
-catalyst/prep.ipynb
+catalyst/*

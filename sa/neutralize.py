@@ -5,6 +5,7 @@ import numpy as np
 import copy
 
 from rdkit import Chem
+from rdkit.Chem.rdmolops import FastFindRings
 
 from .sascorer import calculateScore
 _neutralize_reactions = None
@@ -59,6 +60,9 @@ def neutralize_molecules(charged_molecules):
                 rms = Chem.ReplaceSubstructs(mol, reactant_mol, product_mol)
                 if rms[0] is not None:
                     mol = rms[0]
+        # https://github.com/rdkit/rdkit/issues/2216 to get valid ring information and implicit valences
+        mol.UpdatePropertyCache()
+        FastFindRings(mol)
         neutral_molecules.append(mol)
     return neutral_molecules
 

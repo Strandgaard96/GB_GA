@@ -16,6 +16,7 @@ Tanimoto250K.smi
 *.gz
 *.inp
 *.mol
+*.tmp
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -122,4 +123,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 ga_catalyst.ipynb
-catalyst/*
+catalyst/xtb_path/*
+catalyst/output/*

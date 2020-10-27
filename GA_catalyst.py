@@ -9,7 +9,7 @@ from multiprocessing import Pool
 import random
 from catalyst import cat_scoring
 
-seed=101
+seed=123
 random.seed(seed)
 np.random.seed(seed)
 
@@ -17,15 +17,15 @@ scoring_function = cat_scoring
 n_confs = 5 # calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
 
-population_size = 3
-mating_pool_size = 3
-generations = 5
+population_size = 20
+mating_pool_size = 20
+generations = 50
 mutation_rate = 0.05
 co.average_size = 25. 
 co.size_stdev = 5.
 prune_population = True
 n_tries = 1
-n_cpus = 24
+n_cpus = 20
 sa_screening = True
 seeds = np.random.randint(100000, size=2*n_tries)
 

@@ -63,6 +63,7 @@ def neutralize_molecules(charged_molecules):
         # https://github.com/rdkit/rdkit/issues/2216 to get valid ring information and implicit valences
         mol.UpdatePropertyCache()
         FastFindRings(mol)
+        Chem.SanitizeMol(mol)
         neutral_molecules.append(mol)
     return neutral_molecules
 
@@ -82,7 +83,7 @@ def sa_score_modifier(sa_scores, mu = 2.230044, sigma = 0.6526308):
 def reweigh_scores_by_sa(population, scores):
     sa_scores = sa_score_modifier([calculateScore(p) for p in population])
     scores = [ns * sa for ns, sa in zip(scores, sa_scores)]  # rescale scores  and force list type
-    return scores
+    return list(scores), list(sa_scores)
 
 
 if __name__ == '__main__':

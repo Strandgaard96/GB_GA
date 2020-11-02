@@ -50,10 +50,10 @@ def neutralize_molecules(charged_molecules):
 
     neutral_molecules = []
     for c_mol in charged_molecules:
-        mol = copy.deepcopy(c_mol)
-        #mol = Chem.Mol(c_mol)
-        #mol.UpdatePropertyCache()
-        #Chem.rdmolops.FastFindRings(mol)
+        # mol = copy.deepcopy(c_mol)
+        mol = Chem.Mol(c_mol)
+        mol.UpdatePropertyCache()
+        Chem.rdmolops.FastFindRings(mol)
         assert mol is not None
         for reactant_mol, product_mol in _neutralize_reactions:
             while mol.HasSubstructMatch(reactant_mol):
@@ -63,7 +63,6 @@ def neutralize_molecules(charged_molecules):
         # https://github.com/rdkit/rdkit/issues/2216 to get valid ring information and implicit valences
         mol.UpdatePropertyCache()
         FastFindRings(mol)
-        Chem.SanitizeMol(mol)
         neutral_molecules.append(mol)
     return neutral_molecules
 

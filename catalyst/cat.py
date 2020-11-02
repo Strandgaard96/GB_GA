@@ -13,7 +13,7 @@ import string
 import random
 import time
 
-seed=123
+seed=101
 
 def get_structure(start_mol,n_confs):
 	mol = Chem.AddHs(start_mol)
@@ -84,8 +84,8 @@ def energydiff2score(energy):
 	score = -energy 
 	return score
 
-def cat_scoring(rdkit_mol, n_cpus=None):
-	energy_diff = compute_energy_diff(rdkit_mol, n_confs=None)
+def cat_scoring(rdkit_mol, n_confs=None):
+	energy_diff = compute_energy_diff(rdkit_mol, n_confs=n_confs)
 	score = energydiff2score(energy_diff)
 	return score
 

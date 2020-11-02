@@ -8,24 +8,26 @@ import sys
 from multiprocessing import Pool
 import random
 from catalyst import cat_scoring
+from sa import reweigh_scores_by_sa, neutralize_molecules
+
 
 seed=123
 random.seed(seed)
 np.random.seed(seed)
 
 scoring_function = cat_scoring
-n_confs = 5 # calculates how many conformers based on 5+5*n_rot
+n_confs = 5 # None calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
 
-population_size = 20
-mating_pool_size = 20
+population_size = 24
+mating_pool_size = 24
 generations = 50
-mutation_rate = 0.05
+mutation_rate = 0.5
 co.average_size = 25. 
 co.size_stdev = 5.
 prune_population = True
 n_tries = 1
-n_cpus = 20
+n_cpus = 24
 sa_screening = True
 seeds = np.random.randint(100000, size=2*n_tries)
 
@@ -48,8 +50,53 @@ print('* seeds seed', seed)
 print('* seeds', ','.join(map(str, seeds)))
 print('')
 
+def GA(args):
+    population_size, file_name, scoring_function, generations, mating_pool_size, mutation_rate,\
+    scoring_args, prune_population, n_cpus, sa_screening, seed = args
+
+    np.random.seed(seed)
+    random.seed(seed)
+
+    population = ga.make_initial_population(population_size, file_name)
+    prescores = sc.calculate_scores_parallel(population, scoring_function, scoring_args, n_cpus)
+    # scores = normalize(prescores)
+    scores =  prescores
+
+    if sa_screening:
+        scores, sascores = reweigh_scores_by_sa(neutralize_molecules(population), scores)
+
+    fitness = ga.calculate_normalized_fitness(scores)
+    
+    if sa_screening:
+        print(f'{list(zip(scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
+    else:
+        print(f'{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}')
+
+    high_scores = []
+    for generation in range(generations):
+        mating_pool = ga.make_mating_pool(population, fitness, mating_pool_size)
+        new_population = ga.reproduce(mating_pool, population_size, mutation_rate)
+        new_prescores = sc.calculate_scores_parallel(new_population, scoring_function, scoring_args, n_cpus)
+            
+        if sa_screening:
+            new_scores, new_sascores = reweigh_scores_by_sa(neutralize_molecules(new_population), new_prescores)
+            population, scores, prescores, sascores = ga.sanitize(population+new_population, scores+new_scores, population_size, prune_population, sa_screening, prescores+new_prescores, sascores+new_sascores)
+        else:
+            new_scores = new_prescores       
+            population, scores = ga.sanitize(population+new_population, scores+new_scores, population_size, prune_population, sa_screening)
+        
+        fitness = ga.calculate_normalized_fitness(scores)
+
+        high_scores.append((scores[0], Chem.MolToSmiles(population[0])))
+
+        if sa_screening:
+            print(f'{list(zip(scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
+        else:
+            print(f'{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}')
+
+    return (scores, population, high_scores)
+
 results = []
-size = []
 t0 = time.time()
 all_scores = []
 generations_list = []
@@ -62,27 +109,17 @@ for x,y in zip(temp_args,seeds[index]):
     x.append(y)
     args.append(x)
 
+# Run the GA
 output = []
 for i in range(n_tries):
-    output.append(ga.GA(args[i]))
+    output.append(GA(args[i]))
 
 
 for i in range(n_tries):     
-    #(scores, population) = ga.GA([population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate,scoring_args,prune_population])
-    (scores, population, high_scores, high_prescores) = output[i]
+    (scores, population, high_scores) = output[i]
     all_scores.append(scores)
-    print(f'# Run {i+1}: Highest Scorer: {scores[0]:.2f} {Chem.MolToSmiles(population[0])} \nBest Mol in each Generation: {high_scores}')
     results.append(scores[0])
     generations_list.append(high_scores)
-    #size.append(Chem.MolFromSmiles(sc.max_score[1]).GetNumAtoms())
 
 t1 = time.time()
-# print('')
-print(f'# max score {max(results):.2f}, mean {np.array(results).mean():.2f} +/- {np.array(results).std():.2f}')
-# print(f'mean generations {np.array(generations_list).mean():.2f} +/- {np.array(generations_list).std():.2f}')
 print(f'# Total duration: {(t1-t0)/60.0:.2f} minutes')
-#print(max(size),np.array(size).mean(),np.array(size).std())
-# print(f'# Generation list: {generations_list}')
-print(f'# High Scores: {high_scores}')
-print(f'# High Prescores: {high_prescores}')
-# print(f'All scores:{all_scores}')

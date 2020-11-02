@@ -47,10 +47,9 @@ def calculate_normalized_fitness(scores):
 def make_mating_pool(population,fitness,mating_pool_size):
   mating_pool = []
   for i in range(mating_pool_size):
-  	mating_pool.append(np.random.choice(population, p=fitness))
+  	mating_pool.append(Chem.Mol(np.random.choice(population, p=fitness)))
 
-  return mating_pool 
-
+  return mating_pool
 
 def reproduce(mating_pool,population_size,mutation_rate):
   new_population = []
@@ -66,67 +65,37 @@ def reproduce(mating_pool,population_size,mutation_rate):
 
   return new_population
 
-def sanitize(population,scores,prescores,population_size, prune_population):
+def sanitize(population,scores,population_size, prune_population, sa_screening, prescores=None, sascores=None):
     if prune_population:
       smiles_list = []
       population_tuples = []
-      for score, prescore, mol in zip(scores,prescores,population):
+      if sa_screening:
+        for score, prescore, sascore, mol in zip(scores, prescores, sascores, population):
           smiles = Chem.MolToSmiles(mol)
           if smiles not in smiles_list:
               smiles_list.append(smiles)
-              population_tuples.append((score,prescore,mol))
+              population_tuples.append((score, prescore, sascore, mol))
+      else:
+        for score, mol in zip(scores,population):
+          smiles = Chem.MolToSmiles(mol)
+          if smiles not in smiles_list:
+              smiles_list.append(smiles)
+              population_tuples.append((score,mol))
     else:
-      population_tuples = list(zip(scores,prescores,population))
+      if sa_screening:
+        population_tuples = list(zip(scores,prescores,sascores,population))
+      else:
+        population_tuples = list(zip(scores,population))
 
     population_tuples = sorted(population_tuples, key=lambda x: x[0], reverse=True)[:population_size]
-    new_population = [t[2] for t in population_tuples]
-    new_prescores = [t[1] for t in population_tuples]
+    new_population = [t[-1] for t in population_tuples]
     new_scores = [t[0] for t in population_tuples]
-
-    return new_population, new_scores, new_prescores
-
-def GA(args):
-  population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate, \
-  scoring_args , prune_population, n_cpus, sa_screening, seed = args
-
-  np.random.seed(seed)
-  random.seed(seed)
-
-  high_scores = [] 
-  high_prescores = []
-  population = make_initial_population(population_size,file_name)
-  print(f'# Initial Population')
-  start = time.time()
-  prescores = sc.calculate_scores_parallel(population,scoring_function,scoring_args,n_cpus)
-  if sa_screening:
-    scores = reweigh_scores_by_sa(neutralize_molecules(population), prescores)
-  else:
-    scores = prescores
-  #reorder so best score comes first
-  population, scores, prescores = sanitize(population, scores, prescores, population_size, False)  
-  fitness = calculate_normalized_fitness(scores)
-  high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
-  high_prescores.append((prescores[0],Chem.MolToSmiles(population[0])))
-  print(f'{list(zip(scores, prescores, [Chem.MolToSmiles(mol) for mol in population]))}')
-
-  for generation in range(generations):
-    start = time.time()
-    print(f'# Generation {generation+1}/{generations}')
-    mating_pool = make_mating_pool(population,fitness,mating_pool_size)
-    new_population = reproduce(mating_pool,population_size,mutation_rate)
-    new_prescores = sc.calculate_scores_parallel(new_population,scoring_function,scoring_args, n_cpus)
     if sa_screening:
-      new_scores = reweigh_scores_by_sa(neutralize_molecules(new_population), new_prescores)
-      assert len(new_scores) == len(new_population)
+      new_prescores = [t[1] for t in population_tuples]
+      new_sascores = [t[2] for t in population_tuples]
+      return new_population, new_scores, new_prescores, new_sascores
     else:
-      new_scores = new_prescores
-    population, scores, prescores = sanitize(population+new_population, scores+new_scores, prescores+new_prescores, population_size, prune_population)  
-    fitness = calculate_normalized_fitness(scores)
-    high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
-    high_prescores.append((prescores[0],Chem.MolToSmiles(population[0])))
-    print(f'{list(zip(scores, prescores, [Chem.MolToSmiles(mol) for mol in population]))}')
-  return (scores, population, high_scores, high_prescores)
-
+      return new_population, new_scores
 
 if __name__ == "__main__":
     pass

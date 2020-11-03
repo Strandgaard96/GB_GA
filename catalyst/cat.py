@@ -53,7 +53,7 @@ def compute_energy(mol,n_confs):
 def connect_amine_with_struc(rdkit_mol, structure_smi='[H]c1c([H])c([C@]([H])([O-])[C@@]([H])(C(=O)OC([H])([H])[H])C([H])([H])[N@+]23C([H])([H])C([H])([H])[C@]([H])(C([H])([H])C2([H])[H])C([H])([H])C3([H])[H])c([H])c([H])c1[N+](=O)[O-]'):
 	'''	Takes mol that contains amine and connects it to 5-sr, returns list of 6*n_amine products (n_amine = number of amine substructe in input mol)	'''
 	struc = Chem.MolFromSmiles(structure_smi)
-	connect_smarts = '[NX3;H0;D3;!+1]([*:1])([*:2])[*:3].[C$([*]([NX4;H0;D4&+1])([CH1])):4][NX4;H0;D4&+1]>>[NX4;H0;D4&+1]([*:1])([*:2])([*:3])[C:4]'
+	connect_smarts = '[#7X3;H0;D3;!+1]([*:1])([*:2])[*:3].[C$([*]([#7X4;H0;D4&+1])([CH1])):4][#7X4;H0;D4&+1]>>[#7X4;H0;D4&+1]([*:1])([*:2])([*:3])[C:4]'
 	rxn = AllChem.ReactionFromSmarts(connect_smarts)
 	ps = rxn.RunReactants((rdkit_mol,struc))
 	return ps
@@ -96,8 +96,8 @@ def count_substruc_match(mol, pattern):
 
 def get_unique_amine_products(rdkit_mol, products):
 	'''	Returns unique products from connect_amine_with_struc '''
-	tert_amine = Chem.MolFromSmarts('[NX3;H0;D3;!+1]')
-	quart_amine = Chem.MolFromSmarts('[NX4;H0;D4&+1]')
+	tert_amine = Chem.MolFromSmarts('[#7X3;H0;D3;!+1]')
+	quart_amine = Chem.MolFromSmarts('[#7X4;H0;D4&+1]')
 	n = count_substruc_match(rdkit_mol, tert_amine)
 	unique = []
 	for n in np.arange(n):

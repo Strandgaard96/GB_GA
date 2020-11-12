@@ -1,1 +1,1 @@
-from .cat import cat_scoring
+from .cat import cat_scoring, get_structure

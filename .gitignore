@@ -12,7 +12,7 @@ Tanimoto250K.smi
 *.stdout
 *.smi
 *.xyz
-*.sdf
+.sdf
 *.gz
 *.inp
 *.mol

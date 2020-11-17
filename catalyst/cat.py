@@ -13,8 +13,6 @@ import string
 import random
 import time
 
-seed=101
-
 def get_structure(start_mol,n_confs):
 	mol = Chem.AddHs(start_mol)
 	new_mol = Chem.Mol(mol)
@@ -117,87 +115,107 @@ reactant_dummy = Chem.SDMolSupplier('catalyst/structures/reactant_dummy.sdf',rem
 product_dummy = Chem.SDMolSupplier('catalyst/structures/product_dummy.sdf',removeHs = False)[0]
 
 def connect_cat(mol_with_dummy, cat):
-    dummy = Chem.MolFromSmarts('[99*]')
-    mols = []
-    for amine in cat.GetSubstructMatches(Chem.MolFromSmarts('[#7X3;H0;D3;!+1]')):
-        mol = AllChem.ReplaceSubstructs(mol_with_dummy, dummy, cat, replacementConnectionPoint=amine[0])[0]
-        quart_amine = mol.GetSubstructMatch(Chem.MolFromSmarts('[#7X4;H0;D4;!+1]'))[0]
-        mol.GetAtomWithIdx(quart_amine).SetFormalCharge(1)
-        Chem.SanitizeMol(mol)
-        mols.append(mol)
-    return mols
+	dummy = Chem.MolFromSmarts('[99*]')
+	mols = []
+	conformers = cat.GetConformers()
+	if not conformers:
+		raise Exception('Catalyst is not embedded.')
+	if not conformers[0].Is3D:
+		raise Exception('Conformer is not 3D.')
+	for amine in cat.GetSubstructMatches(Chem.MolFromSmarts('[#7X3;H0;D3;!+1]')):
+		mol = AllChem.ReplaceSubstructs(mol_with_dummy, dummy, cat, replacementConnectionPoint=amine[0])[0]
+		quart_amine = mol.GetSubstructMatch(Chem.MolFromSmarts('[#7X4;H0;D4;!+1]'))[0]
+		mol.GetAtomWithIdx(quart_amine).SetFormalCharge(1)
+		Chem.SanitizeMol(mol)
+		mols.append(mol)
+	return mols
 
 def constrained_optimization(mol, maxIts=10000, maxDispl=0.1, forceConstant=1e5):
     constrained_atoms = mol.GetSubstructMatch(Chem.MolFromSmarts('[#6](/[#6](=[#6](/[#8]-[#6](-[H])(-[H])-[H])-[#8-])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H]).[H]-[#8]-[#6](-[H])(-[H])-[H]')) + mol.GetSubstructMatch(Chem.MolFromSmarts('[#6](-[#6@@](-[#6](-[#8]-[#6](-[H])(-[H])-[H])=[#8])(-[H])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H]).[#8-]-[#6](-[H])(-[H])-[H]'))
     if len(constrained_atoms) == 0:
-        print('No match with core.')
-    ff = ChemicalForceFields.UFFGetMoleculeForceField(mol)
+        raise Exception('No match with core.')
+    mmff_props = AllChem.MMFFGetMoleculeProperties(mol)
+    ff = AllChem.MMFFGetMoleculeForceField(mol, mmff_props)
     for atom in constrained_atoms:
         ff.MMFFAddPositionConstraint(atom, maxDispl, forceConstant)
     ff.Initialize()
     out = ff.Minimize(maxIts=maxIts)
     if out == 1:
-        print('Optimization failed.')
+        raise Exception('Optimization failed.')
     else:
         energy = ff.CalcEnergy()
         return energy
 
-def make_reactant_and_product(mol, coreMaxIts=10000, coreMaxDispl=0.01, coreForceConstant=1e5, dragMaxIts=10000, dragForceConstant=1e5, energyCutOff=400):
-    # create all possible reactants
-    possible_reactants = connect_cat(reactant_dummy, mol)
+def make_reactant_and_product(mol, coreMaxIts=10000, coreMaxDispl=0.01, coreForceConstant=1e5, dragMaxIts=10000, dragForceConstant=1e5, energyCutOff=400, maxAttempts=5, writeXTB=True):
+	# create all possible reactants
+	possible_reactants = connect_cat(reactant_dummy, mol)
 
-    # # getting lowest energy reactant
-    energies = []
-    for possible_reactant in possible_reactants:
-        energies.append(constrained_optimization(possible_reactant, maxIts=coreMaxIts, maxDispl=coreMaxDispl, forceConstant=coreForceConstant))
-    min_e_index = energies.index(min(energies))
-    reactant = possible_reactants[min_e_index]
+	# getting lowest energy reactant
+	for n in range(maxAttempts):
+		energies = []
+		for possible_reactant in possible_reactants:
+			energies.append(constrained_optimization(possible_reactant, maxIts=coreMaxIts, maxDispl=coreMaxDispl, forceConstant=coreForceConstant))
+		min_e_index = energies.index(min(energies))
+		if min(energies) < energyCutOff:
+			reactant = possible_reactants[min_e_index]
+			break
+		coreMaxIts = 10*coreMaxIts
+		coreForceConstant = 10*coreForceConstant
 
-    # return None, None for reactant and product if reactant could't not be optimized properly
-    if min(energies) > energyCutOff:
-        print(f'Lowest energy of reactant is {min(energies)}. Proceed with next catalyst.')
-        return None, None
+	# return None, None for reactant and product if reactant could't not be optimized properly
+	if min(energies) > energyCutOff:
+		print(f'Energy exceeded {energyCutOff} ({min(energies):.2f}) in all {maxAttempts} attempts to optimize the reactant molecule. Proceed with next catalyst.')
+		return None, None #return possible_reactants[min_e_index], None
 
-    # create all possible products
-    possible_products = connect_cat(product_dummy, mol)
+	# create all possible products
+	possible_products = connect_cat(product_dummy, mol)
 
-    # making sure to ge the same regioisomer as reactant
-    connection_id = reactant.GetSubstructMatch(Chem.MolFromSmarts('[#7+]-[#6](-[#6@@](-[#6](-[#8]-[#6](-[H])(-[H])-[H])=[#8])(-[H])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H])'))[0]
-    for possible_product in possible_products:
-        test_connection_id = possible_product.GetSubstructMatch(Chem.MolFromSmarts('[#7+]-[#6](/[#6](=[#6](/[#8]-[#6](-[H])(-[H])-[H])-[#8-])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H])'))[0]
-        if connection_id == test_connection_id:
-            product = possible_product
-    if product is None:
-        print('To match between reactant and product regioisomers.')
+	# making sure to ge the same regioisomer as reactant
+	connection_id = reactant.GetSubstructMatch(Chem.MolFromSmarts('[#7+]-[#6](-[#6@@](-[#6](-[#8]-[#6](-[H])(-[H])-[H])=[#8])(-[H])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H])'))[0]
+	for possible_product in possible_products:
+		test_connection_id = possible_product.GetSubstructMatch(Chem.MolFromSmarts('[#7+]-[#6](/[#6](=[#6](/[#8]-[#6](-[H])(-[H])-[H])-[#8-])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H])'))[0]
+		if connection_id == test_connection_id:
+			product = possible_product
+	if product is None:
+		print('No match between reactant and product regioisomers.')
 
-    # optimize product with constraints
-    ff = ChemicalForceFields.UFFGetMoleculeForceField(product)
+	# optimize product with constraints
+	for n in range(maxAttempts):
+		mmff_props = AllChem.MMFFGetMoleculeProperties(product)
+    	ff = AllChem.MMFFGetMoleculeForceField(product, mmff_props)
 
-    # constrain the core of the complex
-    constrained_atoms = product.GetSubstructMatch(Chem.MolFromSmarts('[#6](/[#6](=[#6](/[#8]-[#6](-[H])(-[H])-[H])-[#8-])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H]).[H]-[#8]-[#6](-[H])(-[H])-[H]'))
-    for atom in constrained_atoms:
-        ff.MMFFAddPositionConstraint(atom, coreMaxDispl, coreForceConstant)
-        
-    # add constrains that pull atoms of the catalyst in the product on to the positions of the atoms of the catalyst in the reactant
-    reactant_cat_atoms = reactant.GetSubstructMatch(mol)
-    product_cat_atoms = product.GetSubstructMatch(mol)
-    reacconf = reactant.GetConformer()
-    for atom in product_cat_atoms:
-        p = reacconf.GetAtomPosition(atom)
-        pIdx = ff.AddExtraPoint(p.x,p.y,p.z,fixed=True)-1
-        ff.AddDistanceConstraint(pIdx, atom,0,0,dragForceConstant)
-    ff.Initialize()
-    ff.Minimize(maxIts=dragMaxIts, energyTol=1e-4,forceTol=1e-3)
+		# constrain the core of the complex
+		constrained_atoms = product.GetSubstructMatch(Chem.MolFromSmarts('[#6](/[#6](=[#6](/[#8]-[#6](-[H])(-[H])-[H])-[#8-])-[#6@](-[H])(-[#6]1:[#6](:[#6](:[#6](:[#6](:[#6]:1-[H])-[H])-[#7+](=[#8])-[#8-])-[H])-[H])-[#8]-[H])(-[H])(-[H]).[H]-[#8]-[#6](-[H])(-[H])-[H]'))
+		for atom in constrained_atoms:
+			ff.MMFFAddPositionConstraint(atom, coreMaxDispl, coreForceConstant)
+			
+		# add constrains that pull atoms of the catalyst in the product on to the positions of the atoms of the catalyst in the reactant
+		reactant_cat_atoms = reactant.GetSubstructMatch(mol)
+		product_cat_atoms = product.GetSubstructMatch(mol)
+		reacconf = reactant.GetConformer()
+		for atom in product_cat_atoms:
+			p = reacconf.GetAtomPosition(atom)
+			pIdx = ff.AddExtraPoint(p.x,p.y,p.z,fixed=True)-1
+			ff.AddDistanceConstraint(pIdx, atom,0,0,dragForceConstant)
+		ff.Initialize()
+		ff.Minimize(maxIts=dragMaxIts, energyTol=1e-4,forceTol=1e-3)
 
-    # relax product geometry without additional catalyst constraint
-    product_energy = constrained_optimization(product, maxIts=coreMaxIts, maxDispl=coreMaxDispl, forceConstant=coreForceConstant)
+		# relax product geometry without additional catalyst constraint
+		product_energy = constrained_optimization(product, maxIts=coreMaxIts, maxDispl=coreMaxDispl, forceConstant=coreForceConstant)
+		if product_energy < energyCutOff:
+			break
+		dragMaxIts = 10*dragMaxIts
+		dragForceConstant = 10*dragForceConstant
+		coreMaxIts = 10*coreMaxIts
+		coreForceConstant = 10*coreForceConstant
 
-    # return None, None for reactant and product if product could't not be optimized properly
-    if product_energy > energyCutOff:
-        print(f'Lowest energy of product is {min(energies)}. Proceed with next catalyst.')
-        return None, None
+	# return None, None for reactant and product if product could't not be optimized properly
+	if product_energy > energyCutOff:
+		print(f'Energy exceeded {energyCutOff} ({product_energy:.2f}) in all {maxAttempts} attempts to optimize the product molecule. Proceed with next catalyst.')
+		return None, None
+	
+	return reactant, product
+# have multiple tryies on geometry optimization with variaing forcevonstants
 
-    return reactant, product
-
-# make rmsd align test / num.atoms()
-
+# def cat-ts_scoring(rdkit_mol, n_confs=None):
+# 	print('.')

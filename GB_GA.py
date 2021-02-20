@@ -8,8 +8,8 @@ from rdkit.Chem import AllChem
 from rdkit.Chem import Descriptors
 from rdkit.Chem import rdmolops
 
-from rdkit import rdBase
-rdBase.DisableLog('rdApp.error')
+# from rdkit import rdBase
+# rdBase.DisableLog('rdApp.error')
 
 import numpy as np
 import random

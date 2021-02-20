@@ -7,27 +7,28 @@ import GB_GA as ga
 import sys
 from multiprocessing import Pool
 import random
-from catalyst import cat_scoring
+# from catalyst.scoring import rel_energy_scoring
+from catalyst.relative_scoring import relative_scoring
 from sa import reweigh_scores_by_sa, neutralize_molecules
 
 
-seed=123
+seed=101
 random.seed(seed)
 np.random.seed(seed)
 
-scoring_function = cat_scoring
-n_confs = 5 # None calculates how many conformers based on 5+5*n_rot
+scoring_function = relative_scoring
+n_confs = 15 # None calculates how many conformers based on 5+5*n_rot
 scoring_args = n_confs
 
-population_size = 24
-mating_pool_size = 24
+population_size = 4
+mating_pool_size = 4
 generations = 50
 mutation_rate = 0.5
 co.average_size = 25. 
 co.size_stdev = 5.
 prune_population = True
 n_tries = 1
-n_cpus = 24
+n_cpus = 4
 sa_screening = True
 seeds = np.random.randint(100000, size=2*n_tries)
 
@@ -60,7 +61,7 @@ def GA(args):
     population = ga.make_initial_population(population_size, file_name)
     prescores = sc.calculate_scores_parallel(population, scoring_function, scoring_args, n_cpus)
     # scores = normalize(prescores)
-    scores =  prescores
+    scores = prescores
 
     if sa_screening:
         scores, sascores = reweigh_scores_by_sa(neutralize_molecules(population), scores)

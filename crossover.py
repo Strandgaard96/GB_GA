@@ -91,6 +91,12 @@ def amine_OK(mol):
   else:
     return False
 
+def is_parameterized(mol, forcefield='UFF'):
+  if forcefield is 'UFF':
+     return AllChem.UFFHasAllMoleculeParams(mol)
+  if forcefield is 'MMFF':
+     return AllChem.MMFFHasAllMoleculeParams(mol)
+
 
 
 def crossover_ring(parent_A,parent_B):
@@ -126,7 +132,7 @@ def crossover_ring(parent_A,parent_B):
     new_mols2 = []
     for m in new_mols:
       m = m[0]
-      if mol_OK(m) and ring_OK(m) and amine_OK(m):
+      if mol_OK(m) and ring_OK(m) and amine_OK(m) and is_parameterized(m):
         new_mols2.append(m)
     
     if len(new_mols2) > 0:
@@ -149,7 +155,7 @@ def crossover_non_ring(parent_A,parent_B):
     new_mols = []
     for mol in new_mol_trial:
       mol = mol[0]
-      if mol_OK(mol) and amine_OK(mol):
+      if mol_OK(mol) and amine_OK(mol) and is_parameterized(mol):
         new_mols.append(mol)
     
     if len(new_mols) > 0:

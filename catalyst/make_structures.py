@@ -21,10 +21,10 @@ def connect_cat_2d(mol_with_dummy, cat):
         mols.append(mol)
     return mols
 
-def ConstrainedEmbedMultipleConfs(mol, core, numConfs=10, useTethers=True, coreConfId=-1, randomseed=2342,
-                     getForceField=AllChem.UFFGetMoleculeForceField, numThreads=1):
 
-    force_constant = 1e6
+def ConstrainedEmbedMultipleConfs(mol, core, numConfs=10, useTethers=True, coreConfId=-1, randomseed=2342,
+                     getForceField=AllChem.UFFGetMoleculeForceField, numThreads=1, force_constant=1e3):
+
     match = mol.GetSubstructMatch(core)
     if not match:
         raise ValueError("molecule doesn't match the core")
@@ -82,3 +82,13 @@ def ConstrainedEmbedMultipleConfs(mol, core, numConfs=10, useTethers=True, coreC
             # realign
             rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
     return mol
+
+
+def check_num_frags(mol, num_frags):
+    if len(Chem.GetMolFrags(mol)) != num_frags:
+        print(f'{Chem.MolToSmils(mol)} has {len(Chem.GetMolFrags(mol))} frags')
+        return False
+    else:
+        return True
+
+

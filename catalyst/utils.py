@@ -60,8 +60,8 @@ def vis_trajectory(xyz_file,atomlabel=False):
     except:
         raise
 
-def mol_from_xyz(xyz_file):
-    atoms, charge, xyz_coordinates = read_xyz_file(xyz_file)
+def mol_from_xyz(xyz_file, charge=0):
+    atoms, _, xyz_coordinates = read_xyz_file(xyz_file)
     mol = xyz2mol(atoms, xyz_coordinates, charge)
     return mol
 

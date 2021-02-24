@@ -40,13 +40,12 @@ def calculate_score(args):
 
 def calculate_scores_parallel(population,function,scoring_args, n_cpus):
   '''Parallelize at the score level (not currently in use)'''
-  os.environ['OMP_NUM_THREADS'] = '1'
   args_list = []
   args = scoring_args + [n_cpus] # scoring_args are all fixed parameters (gen_num, n_confs, randomseed)
   for i, gene in enumerate(population):
     args_list.append([function, gene, i]+args)
   with Pool(n_cpus) as pool:
-    scores = pool.map(calculate_score, args_list)
+    scores = pool.map(calculate_score, args_list, chunksize=2)
   return scores
 
 def calculate_scores(population,function,scoring_args):

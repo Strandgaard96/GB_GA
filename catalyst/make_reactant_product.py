@@ -103,11 +103,11 @@ def addMolAsConf(mol, mol2add):
     return mol
 
 
-def get_minE_conf(mol, constrained_atoms, nonBondedThresh=100, xtb_opt=True, method='gfn2'):
+def get_minE_conf(mol, constrained_atoms, scratchdir, n_confs=5, nonBondedThresh=100, xtb_opt=True, method='gfn2'):
     """Optimizes multiple conformers of mol and returns lowest energy one and its energy"""
     if xtb_opt:
         new_mol, energy = xtb_optimize(
-            mol, constrains='/home/julius/soft/GB-GA/catalyst/constr_opt.inp', remove_tmp=False, method=method)
+            mol, name='sel_gfnff_minE_reactant', scratchdir=scratchdir, constrains='/home/julius/thesis/data/constr.inp', remove_tmp=True, method=method)
         return new_mol, energy
     else:
         new_mol = Chem.Mol(mol)
@@ -161,7 +161,7 @@ def get_connection_id(mol):
 
 
 
-def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2'):
+def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2', numThreads=1):
     """Connects Catalyst with Reactant via dummy atom, returns min(E) conformer of all n_conf * n_tertary_amines conformers"""
     t_make_reactant = Timer()
     t_make_reactant.start()
@@ -188,7 +188,7 @@ def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False,
             else:
                 break
         minEconf, minE = get_minE_conf(
-            possible_reactant_conformers, constrained_atoms, nonBondedThresh=nonBondedThresh, method=preopt_method)
+            possible_reactant_conformers, constrained_atoms, scratchdir=scratchdir, nonBondedThresh=nonBondedThresh, method='gfnff')
         possible_reactants.append(minEconf)
         energies.append(minE)
 
@@ -204,7 +204,7 @@ def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False,
         t_xtb_opt = Timer()
         t_xtb_opt.start()
         reactant, xtb_energy = xtb_optimize(
-            reactant, scratchdir=scratchdir, remove_tmp=remove_tmp, method=preopt_method)
+            reactant, name='reactant', scratchdir=scratchdir, remove_tmp=remove_tmp, method=preopt_method, numThreads=numThreads)
         reactant_minE = xtb_energy
         t_xtb_opt.stop()
 
@@ -254,7 +254,7 @@ def connectMols(mol1, mol2, atom1, atom2):
     return mol
 
 
-def make_product(mol, reactant, product_dummy, n_confs=5, nItsUnconstrained=100, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2'):
+def make_product(mol, reactant, product_dummy, n_confs=5, nItsUnconstrained=100, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2', numThreads=1):
     """Creates same Regioisomer of Cat+Product_dummy and ensures that similar Rotamer as Reactant is obtained"""
     energyCutOff = 400
     # test embed
@@ -324,7 +324,7 @@ def make_product(mol, reactant, product_dummy, n_confs=5, nItsUnconstrained=100,
 
     if xtb_opt:
         product, xtb_energy = xtb_optimize(
-            product, scratchdir=scratchdir, remove_tmp=remove_tmp, method=preopt_method)
+            product, name='product', scratchdir=scratchdir, remove_tmp=remove_tmp, method=preopt_method, numThreads=numThreads)
         product_energy = xtb_energy
 
     if product_energy > energyCutOff:

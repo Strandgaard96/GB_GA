@@ -1,5 +1,5 @@
 # %%
-from catalyst.utils import mols_from_smi_file, draw3d, sdf2mol, vis_trajectory, Timer
+from catalyst.utils import mols_from_smi_file, draw3d, sdf2mol, vis_trajectory
 from xyz2mol.xyz2mol import read_xyz_file, xyz2AC, xyz2mol, get_AC
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -142,7 +142,7 @@ def constrained_optimization(mol, constrained_atoms, maxIts=10000, maxDispl=0.1,
     out = ff.Minimize(maxIts=maxIts)
     if out == 1:
         if ignoreIncomplete:
-            print('Optimization incomplete')
+            # print('Optimization incomplete')
             energy = ff.CalcEnergy()
             return energy
         else:
@@ -163,8 +163,6 @@ def get_connection_id(mol):
 
 def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2', numThreads=1):
     """Connects Catalyst with Reactant via dummy atom, returns min(E) conformer of all n_conf * n_tertary_amines conformers"""
-    t_make_reactant = Timer()
-    t_make_reactant.start()
     nonBondedThresh = 100
     energyCutOff = 400
     # test embed
@@ -201,18 +199,14 @@ def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False,
     reactant = possible_reactants[min_e_index]
 
     if xtb_opt:
-        t_xtb_opt = Timer()
-        t_xtb_opt.start()
         reactant, xtb_energy = xtb_optimize(
             reactant, name='reactant', scratchdir=scratchdir, remove_tmp=remove_tmp, method=preopt_method, numThreads=numThreads)
         reactant_minE = xtb_energy
-        t_xtb_opt.stop()
 
     if reactant_minE > energyCutOff:
         print(
             f'Energy exceeded {energyCutOff} ({reactant_minE:.2f}) while trying to optimize the reactant molecule with Catalyst: {Chem.MolToSmiles(mol)}.')
 
-    t_make_reactant.stop()
     return reactant, reactant_minE
 
 

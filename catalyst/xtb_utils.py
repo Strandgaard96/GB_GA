@@ -106,6 +106,18 @@ def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb m
     else:
         return new_mol, energy
 
+def run_xtb_path(reactant_file, product_file, inp_file='/home/julius/thesis/data/path_template_allatoms.inp', charge=0, numThreads=1):
+    os.environ['OMP_NUM_THREADS'] = f'{numThreads},1'
+    os.environ['MKL_NUM_THREADS'] = f'{numThreads}'
+    os.environ['OMP_STACKSIZE'] = '6G'
+    path_dir = os.path.dirname(reactant_file)
+    print(path_dir)
+    p = subprocess.Popen(f'/home/julius/soft/xtb-6.3.3/bin/xtb {reactant_file} --path {product_file} --input {inp_file} --gfn2 --chrg {charge} --alpb methanol --verbose > xtb_path.out', shell=True, cwd=path_dir, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = p.communicate()
+    ts_energy = get_energy_from_xtb_sp(os.path.join(path_dir, 'xtbpath_ts.xyz'))
+    return ts_energy
+
+
 #         def xtb_optimize_conformers(args):
 #     xyz_file, i, dest, constrains, solvent, numThreads_per_conf, method, opt_level = args
 #     org_dir = os.getcwd()

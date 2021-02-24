@@ -79,7 +79,7 @@ def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb m
         output, err = p.communicate()
         out_file = 'xtbopt.xyz'
         if not os.path.exists(out_file) and os.path.exists('xtblast.xyz'):
-            print(f'Optimization for {Chem.MolToSmiles(mol)} did not converge')
+            print(f"Optimization for {Chem.MolToSmiles(mol)} did not converge: {os.path.dirname('xtblast.xyz')}")
             out_file = 'xtblast.xyz'            
         try:
             energy = get_energy_from_xtb_sp(out_file)
@@ -111,7 +111,6 @@ def run_xtb_path(reactant_file, product_file, inp_file='/home/julius/thesis/data
     os.environ['MKL_NUM_THREADS'] = f'{numThreads}'
     os.environ['OMP_STACKSIZE'] = '6G'
     path_dir = os.path.dirname(reactant_file)
-    print(path_dir)
     p = subprocess.Popen(f'/home/julius/soft/xtb-6.3.3/bin/xtb {reactant_file} --path {product_file} --input {inp_file} --gfn2 --chrg {charge} --alpb methanol --verbose > xtb_path.out', shell=True, cwd=path_dir, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = p.communicate()
     ts_energy = get_energy_from_xtb_sp(os.path.join(path_dir, 'xtbpath_ts.xyz'))

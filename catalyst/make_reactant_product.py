@@ -18,16 +18,10 @@ import shutil
 import sys
 sys.path.append('/home/julius/soft/')
 
+from catalyst.make_structures import ConstrainedEmbedMultipleConfs
+from catalyst.xtb_utils import xtb_optimize
+
 # %%
-
-def get_energy_from_xbt_xyz(xyz_file):
-    with open(xyz_file, 'r') as _file:
-        for i, line in enumerate(_file):
-            if i == 1:
-                energy = float(line.split(' ')[2])
-                break
-    return energy
-
 def write_xtb_input_files(fragment, name, destination='.'):
     number_of_atoms = fragment.GetNumAtoms()
     charge = Chem.GetFormalCharge(fragment)
@@ -51,61 +45,6 @@ def write_xtb_input_files(fragment, name, destination='.'):
         with open('.CHRG', 'w') as _file:
             _file.write(str(charge))
     return file_paths
-
-
-def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True):
-    if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
-        raise Exception('Implicit Hydrogens')
-    conformers = mol.GetConformers()
-    if not conformers:
-        raise Exception('Mol is not embedded')
-    elif not conformers[-1].Is3D():
-        raise Exception('Conformer is not 3D')
-    org_dir = os.getcwd()
-    true_charge = Chem.GetFormalCharge(mol)
-    if not name:
-        name = 'tmp_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-    dest = os.path.join(
-        os.path.abspath(scratchdir), name)
-    os.mkdir(dest)
-    energies = []
-    out_files = []
-    xyz_files = write_xtb_input_files(mol, 'xtbmol', destination=dest)
-    for i, xyz_file in enumerate(xyz_files):
-        conf_path = os.path.join(dest, f'conf{i:03d}')
-        os.chdir(conf_path)
-        if constrains:
-            constrains_input = f'--input {constrains}'
-        else:
-            constrains_input = ''
-        if solvent:
-            solvent_input = f'--{solvent}'
-        else:
-            solvent_input = ''
-        p = subprocess.Popen(
-            f'xtb --{method} {xyz_file} --opt {opt_level} {constrains_input} {solvent_input} --json > out.out', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output, err = p.communicate()
-        out_file = 'xtbopt.xyz'
-        try:
-            energy = get_energy_from_xbt_xyz(out_file)
-        except:
-            energy = 1000
-        # out_file = os.path.abspath('xtbopt.xyz')
-        # with open('xtbout.json', 'r') as _file:
-        #     out = json.load(_file)
-        #     energy = out['total energy']
-        energies.append(energy)
-        out_files.append(os.path.abspath(out_file))
-    os.chdir(org_dir)
-    min_e_index = energies.index(min(energies))
-    min_e_file = out_files[min_e_index]
-    shutil.copy(min_e_file, os.path.join(dest, 'min_e_conf.xyz'))
-    atoms, charge, coordinates = read_xyz_file(min_e_file)
-    # takes charge as defined before optimization
-    new_mol = xyz2mol(atoms, coordinates, true_charge)
-    if remove_tmp:
-        shutil.rmtree(dest)
-    return new_mol, energy
 
 
 def test_embed(mol):
@@ -220,96 +159,6 @@ def get_connection_id(mol):
             break
     return connection_id
 
-
-def ConstrainedEmbed(mol, core, useTethers=True, coreConfId=-1, randomseed=2342, getForceField=AllChem.UFFGetMoleculeForceField, **kwargs):
-    #
-    #  Copyright (C) 2006-2017  greg Landrum and Rational Discovery LLC
-    #
-    #   @@ All Rights Reserved @@
-    #  This file is part of the RDKit.
-    #  The contents are covered by the terms of the BSD license
-    #  which is included in the file license.txt, found at the root
-    #  of the RDKit source tree.
-    #
-    force_constant = 1000.
-    match = mol.GetSubstructMatch(core)
-    if not match:
-        raise ValueError("molecule doesn't match the core")
-    coordMap = {}
-    coreConf = core.GetConformer(coreConfId)
-    for i, idxI in enumerate(match):
-        corePtI = coreConf.GetAtomPosition(i)
-        coordMap[idxI] = corePtI
-
-    if "." in Chem.MolToSmiles(mol):
-        ci = AllChem.EmbedMolecule(mol, randomSeed=randomseed, **kwargs)  # jhj
-    else:
-        ci = AllChem.EmbedMolecule(
-            mol, coordMap=coordMap, randomSeed=randomseed, **kwargs)
-
-    if ci < 0:
-        raise ValueError('Could not embed molecule.')
-
-    algMap = [(j, i) for i, j in enumerate(match)]
-
-    if not useTethers:
-        # clean up the conformation
-        ff = AllChem.UFFGetMoleculeForceField(mol)
-        for i, idxI in enumerate(match):
-            for j in range(i + 1, len(match)):
-                idxJ = match[j]
-                d = coordMap[idxI].Distance(coordMap[idxJ])
-                ff.AddDistanceConstraint(idxI, idxJ, d, d, force_constant)
-        ff.Initialize()
-        n = 4
-        more = ff.Minimize()
-        while more and n:
-            more = ff.Minimize()
-            n -= 1
-        # rotate the embedded conformation onto the core:
-        rms = AllChem.AlignMol(mol, core, atomMap=algMap)
-    else:
-        # rotate the embedded conformation onto the core:
-        rms = AllChem.AlignMol(mol, core, atomMap=algMap)
-        ff = AllChem.UFFGetMoleculeForceField(mol)
-        conf = core.GetConformer()
-        for i in range(core.GetNumAtoms()):
-            p = conf.GetAtomPosition(i)
-            q = mol.GetConformer().GetAtomPosition(i)
-            pIdx = ff.AddExtraPoint(p.x, p.y, p.z, fixed=True) - 1
-            ff.AddDistanceConstraint(pIdx, match[i], 0, 0, force_constant)
-        ff.Initialize()
-        n = 4
-        more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-        while more and n:
-            more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-            n -= 1
-        # realign
-        rms = AllChem.AlignMol(mol, core, atomMap=algMap)
-    mol.SetProp('EmbedRMS', str(rms))
-    return mol
-
-
-def ConstrainedEmbedMultipleConfs(mol, template, num_confs, randomseed=100, lower_rms_cutoff=0, upper_rms_cutoff=200, max_tries=10):
-    """Embeds num_confs Confomers of mol while constraining core to template, returns mol with num_confs"""
-    GetFF = lambda x, confId=-1: AllChem.MMFFGetMoleculeForceField(
-        x, AllChem.MMFFGetMoleculeProperties(x), confId=confId, ignoreInterfragInteractions=False)
-    new_mol = copy.deepcopy(mol)
-    energies = []
-    confs = []
-    n = 0
-    while new_mol.GetNumConformers() < num_confs and n < max_tries:
-        conf = ConstrainedEmbed(
-            mol, template, useTethers=True, randomseed=randomseed, getForceField=GetFF)
-        confs = new_mol.GetNumConformers()
-        rmsds = []
-        for j in range(confs):
-            rmsds.append(AllChem.GetBestRMS(new_mol, conf, prbId=j))
-        if all(item > lower_rms_cutoff and item < upper_rms_cutoff for item in rmsds):
-            new_mol = addMolAsConf(new_mol, conf)
-        randomseed += 1
-        n += 1
-    return new_mol
 
 
 def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2'):

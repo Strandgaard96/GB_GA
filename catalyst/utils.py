@@ -84,6 +84,11 @@ def mkdir(directory, overwrite=False):
         shutil.rmtree(directory)
     os.mkdir(directory)
 
+def hartree2kcalmol(hartree):
+    return hartree * 627.5095
+
+def hartree2kJmol(hartree):
+    return hartree * 2625.50 
 
 class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""

@@ -29,6 +29,8 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
     if timing_logger:
         t1 = Timer(logger=None)
         t1.start()
+    ind_dir = f'G{gen_num:02d}_I{ind_num:02d}'
+    cat_charge = Chem.GetFormalCharge(cat)
     ts2ds = connect_cat_2d(ts_dummy, cat)
     ts3d_energies = []
     ts3d_files = []
@@ -59,28 +61,37 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
                 break
                 # raise Exception(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}.')
         # xTB optimite TS
-        ts3d_file, ts3d_energy = xtb_optimize(ts3d, name=f'G{gen_num:02d}_I{ind_num:02d}/const_iso{i:03d}', constrains='/home/julius/thesis/data/constr.inp', scratchdir=directory, remove_tmp=False, return_file=True, numThreads=numThreads, warning_logger=warning_logger)
+        ts3d_file, ts3d_energy = xtb_optimize(ts3d, method='gfnff', name=os.path.join(ind_dir, f'const_iso{i:03d}'), charge=cat_charge, constrains='/home/julius/thesis/data/constr.inp', scratchdir=directory, remove_tmp=False, return_file=True, numThreads=numThreads, warning_logger=warning_logger)
         # here should be a num frag check
         ts3d_energies.append(ts3d_energy)
         ts3d_files.append(ts3d_file)
-    try:
-        ts_energy = min(ts3d_energies)
-        min_e_index = ts3d_energies.index(ts_energy)
-        ts_file = ts3d_files[min_e_index]
-    except:
-        if warning_logger:
-            warning_logger.warning(f'xTB optimization led to missmatch in number of fragments for {Chem.MolToSmiles(ts2d)}')
-        else:
-            print(f'xTB optimization led to missmatch in number of fragments for {Chem.MolToSmiles(ts2d)}')
-        return(-100000)
-    cat_path = os.path.join(directory, f'G{gen_num:02d}_I{ind_num:02d}/const_iso{i:03d}/catalyst')
+    # try:
+    ts_energy = min(ts3d_energies)
+    min_e_index = ts3d_energies.index(ts_energy)
+    ts_file = ts3d_files[min_e_index] # lowest energy TS constitutional isomer
+    # make gfn2 opt
+    gfn2_opt_dir = os.path.join(os.path.abspath(ind_dir), 'gfn2_opt_TS')
+    os.mkdir(gfn2_opt_dir)
+    minE_TS_regioisomer_file = os.path.join(gfn2_opt_dir, 'minE_TS_isomer.xyz')
+    shutil.move(ts_file, minE_TS_regioisomer_file)
+    print(minE_TS_regioisomer_file, gfn2_opt_dir, ts_file)
+    minE_TS_regioisomer_opt, gfn2_ts_energy = xtb_optimize(minE_TS_regioisomer_file, method='gfn2', constrains='/home/julius/thesis/data/constr.inp', name=None, charge=cat_charge, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads, warning_logger=warning_logger)
+    # except:
+    #     if warning_logger:
+    #         warning_logger.warning(f'xTB optimization led to missmatch in number of fragments for {Chem.MolToSmiles(ts2d)}')
+    #     else:
+    #         print(f'xTB optimization led to missmatch in number of fragments for {Chem.MolToSmiles(ts2d)}')
+    #     return(-100000)
+    
+    # splitting and calcualating cat for min E constitutional conformer
+    cat_path = os.path.join(directory, os.path.join(os.path.dirname(minE_TS_regioisomer_opt), 'catalyst'))
     os.mkdir(cat_path)
-    cat_file = isolate_cat_from_xyz(ts_file, os.path.join(cat_path, 'cat.xyz'))
-    cat_opt_file, cat_energy = xtb_optimize(cat_file, name=None, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads, warning_logger=warning_logger)
+    cat_file = isolate_cat_from_xyz(minE_TS_regioisomer_opt, os.path.join(cat_path, 'cat.xyz'))
+    cat_opt_file, cat_energy = xtb_optimize(cat_file, name=None, method='gfn2', charge=cat_charge, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads, warning_logger=warning_logger)
     if timing_logger:
         elapsed_time = t1.stop()
         timing_logger.info(f'{Chem.MolToSmiles(cat)} : {elapsed_time:0.4f} seconds')
-    return ts_energy-cat_energy-frag_energies
+    return gfn2_ts_energy-cat_energy-frag_energies
 
 def isolate_cat(mol, scarfold):
     cat = AllChem.ReplaceCore(mol, scarfold, replaceDummies=False)

@@ -7,6 +7,7 @@ import random
 import shutil
 import string
 import subprocess
+import logging
 
 
 # %%
@@ -31,7 +32,7 @@ def write_xtb_input_files(fragment, name, destination='.'):
         file_path = os.path.join(conf_path, file_name)
         with open(file_path, 'w') as _file:
             _file.write(str(number_of_atoms)+'\n')
-            _file.write(f'{file_name}\n')
+            _file.write(f'{Chem.MolToSmiles(fragment)}\n')
             for atom, symbol in enumerate(symbols):
                 p = conf.GetAtomPosition(atom)
                 line = ' '.join((symbol, str(p.x), str(p.y), str(p.z), '\n'))
@@ -42,7 +43,7 @@ def write_xtb_input_files(fragment, name, destination='.'):
                 _file.write(str(charge))
     return file_paths
 
-def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1):
+def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1, warning_logger=None):
     org_dir = os.getcwd()
     if isinstance(mol, Chem.rdchem.Mol):
         if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
@@ -86,7 +87,10 @@ def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb m
         output, err = p.communicate()
         out_file = 'xtbopt.xyz'
         if not os.path.exists(out_file) and os.path.exists('xtblast.xyz'):
-            print(f"Optimization for {Chem.MolToSmiles(mol)} did not converge: {os.path.dirname('xtblast.xyz')}")
+            if warning_logger:
+                warning_logger.warning(f"Optimization for {Chem.MolToSmiles(mol)} did not converge: {os.path.dirname('xtblast.xyz')}")
+            else:
+                print(f"Optimization for {Chem.MolToSmiles(mol)} did not converge: {os.path.dirname('xtblast.xyz')}")
             out_file = 'xtblast.xyz'            
         try:
             energy = get_energy_from_xtb_sp(out_file)

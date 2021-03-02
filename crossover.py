@@ -68,20 +68,6 @@ def ring_OK(mol):
   
   return not ring_allene and not macro_cycle and not double_bond_in_small_ring
 
-def mol_OK(mol):
-  try:
-    Chem.SanitizeMol(mol)
-    test_mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
-    if test_mol == None:
-      return None
-    target_size = size_stdev*np.random.randn() + average_size #parameters set in GA_mol
-    if mol.GetNumAtoms() > 5 and mol.GetNumAtoms() < target_size:
-      return True
-    else:
-      return False
-  except:
-    return False
-
 def amine_OK(mol):
   '''
   Checks if there is at least on tertiary amine
@@ -97,9 +83,57 @@ def is_parameterized(mol, forcefield='UFF'):
   if forcefield is 'MMFF':
      return AllChem.MMFFHasAllMoleculeParams(mol)
 
+def mol_issane(mol: Chem.Mol, filter) -> bool:
+  """ Checks that a RDKit molecule matches some filter
+      If a match is found between the molecule and the filter
+      the molecule is NOT suitable for further use
+      :param mol: SMILES string of molecule
+      :param filter: a frame with a filter
+  """
+  # always return True (molecule OK) if a filter is not supplied
+  if filter is None:
+      return True
+
+  for pattern in filter:
+      if mol.HasSubstructMatch(pattern):
+        # print(smarts, row['rule_set_name']) #debug
+        # print("matches:", Chem.MolToSmarts(pattern))
+        return False
+
+  return True
 
 
-def crossover_ring(parent_A,parent_B):
+def mol_OK(mol, filter):
+  """ Returns of molecule on input is OK according to various criteria
+      Criteria currently tested are:
+        * check if RDKit can understand the smiles string
+        * check if the size is OK
+        * check if the molecule is sane
+      :param mol string: SMILES string
+      :param filter string: the name of the filter to use
+  """
+  try:
+    # check RDKit understands a molecule
+    Chem.SanitizeMol(mol)
+    test_mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+    if test_mol is None:
+      return False
+
+    # check molecule is sane
+    if not mol_issane(mol,filter):
+      return False
+
+    # check molecule size
+    target_size = size_stdev*np.random.randn() + average_size #parameters set in GA_mol
+    if mol.GetNumAtoms() > 5 and mol.GetNumAtoms() < target_size:
+      return True
+    else:
+      return False
+  except:
+    return False
+
+
+def crossover_ring(parent_A,parent_B, filter):
   ring_smarts = Chem.MolFromSmarts('[R]')
   if not parent_A.HasSubstructMatch(ring_smarts) and not parent_B.HasSubstructMatch(ring_smarts):
     return None
@@ -126,13 +160,13 @@ def crossover_ring(parent_A,parent_B):
       rxn2 = AllChem.ReactionFromSmarts(rs)
       for m in new_mol_trial:
         m = m[0]
-        if mol_OK(m):
+        if mol_OK(m, filter):
           new_mols += list(rxn2.RunReactants((m,)))
     
     new_mols2 = []
     for m in new_mols:
       m = m[0]
-      if mol_OK(m) and ring_OK(m) and amine_OK(m) and is_parameterized(m):
+      if mol_OK(m, filter) and ring_OK(m) and amine_OK(m):
         new_mols2.append(m)
     
     if len(new_mols2) > 0:
@@ -140,7 +174,7 @@ def crossover_ring(parent_A,parent_B):
     
   return None
 
-def crossover_non_ring(parent_A,parent_B):
+def crossover_non_ring(parent_A,parent_B, filter):
   for i in range(10):
     fragments_A = cut(parent_A)
     fragments_B = cut(parent_B)
@@ -155,7 +189,7 @@ def crossover_non_ring(parent_A,parent_B):
     new_mols = []
     for mol in new_mol_trial:
       mol = mol[0]
-      if mol_OK(mol) and amine_OK(mol) and is_parameterized(mol):
+      if mol_OK(mol, filter) and amine_OK(mol):
         new_mols.append(mol)
     
     if len(new_mols) > 0:
@@ -163,7 +197,7 @@ def crossover_non_ring(parent_A,parent_B):
     
   return None
 
-def crossover(parent_A,parent_B):
+def crossover(parent_A,parent_B, filter):
   parent_smiles = [Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]
   try:
 	  Chem.Kekulize(parent_A,clearAromaticFlags=True)
@@ -173,14 +207,14 @@ def crossover(parent_A,parent_B):
   for i in range(10):
     if random.random() <= 0.5:
       #print 'non-ring crossover'
-      new_mol = crossover_non_ring(parent_A,parent_B)
+      new_mol = crossover_non_ring(parent_A,parent_B, filter)
       if new_mol != None:
         new_smiles = Chem.MolToSmiles(new_mol)
       if new_mol != None and new_smiles not in parent_smiles:
         return new_mol
     else:
       #print 'ring crossover'
-      new_mol = crossover_ring(parent_A,parent_B)
+      new_mol = crossover_ring(parent_A,parent_B, filter)
       if new_mol != None:
         new_smiles = Chem.MolToSmiles(new_mol)
       if new_mol != None and new_smiles not in parent_smiles:

@@ -51,19 +51,35 @@ def make_mating_pool(population,fitness,mating_pool_size):
 
   return mating_pool
 
-def reproduce(mating_pool,population_size,mutation_rate):
+# def reproduce(mating_pool,population_size,mutation_rate):
+#   new_population = []
+#   while len(new_population) < population_size:
+#     parent_A = random.choice(mating_pool)
+#     parent_B = random.choice(mating_pool)
+#     new_child = co.crossover(parent_A,parent_B)
+#     if new_child != None:
+#       mutated_child = mu.mutate(new_child,mutation_rate)
+#       if mutated_child != None:
+#         #print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
+#         new_population.append(mutated_child)
+
+#   return new_population
+
+def reproduce(mating_pool, population_size, mutation_rate, filter): # + filter
+  """ Creates a new population based on the mating_pool """
   new_population = []
   while len(new_population) < population_size:
     parent_A = random.choice(mating_pool)
     parent_B = random.choice(mating_pool)
-    new_child = co.crossover(parent_A,parent_B)
+    new_child = co.crossover(parent_A, parent_B, filter)
     if new_child != None:
-      mutated_child = mu.mutate(new_child,mutation_rate)
+      mutated_child = mu.mutate(new_child, mutation_rate, filter)
       if mutated_child != None:
         #print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
         new_population.append(mutated_child)
 
   return new_population
+
 
 def sanitize(population,scores,population_size, prune_population, sa_screening, prescores=None, sascores=None):
     if prune_population:

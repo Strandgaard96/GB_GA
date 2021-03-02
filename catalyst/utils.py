@@ -1,3 +1,4 @@
+# %%
 import py3Dmol
 from IPython.display import display
 
@@ -13,8 +14,11 @@ import os
 import sys
 sys.path.append('/home/julius/soft/')
 from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
+sys.path.append('/home/julius/soft/GB-GA')
+# from catalyst.gaussian_utils import extract_optimized_structure
 
-def draw3d(mols, width=400, height=400, Hs=True, confId=-1, multipleConfs=False,atomlabel=False):
+# %%
+def draw3d(mols, width=600, height=600, Hs=True, confId=-1, multipleConfs=False,atomlabel=False):
     try:
         p = py3Dmol.view(width=width,height=height)
         if type(mols) is not list:
@@ -30,7 +34,13 @@ def draw3d(mols, width=400, height=400, Hs=True, confId=-1, multipleConfs=False,
                         xyz_f = open(mol)
                         line = xyz_f.read()
                         xyz_f.close()
-                        p.addModel(line,'xyz')            
+                        p.addModel(line,'xyz')   
+                    # elif os.path.splitext(mol)[-1] == '.out':
+                    #     xyz_file = extract_optimized_structure(mol, return_mol=False)
+                    #     xyz_f = open(xyz_file)
+                    #     line = xyz_f.read()
+                    #     xyz_f.close()
+                    #     p.addModel(line,'xyz') 
                 else:           
                     mb = Chem.MolToMolBlock(mol, confId=confId)
                     p.addModel(mb,'sdf')
@@ -94,7 +104,7 @@ class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
 
 class Timer:
-    def __init__(self, text="Elapsed time: {:0.4f} seconds", logger=print):
+    def __init__(self, text="{:0.4f} seconds", logger=print):
         self._start_time = None
         self.text = text
         self.logger = logger
@@ -113,4 +123,6 @@ class Timer:
 
         elapsed_time = time.perf_counter() - self._start_time
         self._start_time = None
-        print(f"Elapsed time: {elapsed_time:0.4f} seconds")
+        if self.logger:
+            self.logger(self.text.format(elapsed_time))
+        return elapsed_time

@@ -22,6 +22,7 @@ import random
 
 import sascorer
 
+
 # logP_values = np.loadtxt('logP_values.txt')
 # SA_scores = np.loadtxt('SA_scores.txt')
 # cycle_scores = np.loadtxt('cycle_scores.txt')
@@ -40,12 +41,15 @@ def calculate_score(args):
 
 def calculate_scores_parallel(population,function,scoring_args, n_cpus):
   '''Parallelize at the score level (not currently in use)'''
+  # n_cpus is total number of cpus used, chuunksize is how many molecules at the same time
+  chunksize=2
+  cpus_per_mol = int(n_cpus/chunksize)
   args_list = []
-  args = scoring_args + [n_cpus] # scoring_args are all fixed parameters (gen_num, n_confs, randomseed)
+  args = scoring_args + [cpus_per_mol] # scoring_args are all fixed parameters (gen_num, n_confs, randomseed, logger)
   for i, gene in enumerate(population):
     args_list.append([function, gene, i]+args)
   with Pool(n_cpus) as pool:
-    scores = pool.map(calculate_score, args_list, chunksize=2)
+    scores = pool.map(calculate_score, args_list, chunksize=chunksize)
   return scores
 
 def calculate_scores(population,function,scoring_args):

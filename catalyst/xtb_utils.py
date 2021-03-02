@@ -21,7 +21,6 @@ def get_energy_from_xtb_sp(sp_file):
 
 def write_xtb_input_files(fragment, name, destination='.'):
     number_of_atoms = fragment.GetNumAtoms()
-    charge = Chem.GetFormalCharge(fragment)
     symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
     conformers = fragment.GetConformers()
     file_paths = []
@@ -38,12 +37,9 @@ def write_xtb_input_files(fragment, name, destination='.'):
                 line = ' '.join((symbol, str(p.x), str(p.y), str(p.z), '\n'))
                 _file.write(line)
         file_paths.append(file_path)
-        if charge != 0:
-            with open(os.path.join(conf_path,'.CHRG'), 'w') as _file:
-                _file.write(str(charge))
     return file_paths
 
-def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1, warning_logger=None):
+def xtb_optimize(mol, name=None, constrains=None, charge=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1, warning_logger=None):
     org_dir = os.getcwd()
     if isinstance(mol, Chem.rdchem.Mol):
         if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
@@ -79,11 +75,15 @@ def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb m
             solvent_input = f'--{solvent}'
         else:
             solvent_input = ''
+        if charge:
+            charge_input = f'--chrg {charge}'
+        else:
+            charge_input = ''
         os.environ['OMP_NUM_THREADS'] = f'{numThreads},1'
         os.environ['MKL_NUM_THREADS'] = f'{numThreads}'
         os.environ['OMP_STACKSIZE'] = '4G'
         p = subprocess.Popen(
-            f'/home/julius/soft/xtb-6.3.3/bin/xtb --{method} {xyz_file} --opt {opt_level} {constrains_input} {solvent_input} --json > out.out', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            f'/home/julius/soft/xtb-6.3.3/bin/xtb --{method} {xyz_file} --opt {opt_level} {constrains_input} {solvent_input} {charge_input} --json > out.out', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, err = p.communicate()
         out_file = 'xtbopt.xyz'
         if not os.path.exists(out_file) and os.path.exists('xtblast.xyz'):
@@ -96,10 +96,6 @@ def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb m
             energy = get_energy_from_xtb_sp(out_file)
         except:
             energy = 1000
-        # out_file = os.path.abspath('xtbopt.xyz')
-        # with open('xtbout.json', 'r') as _file:
-        #     out = json.load(_file)
-        #     energy = out['total energy']
         energies.append(energy)
         out_files.append(os.path.abspath(out_file))
     os.chdir(org_dir)

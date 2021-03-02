@@ -4,6 +4,8 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import GetPeriodicTable
 
+import sys
+sys.path.append('/home/julius/soft/GB-GA/')
 from catalyst.utils import mol_from_xyz
 
 def write_gaussian_input_file(fragment, fragment_name, command='opt freq b3lyp/6-31+g(d,p) scrf=(smd,solvent=methanol) empiricaldispersion=gd3', mem=4, cpus=4, constr=None):

@@ -21,8 +21,8 @@ frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 
 
 # %%
 def ts_scoring(mol, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
-    ind_num, gen_num, n_confs, randomseed, timing_logger, warning_logger, directory, n_cpus = args_list
-    energy = activation_barrier(cat=mol, gen_num=gen_num, ind_num=ind_num, n_confs=n_confs, randomseed=randomseed, numThreads=n_cpus, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
+    ind_num, gen_num, n_confs, randomseed, timing_logger, warning_logger, directory, n_cpus, cpus_per_molecule = args_list
+    energy = activation_barrier(cat=mol, gen_num=gen_num, ind_num=ind_num, n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
     return energy
 
 def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThreads=1, timing_logger=None, warning_logger=None, directory='.'):
@@ -42,7 +42,7 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
         tries = 0
         while not angles_ok or not bonds_ok and tries < max_tries:
             ts2d_copy = copy.deepcopy(ts2d)
-            ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(mol=ts2d_copy, core=ts_dummy, numConfs=n_confs, randomseed=randomseed, numThreads=numThreads, force_constant=force_constant)
+            ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(mol=ts2d_copy, core=ts_dummy, numConfs=int(n_confs), randomseed=int(randomseed), numThreads=int(numThreads), force_constant=int(force_constant))
             # ts3d = ConstrainedEmbedMultipleConfs(mol=ts2d_copy, core=ts_dummy, numConfs=n_confs, randomseed=randomseed, numThreads=numThreads, force_constant=force_constant)
             if compare_angles(ts3d, ts_dummy, threshold=5):
                 angles_ok = True
@@ -70,11 +70,10 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
     min_e_index = ts3d_energies.index(ts_energy)
     ts_file = ts3d_files[min_e_index] # lowest energy TS constitutional isomer
     # make gfn2 opt
-    gfn2_opt_dir = os.path.join(os.path.abspath(ind_dir), 'gfn2_opt_TS')
+    gfn2_opt_dir = os.path.join(os.path.dirname(os.path.dirname(ts_file)), 'gfn2_opt_TS')
     os.mkdir(gfn2_opt_dir)
     minE_TS_regioisomer_file = os.path.join(gfn2_opt_dir, 'minE_TS_isomer.xyz')
     shutil.move(ts_file, minE_TS_regioisomer_file)
-    print(minE_TS_regioisomer_file, gfn2_opt_dir, ts_file)
     minE_TS_regioisomer_opt, gfn2_ts_energy = xtb_optimize(minE_TS_regioisomer_file, method='gfn2', constrains='/home/julius/thesis/data/constr.inp', name=None, charge=cat_charge, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads, warning_logger=warning_logger)
     # except:
     #     if warning_logger:
@@ -84,7 +83,7 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
     #     return(-100000)
     
     # splitting and calcualating cat for min E constitutional conformer
-    cat_path = os.path.join(directory, os.path.join(os.path.dirname(minE_TS_regioisomer_opt), 'catalyst'))
+    cat_path = os.path.join(directory, os.path.join(os.path.dirname(os.path.dirname(minE_TS_regioisomer_opt)), 'catalyst'))
     os.mkdir(cat_path)
     cat_file = isolate_cat_from_xyz(minE_TS_regioisomer_opt, os.path.join(cat_path, 'cat.xyz'))
     cat_opt_file, cat_energy = xtb_optimize(cat_file, name=None, method='gfn2', charge=cat_charge, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads, warning_logger=warning_logger)
@@ -168,7 +167,7 @@ if __name__ == '__main__':
     t.start()
     directory = '/home/julius/thesis/sims/ts_embed_scoring'
     numThreads = 4
-    n_confs = 3
+    n_confs = 1
     # randomseed = 123 # das hat nen charegd cat
     randomseed = 101 # das hat nen fluo und das gibt probleme bei xyzmol und xyt opt
     # randomseed = 321
@@ -177,41 +176,13 @@ if __name__ == '__main__':
     random.seed(randomseed)
     np.random.seed(randomseed)
 
-    population = make_initial_population(25, '/home/julius/soft/GB-GA/ZINC_1000_amines.smi')
+    population = make_initial_population(5, '/home/julius/soft/GB-GA/ZINC_1000_amines.smi')
     # scoring_args = [generation, n_confs, randsomseed]
     # output = calculate_scores_parallel(population, final_scoring, scoring_args, numThreads)
     # t.stop()
     # print(output)
 
-    import logging
-
-    formatter = logging.Formatter('%(message)s')
-    # Timing Logger
-    timing_logger = logging.getLogger(__name__)
-    timing_logger.setLevel(logging.INFO)    
-
-    timing_file_handler = logging.FileHandler('scoring_timings.log')
-    timing_file_handler.setFormatter(formatter)
-
-    timing_logger.addHandler(timing_file_handler)
-
-    timing_logger.info(f'# Running on {numThreads} cores')
-
     for i, mol in enumerate(population):
-        activation_barrier(cat=mol, ind_num=i, gen_num=0, n_confs=2, randomseed=101, numThreads=4, logger=timing_logger)
+        activation_barrier(cat=mol, ind_num=i, gen_num=0, n_confs=1, randomseed=101, numThreads=4, directory=directory)
 
 # %%
-analyse = False
-if analyse:
-    mols = []
-    cat_energies = []
-    ts_energies = []
-    with open('/home/julius/soft/GB-GA/catalyst/log.log', 'r') as log:
-        for line in log:
-            mol, cat_energy, ts_energy = line.split(',')
-            mols.append(mol)
-            cat_energies.append(float(cat_energy))
-            ts_energies.append(float(ts_energy))
-    cat_energies = np.array(cat_energies)
-    ts_energies = np.array(ts_energies)
-

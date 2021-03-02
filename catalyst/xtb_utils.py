@@ -43,26 +43,33 @@ def write_xtb_input_files(fragment, name, destination='.'):
     return file_paths
 
 def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1):
-    if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
-        raise Exception('Implicit Hydrogens')
-    conformers = mol.GetConformers()
-    if not conformers:
-        raise Exception('Mol is not embedded')
-    elif not conformers[-1].Is3D():
-        raise Exception('Conformer is not 3D')
     org_dir = os.getcwd()
-    true_charge = Chem.GetFormalCharge(mol)
-    if not name:
-        name = 'tmp_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-    dest = os.path.join(
-        os.path.abspath(scratchdir), name)
-    os.makedirs(dest)
+    if isinstance(mol, Chem.rdchem.Mol):
+        if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
+            raise Exception('Implicit Hydrogens')
+        conformers = mol.GetConformers()
+        if not conformers:
+            raise Exception('Mol is not embedded')
+        elif not conformers[-1].Is3D():
+            raise Exception('Conformer is not 3D')
+        true_charge = Chem.GetFormalCharge(mol)
+        if not name:
+            name = 'tmp_' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        dest = os.path.join(
+            os.path.abspath(scratchdir), name)
+        os.makedirs(dest)
+        xyz_files = write_xtb_input_files(mol, 'xtbmol', destination=dest)
+    else:
+        xyz_files = [mol]
+        dest = os.path.dirname(mol)
     energies = []
     out_files = []
-    xyz_files = write_xtb_input_files(mol, 'xtbmol', destination=dest)
     for i, xyz_file in enumerate(xyz_files):
-        conf_path = os.path.join(dest, f'conf{i:03d}')
-        os.chdir(conf_path)
+        if isinstance(mol, Chem.rdchem.Mol):
+            conf_path = os.path.join(dest, f'conf{i:03d}')
+            os.chdir(conf_path)
+        else:
+            os.chdir(dest)
         if constrains:
             constrains_input = f'--input {constrains}'
         else:
@@ -95,15 +102,15 @@ def xtb_optimize(mol, name=None, constrains=None, method='gfn2', solvent='alpb m
     min_e_index = energies.index(min(energies))
     min_e_file = out_files[min_e_index]
     shutil.copy(min_e_file, os.path.join(dest, 'min_e_conf.xyz'))
-    atoms, _, coordinates = read_xyz_file(min_e_file)
-    # takes charge as defined before optimization
-    new_mol = xyz2mol(atoms, coordinates, true_charge)
     energy = get_energy_from_xtb_sp(os.path.join(dest, 'min_e_conf.xyz'))
     if remove_tmp:
         shutil.rmtree(dest)
     if return_file:
-        return os.abspath(min_e_file), energy
+        return os.path.abspath(min_e_file), energy
     else:
+        atoms, _, coordinates = read_xyz_file(min_e_file)
+        # takes charge as defined before optimization
+        new_mol = xyz2mol(atoms, coordinates, true_charge)
         return new_mol, energy
 
 def run_xtb_path(reactant_file, product_file, inp_file='/home/julius/thesis/data/path_template_allatoms.inp', charge=0, numThreads=1):

@@ -21,7 +21,7 @@ frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 
 
 # %%
 def ts_scoring(mol, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
-    ind_num, gen_num, n_confs, randomseed, timing_logger, warning_logger, directory, n_cpus, cpus_per_molecule = args_list
+    ind_num, gen_num, n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
     energy = activation_barrier(cat=mol, gen_num=gen_num, ind_num=ind_num, n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
     return energy
 

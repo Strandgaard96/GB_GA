@@ -1,7 +1,5 @@
 #!bin/bash
 
-inp_file=$(basename $1)
-
 SUBMIT=qsub.tmp
 
 PWD=`pwd`
@@ -10,7 +8,7 @@ outfile=log_GBGA.tar.gz
 
 PARTITION=coms
 TIME=24:00:00
-NCPUS=4
+NCPUS=$1
 MEM=4GB
 
 cat > $SUBMIT <<!EOF

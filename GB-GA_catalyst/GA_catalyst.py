@@ -33,21 +33,21 @@ warning_file_handler.setFormatter(warning_formatter)
 warning_logger.addHandler(warning_file_handler)
 
 directory = sys.argv[-1]
-file_name = sys.argv[-2]
+n_cpus = int(sys.argv[-2])
 
 scoring_function = ts_scoring
-n_confs = 1 # None calculates how many conformers based on 5+5*n_rot
+n_confs = 5 # None calculates how many conformers based on 5+5*n_rot
 scoring_args = [n_confs, randomseed, timing_logger, warning_logger, directory]
 
-population_size = 8
-mating_pool_size = 8
-generations = 3
+file_name = '/home/julius/soft/GB-GA/ZINC_1000_amines.smi'
+population_size = 4
+mating_pool_size = 4
+generations = 6
 mutation_rate = 0.5
 co.average_size = 25. 
 co.size_stdev = 5.
 prune_population = True
 n_tries = 1
-n_cpus = 8   # this has to be same as in submit script
 sa_screening = True
 seeds = np.random.randint(100000, size=2*n_tries)
 
@@ -75,7 +75,7 @@ def GA(args):
     random.seed(randomseed)
     generation = 0
     population = ga.make_initial_population(population_size, file_name)
-    prescores = sc.calculate_scores_parallel(population, scoring_function, scoring_args, n_cpus, generation) # Energy of TS, the smaller the better
+    prescores = sc.calculate_scores_parallel(population=population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus, generation=generation) # Energy of TS, the smaller the better
     # scores = normalize(prescores)
     inv_scores = [element * -1 for element in prescores] # The Larger the Better
 
@@ -86,8 +86,12 @@ def GA(args):
 
     fitness = ga.calculate_normalized_fitness(scores)
     
+
+    generation_array = np.full(shape=population_size, fill_value=generation, dtype=np.int)
+    individual_array = generation_array
     if sa_screening:
-        print(f'{list(zip(scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
+        print(f'# Generation, Individual, Score, Energy, SA Score, SMILES')
+        print(f'{list(zip(generation_array, individual_array, scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
     else:
         print(f'{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}')
 

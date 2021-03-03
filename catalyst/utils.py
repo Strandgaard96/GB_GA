@@ -126,3 +126,43 @@ class Timer:
         if self.logger:
             self.logger(self.text.format(elapsed_time))
         return elapsed_time
+
+
+
+from dataclasses import dataclass
+
+@dataclass
+class ScoringResult:
+    generation: int
+    individual: int
+    cat_smiles: str
+    energy: float
+    score: float = None
+    sa_score: float = None
+    normalized_fitness: float = None
+
+    def __post_init__(self):
+        self.pre_score = - self.energy
+
+class ListOfResults(list):
+    def __init__(self, *args):
+        super(ListOfResults, self).__init__(args[0])
+    
+    def get(self, prop):
+        properties = []
+        for result in self:
+            properties.append(getattr(result,prop))
+        return properties
+
+    def sortby(self, prop):
+        self.sort(key=lambda x: getattr(x,prop), reverse=False)
+        
+
+# # %%
+test1 = ScoringResult(generation=0, individual=1, energy=-13.08, cat_smiles='hello')
+test2 = ScoringResult(0, 2, '234', +3.11)
+test3 = ScoringResult(0, 3, 'Egh', -88.45)
+results = ListOfResults([test1,test2,test3])
+# %%
+
+# %%

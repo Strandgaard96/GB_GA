@@ -79,10 +79,11 @@ def sa_score_modifier(sa_scores, mu = 2.230044, sigma = 0.6526308):
     return np.exp(-0.5 * np.power((mod_scores - mu) / sigma, 2.))
 
 
-def reweigh_scores_by_sa(population, scores):
+def reweigh_scores_by_sa(population, list_of_results):
     sa_scores = sa_score_modifier([calculateScore(p) for p in population])
-    scores = [ns * sa for ns, sa in zip(scores, sa_scores)]  # rescale scores  and force list type
-    return list(scores), list(sa_scores)
+    for result, sa_score in zip(list_of_results, sa_scores):
+        result.sa_score = sa_score
+        result.score = result.pre_score * sa_score
 
 
 if __name__ == '__main__':

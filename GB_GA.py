@@ -37,13 +37,14 @@ def make_initial_population(population_size,file_name):
     
   return population
 
-def calculate_normalized_fitness(scores): 
+def calculate_normalized_fitness(list_of_results):
+  scores = list_of_results.get('score')
   min_score = np.min(scores)
   shifted_scores = [score-min_score for score in scores]
-  sum_scores = sum(shifted_scores) 
-  normalized_fitness = [score/sum_scores for score in shifted_scores]
-  return normalized_fitness
-
+  sum_scores = sum(shifted_scores)
+  for result in list_of_results:
+    result.normalized_fitness = result.score/sum_scores
+  
 def make_mating_pool(population,fitness,mating_pool_size):
   mating_pool = []
   for i in range(mating_pool_size):

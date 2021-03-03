@@ -13,6 +13,7 @@ import scoring_functions as sc
 import GB_GA as ga 
 from sa import reweigh_scores_by_sa, neutralize_molecules
 from catalyst.ts_scoring import ts_scoring
+from catalyst.utils import ListOfResults
 
 randomseed=101
 random.seed(randomseed)
@@ -40,9 +41,9 @@ n_confs = 5 # None calculates how many conformers based on 5+5*n_rot
 scoring_args = [n_confs, randomseed, timing_logger, warning_logger, directory]
 
 file_name = '/home/julius/soft/GB-GA/ZINC_1000_amines.smi'
-population_size = 4
-mating_pool_size = 4
-generations = 6
+population_size = 2
+mating_pool_size = 2
+generations = 0
 mutation_rate = 0.5
 co.average_size = 25. 
 co.size_stdev = 5.
@@ -75,30 +76,34 @@ def GA(args):
     random.seed(randomseed)
     generation = 0
     population = ga.make_initial_population(population_size, file_name)
-    prescores = sc.calculate_scores_parallel(population=population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus, generation=generation) # Energy of TS, the smaller the better
-    # scores = normalize(prescores)
-    inv_scores = [element * -1 for element in prescores] # The Larger the Better
+    out = sc.calculate_scores_parallel(population=population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus, generation=generation) # a list of ScoringResults
+    results = ListOfResults(out)
 
     if sa_screening:
-        scores, sascores = reweigh_scores_by_sa(neutralize_molecules(population), inv_scores)
-    else:
-        scores = inv_scores
+        reweigh_scores_by_sa(neutralize_molecules(population), results)
+ 
+    ga.calculate_normalized_fitness(results)
+    fitness = results.get('normalized_fitness')
+    results.sortby('normalized_fitness')
 
-    fitness = ga.calculate_normalized_fitness(scores)
-    
+    generation_list = results.get('generation')
+    individual_list = results.get('individual')
+    scores = results.get('score')
+    energies = results.get('energy')
+    sascores = results.get('sa_scores')
+    cat_smiles = results.get('smiles')
 
-    generation_array = np.full(shape=population_size, fill_value=generation, dtype=np.int)
-    individual_array = generation_array
+
     if sa_screening:
         print(f'# Generation, Individual, Score, Energy, SA Score, SMILES')
-        print(f'{list(zip(generation_array, individual_array, scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
+        print(f'{list(zip(generation_list, individual_list, scores, energies, sascores, cat_smiles))}')
     else:
         print(f'{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}')
 
     high_scores = []
     for generation in range(generations):
         mating_pool = ga.make_mating_pool(population, fitness, mating_pool_size)
-        new_population = ga.reproduce(mating_pool, population_size, mutation_rate)
+        new_population = ga.reproduce(mating_pool, population_size, mutation_rate, filter=None)
         new_prescores = sc.calculate_scores_parallel(new_population, scoring_function, scoring_args, n_cpus, generation+1)
         new_inv_score = [element * -1 for element in new_prescores]
 
@@ -114,7 +119,7 @@ def GA(args):
         high_scores.append((scores[0], Chem.MolToSmiles(population[0])))
 
         if sa_screening:
-            print(f'{list(zip(scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
+            print(f'{list(zip(generation_array, individual_array, scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
         else:
             print(f'{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}')
 

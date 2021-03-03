@@ -9,7 +9,7 @@ import shutil
 import os # this is jsut vor OMP
 import sys
 sys.path.append('/home/julius/soft/GB-GA/')
-from catalyst.utils import sdf2mol, draw3d, mol_from_xyz, vis_trajectory, Timer
+from catalyst.utils import sdf2mol, draw3d, mol_from_xyz, vis_trajectory, Timer, ScoringResult
 from catalyst.make_structures import ConstrainedEmbedMultipleConfsMultipleFrags, connect_cat_2d
 from catalyst.xtb_utils import xtb_optimize, write_xtb_input_files 
 ts_dummy = sdf2mol('/home/julius/soft/GB-GA/catalyst/structures/ts_dummy.sdf')
@@ -90,7 +90,9 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
     if timing_logger:
         elapsed_time = t1.stop()
         timing_logger.info(f'{Chem.MolToSmiles(cat)} : {elapsed_time:0.4f} seconds')
-    return gfn2_ts_energy-cat_energy-frag_energies
+    # return gfn2_ts_energy-cat_energy-frag_energies
+    result = ScoringResult(generation=gen_num, individual=ind_num, cat_smiles=Chem.MolToSmiles(cat), energy=gfn2_ts_energy-cat_energy-frag_energies)
+    return result
 
 def isolate_cat(mol, scarfold):
     cat = AllChem.ReplaceCore(mol, scarfold, replaceDummies=False)
@@ -181,8 +183,8 @@ if __name__ == '__main__':
     # output = calculate_scores_parallel(population, final_scoring, scoring_args, numThreads)
     # t.stop()
     # print(output)
-
+    results = []
     for i, mol in enumerate(population):
-        activation_barrier(cat=mol, ind_num=i, gen_num=0, n_confs=1, randomseed=101, numThreads=4, directory=directory)
-
+        result = activation_barrier(cat=mol, ind_num=i, gen_num=0, n_confs=1, randomseed=101, numThreads=4, directory=directory)
+        results.append(result)
 # %%

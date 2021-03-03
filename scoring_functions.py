@@ -39,17 +39,15 @@ def calculate_score(args):
   score = function(gene,scoring_args)
   return score
 
-def calculate_scores_parallel(population, function, scoring_args, n_cpus, generation):
+def calculate_scores_parallel(population, function, scoring_args, n_cpus, generation, cpus_per_worker=2, consecutive_mols_per_worker=1):
   '''Parallelize at the score level (not currently in use)'''
-  # n_cpus is total number of cpus used, chuunksize is how many molecules at the same time
-  pop_size = len(population)
-  maxtasksperchild = 1
-  cpus_per_molecule = 1
+  workers = int(n_cpus/cpus_per_worker)
   args_list = []
-  args = [generation] + scoring_args + [cpus_per_molecule] # scoring_args are all fixed parameters (gen_num, n_confs, randomseed, logger)
+  args = [generation] + scoring_args + [cpus_per_worker] # removed cpus per molecule scoring_args are all fixed parameters (gen_num, n_confs, randomseed, logger)
   for i, gene in enumerate(population):
     args_list.append([function, gene, i]+args)
-  with Pool(int(n_cpus/cpus_per_molecule), maxtasksperchild=maxtasksperchild) as pool:
+
+  with Pool(processes=workers, maxtasksperchild=consecutive_mols_per_worker) as pool: #int(n_cpus%cpus_per_molecule
     scores = pool.map(calculate_score, args_list)
   return scores
 

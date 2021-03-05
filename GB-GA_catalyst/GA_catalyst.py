@@ -1,3 +1,4 @@
+# %%
 from rdkit import Chem
 import numpy as np
 import time
@@ -13,9 +14,9 @@ import scoring_functions as sc
 import GB_GA as ga 
 from sa import reweigh_scores_by_sa, neutralize_molecules
 from catalyst.ts_scoring import ts_scoring
-from catalyst.utils import ListOfResults
 
-randomseed=101
+
+randomseed=99
 random.seed(randomseed)
 np.random.seed(randomseed)
 
@@ -33,17 +34,20 @@ warning_file_handler = logging.FileHandler('scoring_warning.log')
 warning_file_handler.setFormatter(warning_formatter)
 warning_logger.addHandler(warning_file_handler)
 
-directory = sys.argv[-1]
-n_cpus = int(sys.argv[-2])
+# directory = sys.argv[-1]
+# n_cpus = int(sys.argv[-2])
+
+directory = '.'
+n_cpus = 2
 
 scoring_function = ts_scoring
-n_confs = 5 # None calculates how many conformers based on 5+5*n_rot
+n_confs = 1 # None calculates how many conformers based on 5+5*n_rot
 scoring_args = [n_confs, randomseed, timing_logger, warning_logger, directory]
 
 file_name = '/home/julius/soft/GB-GA/ZINC_1000_amines.smi'
-population_size = 2
-mating_pool_size = 2
-generations = 0
+population_size = 4
+mating_pool_size = 4
+generations = 3
 mutation_rate = 0.5
 co.average_size = 25. 
 co.size_stdev = 5.
@@ -68,62 +72,48 @@ print('* seeds seed', randomseed)
 print('* seeds', ','.join(map(str, seeds)))
 print('')
 
+
 def GA(args):
     population_size, file_name, scoring_function, generations, mating_pool_size, mutation_rate,\
     scoring_args, prune_population, n_cpus, sa_screening, randomseed = args
 
     np.random.seed(randomseed)
     random.seed(randomseed)
-    generation = 0
     population = ga.make_initial_population(population_size, file_name)
-    out = sc.calculate_scores_parallel(population=population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus, generation=generation) # a list of ScoringResults
-    results = ListOfResults(out)
-
+    sc.calculate_scores_parallel(population=population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus)
+    
     if sa_screening:
-        reweigh_scores_by_sa(neutralize_molecules(population), results)
- 
-    ga.calculate_normalized_fitness(results)
-    fitness = results.get('normalized_fitness')
-    results.sortby('normalized_fitness')
+        neutralize_molecules(population)
+        reweigh_scores_by_sa(population)
+    
+    new_population.sortby('score')
+    population.print()
+    
+    
 
-    generation_list = results.get('generation')
-    individual_list = results.get('individual')
-    scores = results.get('score')
-    energies = results.get('energy')
-    sascores = results.get('sa_scores')
-    cat_smiles = results.get('smiles')
-
-
-    if sa_screening:
-        print(f'# Generation, Individual, Score, Energy, SA Score, SMILES')
-        print(f'{list(zip(generation_list, individual_list, scores, energies, sascores, cat_smiles))}')
-    else:
-        print(f'{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}')
-
-    high_scores = []
     for generation in range(generations):
-        mating_pool = ga.make_mating_pool(population, fitness, mating_pool_size)
+        # Making new Population
+        ga.calculate_normalized_fitness(population)
+        mating_pool = ga.make_mating_pool(population, mating_pool_size)
         new_population = ga.reproduce(mating_pool, population_size, mutation_rate, filter=None)
-        new_prescores = sc.calculate_scores_parallel(new_population, scoring_function, scoring_args, n_cpus, generation+1)
-        new_inv_score = [element * -1 for element in new_prescores]
+        new_population.generation_num = generation + 1
+        new_population.assign_idx()
 
+        sc.calculate_scores_parallel(population=new_population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus)
+      
         if sa_screening:
-            new_scores, new_sascores = reweigh_scores_by_sa(neutralize_molecules(new_population), new_inv_score)
-            population, scores, prescores, sascores = ga.sanitize(population+new_population, scores+new_scores, population_size, prune_population, sa_screening, prescores+new_prescores, sascores+new_sascores)
-        else:
-            new_scores = new_inv_score       
-            population, scores = ga.sanitize(population+new_population, scores+new_scores, population_size, prune_population, sa_screening)
-        
-        fitness = ga.calculate_normalized_fitness(scores)
+            neutralize_molecules(new_population)
+            reweigh_scores_by_sa(new_population)
+        new_population.sortby('score')
+        new_population.print()
 
-        high_scores.append((scores[0], Chem.MolToSmiles(population[0])))
+        # Select best Individuals from old and new population
+        population = ga.sanitize(population+new_population, population_size, prune_population)
 
-        if sa_screening:
-            print(f'{list(zip(generation_array, individual_array, scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}')
-        else:
-            print(f'{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}')
+        # return (scores, population, high_scores)
 
-    return (scores, population, high_scores)
+# %%
+    
 
 # Get Timings
 timing_logger.info(f'# Running on {n_cpus} cores')
@@ -133,25 +123,22 @@ t0 = time.time()
 all_scores = []
 generations_list = []
 
-index = slice(0,n_tries) if prune_population else slice(n_tries,2*n_tries)
-temp_args = [[population_size, file_name, scoring_function, generations, mating_pool_size,
-                  mutation_rate, scoring_args, prune_population, n_cpus, sa_screening] for i in range(n_tries)]
-args = []
-for x,y in zip(temp_args,seeds[index]):
-    x.append(y)
-    args.append(x)
+args = [population_size, file_name, scoring_function, generations, mating_pool_size,
+                  mutation_rate, scoring_args, prune_population, n_cpus, sa_screening, randomseed]
+
 
 # Run the GA
-output = []
-for i in range(n_tries):
-    output.append(GA(args[i]))
+GA(args)
 
 
-for i in range(n_tries):     
-    (scores, population, high_scores) = output[i]
-    all_scores.append(scores)
-    results.append(scores[0])
-    generations_list.append(high_scores)
+# for i in range(n_tries):     
+#     (scores, population, high_scores) = output[i]
+#     all_scores.append(scores)
+#     results.append(scores[0])
+#     generations_list.append(high_scores)
 
 t1 = time.time()
 print(f'* Total duration: {(t1-t0)/60.0:.2f} minutes')
+
+
+# %%

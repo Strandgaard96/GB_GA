@@ -38,20 +38,19 @@ def neutralize_smiles(smiles):
     return [Chem.MolToSmiles(m) for m in neutral_molecules]
 
 
-def neutralize_molecules(charged_molecules):
+def neutralize_molecules(population):
     """ Neutralize a set of molecules
     :param list charged_molecules: list of (possibly) charged molecules
     :return: list of neutral molecules
     """
-    assert type(charged_molecules) == list
+    assert type(population.molecules) == list
     global _neutralize_reactions
     if _neutralize_reactions is None:
         _neutralize_reactions = read_neutralizers()
 
     neutral_molecules = []
-    for c_mol in charged_molecules:
-        # mol = copy.deepcopy(c_mol)
-        mol = Chem.Mol(c_mol)
+    for individual in population.molecules:
+        mol = copy.deepcopy(individual.rdkit_mol)
         mol.UpdatePropertyCache()
         Chem.rdmolops.FastFindRings(mol)
         assert mol is not None
@@ -63,8 +62,7 @@ def neutralize_molecules(charged_molecules):
         # https://github.com/rdkit/rdkit/issues/2216 to get valid ring information and implicit valences
         mol.UpdatePropertyCache()
         FastFindRings(mol)
-        neutral_molecules.append(mol)
-    return neutral_molecules
+        individual.neutral_rdkit_mol = mol
 
 
 def sa_score_modifier(sa_scores, mu = 2.230044, sigma = 0.6526308):
@@ -79,12 +77,11 @@ def sa_score_modifier(sa_scores, mu = 2.230044, sigma = 0.6526308):
     return np.exp(-0.5 * np.power((mod_scores - mu) / sigma, 2.))
 
 
-def reweigh_scores_by_sa(population, list_of_results):
-    sa_scores = sa_score_modifier([calculateScore(p) for p in population])
-    for result, sa_score in zip(list_of_results, sa_scores):
-        result.sa_score = sa_score
-        result.score = result.pre_score * sa_score
-
+def reweigh_scores_by_sa(population):
+    sa_scores = sa_score_modifier([calculateScore(individual.neutral_rdkit_mol) for individual in population.molecules])
+    for individual, sa_score in zip(population.molecules, sa_scores):
+        individual.sa_score = sa_score
+    population.update()
 
 if __name__ == '__main__':
     s_q = "c1ccccc1C(C(=O)[O-])c2ccccc2"

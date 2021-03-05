@@ -1,3 +1,4 @@
+# %%
 '''
 Written by Jan H. Jensen 2018. 
 Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_baselines/tree/master/graph_ga
@@ -20,6 +21,8 @@ import crossover as co
 import mutate as mu
 import scoring_functions as sc
 from sa import reweigh_scores_by_sa, neutralize_molecules
+from catalyst.utils import Population, Individual
+import copy
 
 def read_file(file_name):
   mol_list = []
@@ -29,26 +32,29 @@ def read_file(file_name):
 
   return mol_list
 
-def make_initial_population(population_size,file_name):
+def make_initial_population(population_size, file_name):
   mol_list = read_file(file_name)
-  population = []
-  for i in range(population_size):
-    population.append(random.choice(mol_list))
-    
-  return population
+  initial_population = Population()
+  for _ in range(population_size):
+    initial_population.molecules.append(Individual(random.choice(mol_list)))
+  initial_population.generation_num = 0
+  initial_population.assign_idx()
 
-def calculate_normalized_fitness(list_of_results):
-  scores = list_of_results.get('score')
+  return initial_population
+
+def calculate_normalized_fitness(population):
+  scores = population.get('score')
   min_score = np.min(scores)
   shifted_scores = [score-min_score for score in scores]
   sum_scores = sum(shifted_scores)
-  for result in list_of_results:
-    result.normalized_fitness = result.score/sum_scores
+  for individual, shifted_score in zip(population.molecules, shifted_scores):
+    individual.normalized_fitness = shifted_score/sum_scores
   
-def make_mating_pool(population,fitness,mating_pool_size):
+def make_mating_pool(population, mating_pool_size):
+  fitness = population.get('normalized_fitness')
   mating_pool = []
-  for i in range(mating_pool_size):
-  	mating_pool.append(Chem.Mol(np.random.choice(population, p=fitness)))
+  for _ in range(mating_pool_size):
+  	mating_pool.append(copy.deepcopy(np.random.choice(population.molecules, p=fitness).rdkit_mol))
 
   return mating_pool
 
@@ -77,42 +83,29 @@ def reproduce(mating_pool, population_size, mutation_rate, filter): # + filter
       mutated_child = mu.mutate(new_child, mutation_rate, filter)
       if mutated_child != None:
         #print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
-        new_population.append(mutated_child)
+        new_population.append(Individual(rdkit_mol=mutated_child))
 
-  return new_population
+  return Population(molecules=new_population)
 
 
-def sanitize(population,scores,population_size, prune_population, sa_screening, prescores=None, sascores=None):
+def sanitize(population, population_size, prune_population):
     if prune_population:
       smiles_list = []
-      population_tuples = []
-      if sa_screening:
-        for score, prescore, sascore, mol in zip(scores, prescores, sascores, population):
-          smiles = Chem.MolToSmiles(mol)
-          if smiles not in smiles_list:
-              smiles_list.append(smiles)
-              population_tuples.append((score, prescore, sascore, mol))
-      else:
-        for score, mol in zip(scores,population):
-          smiles = Chem.MolToSmiles(mol)
-          if smiles not in smiles_list:
-              smiles_list.append(smiles)
-              population_tuples.append((score,mol))
+      new_population = Population()
+      for individual in population.molecules:
+        copy_individual = copy.deepcopy(individual)
+        if copy_individual.smiles not in smiles_list:
+            smiles_list.append(copy_individual.smiles)
+            new_population.molecules.append(copy_individual)
     else:
-      if sa_screening:
-        population_tuples = list(zip(scores,prescores,sascores,population))
-      else:
-        population_tuples = list(zip(scores,population))
+      copy_population = copy.deepcopy(population)
+      new_population = Population(molecules=copy_population.molecules)
 
-    population_tuples = sorted(population_tuples, key=lambda x: x[0], reverse=True)[:population_size]
-    new_population = [t[-1] for t in population_tuples]
-    new_scores = [t[0] for t in population_tuples]
-    if sa_screening:
-      new_prescores = [t[1] for t in population_tuples]
-      new_sascores = [t[2] for t in population_tuples]
-      return new_population, new_scores, new_prescores, new_sascores
-    else:
-      return new_population, new_scores
+    new_population.sortby('score', reverse=True)
+    new_population.molecules = new_population.molecules[:population_size]
+    return new_population
 
 if __name__ == "__main__":
     pass
+
+# %%

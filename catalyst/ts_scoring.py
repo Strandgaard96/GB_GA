@@ -3,13 +3,14 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+import traceback
 import logging
 import copy
 import shutil
 import os # this is jsut vor OMP
 import sys
 sys.path.append('/home/julius/soft/GB-GA/')
-from catalyst.utils import sdf2mol, draw3d, mol_from_xyz, vis_trajectory, Timer, ScoringResult
+from catalyst.utils import sdf2mol, draw3d, mol_from_xyz, vis_trajectory, Timer
 from catalyst.make_structures import ConstrainedEmbedMultipleConfsMultipleFrags, connect_cat_2d
 from catalyst.xtb_utils import xtb_optimize, write_xtb_input_files 
 ts_dummy = sdf2mol('/home/julius/soft/GB-GA/catalyst/structures/ts_dummy.sdf')
@@ -20,9 +21,13 @@ frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 
 # directory = '/home/julius/thesis/sims/ts_embed_scoring'
 
 # %%
-def ts_scoring(mol, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
-    ind_num, gen_num, n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
-    energy = activation_barrier(cat=mol, gen_num=gen_num, ind_num=ind_num, n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
+def ts_scoring(individual, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
+    n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
+    try:
+        energy = activation_barrier(cat=individual.rdkit_mol, gen_num=individual.idx[0], ind_num=individual.idx[1], n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
+    except Exception as e:
+        warning_logger.warning(f'{individual.smiles}: {traceback.print_exc()}')
+        energy = 1000
     return energy
 
 def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThreads=1, timing_logger=None, warning_logger=None, directory='.'):
@@ -43,7 +48,6 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
         while not angles_ok or not bonds_ok and tries < max_tries:
             ts2d_copy = copy.deepcopy(ts2d)
             ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(mol=ts2d_copy, core=ts_dummy, numConfs=int(n_confs), randomseed=int(randomseed), numThreads=int(numThreads), force_constant=int(force_constant))
-            # ts3d = ConstrainedEmbedMultipleConfs(mol=ts2d_copy, core=ts_dummy, numConfs=n_confs, randomseed=randomseed, numThreads=numThreads, force_constant=force_constant)
             if compare_angles(ts3d, ts_dummy, threshold=5):
                 angles_ok = True
             else:
@@ -55,11 +59,10 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
             tries += 1
             if tries == max_tries:
                 if warning_logger:
-                    warning_logger.warning(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
+                    warning_logger.warning(f'{Chem.MolToSmiles(ts2d)} Embedding was not successful in {max_tries} tries with final forceconstant={force_constant}')
                 else:
                     print(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
                 break
-                # raise Exception(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}.')
         # xTB optimite TS
         ts3d_file, ts3d_energy = xtb_optimize(ts3d, method='gfnff', name=os.path.join(ind_dir, f'const_iso{i:03d}'), charge=cat_charge, constrains='/home/julius/thesis/data/constr.inp', scratchdir=directory, remove_tmp=False, return_file=True, numThreads=numThreads, warning_logger=warning_logger)
         # here should be a num frag check
@@ -90,9 +93,7 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
     if timing_logger:
         elapsed_time = t1.stop()
         timing_logger.info(f'{Chem.MolToSmiles(cat)} : {elapsed_time:0.4f} seconds')
-    # return gfn2_ts_energy-cat_energy-frag_energies
-    result = ScoringResult(generation=gen_num, individual=ind_num, cat_smiles=Chem.MolToSmiles(cat), energy=gfn2_ts_energy-cat_energy-frag_energies)
-    return result
+    return gfn2_ts_energy-cat_energy-frag_energies
 
 def isolate_cat(mol, scarfold):
     cat = AllChem.ReplaceCore(mol, scarfold, replaceDummies=False)

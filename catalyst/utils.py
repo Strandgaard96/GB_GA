@@ -18,6 +18,7 @@ sys.path.append('/home/julius/soft/GB-GA')
 # from catalyst.gaussian_utils import extract_optimized_structure
 
 # %%
+
 def draw3d(mols, width=600, height=600, Hs=True, confId=-1, multipleConfs=False,atomlabel=False):
     try:
         p = py3Dmol.view(width=width,height=height)
@@ -129,40 +130,97 @@ class Timer:
 
 
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
+import pickle
+from tabulate import tabulate
+import copy
 
 @dataclass
-class ScoringResult:
-    generation: int
-    individual: int
-    cat_smiles: str
-    energy: float
-    score: float = None
-    sa_score: float = None
-    normalized_fitness: float = None
+class Individual:
+    rdkit_mol:          Chem.rdchem.Mol = field(repr=False, compare=False)
+    smiles:             str = field(init=False, compare=True)
+    idx:                tuple = field(default=(None,None), repr=False, compare=False)
+    score:              float = field(default=None, repr=False, compare=False)
+    energy:             float = field(default=None, repr=False, compare=False)
+    sa_score:           float = field(default=None, repr=False, compare=False)
+    normalized_fitness: float = field(default=None, repr=False, compare=False)
+    neutral_rdkit_mol:  Chem.rdchem.Mol = field(init=False, repr=False, compare=False)
+    warnings:           List[str] = field(default_factory=list, repr=False, compare=False) 
+    # parents:            
 
     def __post_init__(self):
-        self.pre_score = - self.energy
+        self.smiles = Chem.MolToSmiles(self.rdkit_mol)
 
-class ListOfResults(list):
-    def __init__(self, *args):
-        super(ListOfResults, self).__init__(args[0])
+    def update(self):
+        if self.energy and self.sa_score:
+            setattr(self, 'score', -self.energy*self.sa_score)
     
+    def list_of_props(self):
+        return([self.idx[1], self.score, self.energy, self.sa_score, self.smiles])
+
+@dataclass(order=True)
+class Population():
+    generation_num:     int = field(default=None, init=True)
+    molecules:          List[Individual] = field(default_factory=list) 
+
+    # def __post_init__(self):
+    #     for i, molecule in enumerate(self.molecules):
+    #         setattr(molecule, 'idx', (self.generation_num, i))
+
+    def __add__(self, other):
+        return Population(molecules = self.molecules + other.molecules)
+
+    def assign_idx(self):
+        for i, molecule in enumerate(self.molecules):
+            setattr(molecule, 'idx', (self.generation_num, i))
+    
+    def update(self):
+        for molecule in self.molecules:
+            molecule.update()
+
     def get(self, prop):
         properties = []
-        for result in self:
-            properties.append(getattr(result,prop))
+        for molecule in self.molecules:
+            properties.append(getattr(molecule, prop))
         return properties
 
-    def sortby(self, prop):
-        self.sort(key=lambda x: getattr(x,prop), reverse=False)
-        
+    def setprop(self, prop, list_of_values):
+        for molecule, value in zip(self.molecules, list_of_values):
+            setattr(molecule, prop, value)
+
+    def sortby(self, prop, reverse=True):
+        self.molecules.sort(key=lambda x: getattr(x,prop), reverse=reverse)
+
+    def prune(self, population_size):
+        self.sortby('score')
+        self.molecules = self.molecules[:population_size]
+
+    def safe(self, directory):
+        filename = 'GA_output.pkl'
+        with open(filename, 'ab+') as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+    def print(self):
+        table = []
+        for individual in self.molecules:
+            table.append(individual.list_of_props())
+        if isinstance(self.generation_num, int):
+            print(f'\nGeneration {self.generation_num:02d}')
+        print(tabulate(table, headers=['idx', 'score', 'energy', 'sa_score', 'smiles']))
+
+
+
+# %%
+# i1 = Individual(Chem.MolFromSmiles('CO'))
+# i2 = Individual(Chem.MolFromSmiles('O'))
+# i3 = Individual(Chem.MolFromSmiles('C'))
+# i4 = Individual(Chem.MolFromSmiles('C'))
+
 
 # # %%
-test1 = ScoringResult(generation=0, individual=1, energy=-13.08, cat_smiles='hello')
-test2 = ScoringResult(0, 2, '234', +3.11)
-test3 = ScoringResult(0, 3, 'Egh', -88.45)
-results = ListOfResults([test1,test2,test3])
+# pop = Population(generation_num=1, molecules=[i1,i2,i3])
+# pop.print()
 # %%
 
 # %%

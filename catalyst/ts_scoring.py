@@ -23,12 +23,25 @@ frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 
 # %%
 def ts_scoring(individual, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
     n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
+    warning = None
     try:
         energy = activation_barrier(cat=individual.rdkit_mol, gen_num=individual.idx[0], ind_num=individual.idx[1], n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
     except Exception as e:
         warning_logger.warning(f'{individual.smiles}: {traceback.print_exc()}')
         energy = 1000
-    return energy
+        warning = str(e)
+    return energy, warning
+
+def scaling_function(value, from_min=-3, from_max = 1):
+    to_min = 0
+    to_max = 10
+    scaled_value = (-value - from_min) * (to_max - to_min) / (from_max - from_min) + to_min
+    if scaled_value > to_max:
+        return to_max
+    elif scaled_value < to_min:
+        return to_min
+    else:
+        return scaled_value
 
 def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThreads=1, timing_logger=None, warning_logger=None, directory='.'):
     if timing_logger:

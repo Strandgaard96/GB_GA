@@ -128,13 +128,12 @@ class Timer:
             self.logger(self.text.format(elapsed_time))
         return elapsed_time
 
-
-
 from dataclasses import dataclass, field
 from typing import List
 import pickle
 from tabulate import tabulate
 import copy
+import pandas as pd
 
 @dataclass
 class Individual:
@@ -154,26 +153,24 @@ class Individual:
 
     def update(self):
         if self.energy and self.sa_score:
-            setattr(self, 'score', -self.energy*self.sa_score)
-    
+            setattr(self, 'score', scaling_function(self.energy)*self.sa_score)
+
     def list_of_props(self):
         return([self.idx[1], self.score, self.energy, self.sa_score, self.smiles])
 
 @dataclass(order=True)
-class Population():
+class Population:
     generation_num:     int = field(default=None, init=True)
-    molecules:          List[Individual] = field(default_factory=list) 
+    molecules:          List[Individual] = field(repr=False,default_factory=list) 
+    size:               int = field(default=None, init=True)
 
-    # def __post_init__(self):
-    #     for i, molecule in enumerate(self.molecules):
-    #         setattr(molecule, 'idx', (self.generation_num, i))
-
-    def __add__(self, other):
-        return Population(molecules = self.molecules + other.molecules)
+    def __post_init__(self):
+        self.size = len(self.molecules)
 
     def assign_idx(self):
         for i, molecule in enumerate(self.molecules):
             setattr(molecule, 'idx', (self.generation_num, i))
+        self.size = len(self.molecules)
     
     def update(self):
         for molecule in self.molecules:
@@ -189,17 +186,18 @@ class Population():
         for molecule, value in zip(self.molecules, list_of_values):
             setattr(molecule, prop, value)
 
+    def appendprop(self, prop, list_of_values):
+        for molecule, value in zip(self.molecules, list_of_values):
+            if value:
+                getattr(molecule, prop).append(value)
+
     def sortby(self, prop, reverse=True):
         self.molecules.sort(key=lambda x: getattr(x,prop), reverse=reverse)
 
     def prune(self, population_size):
-        self.sortby('score')
+        self.sortby('score', reverse=True)
         self.molecules = self.molecules[:population_size]
-
-    def safe(self, directory):
-        filename = 'GA_output.pkl'
-        with open(filename, 'ab+') as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+        self.size = len(self.molecules)
 
     def print(self):
         table = []
@@ -209,18 +207,84 @@ class Population():
             print(f'\nGeneration {self.generation_num:02d}')
         print(tabulate(table, headers=['idx', 'score', 'energy', 'sa_score', 'smiles']))
 
+    def pop2pd(self, columns = ['score', 'energy', 'sa_score', 'rdkit_mol']):
+        df = pd.DataFrame(list(map(list, zip(*[self.get(prop) for prop in columns]))), index=pd.MultiIndex.from_tuples(self.get('idx'), names=('generation', 'individual')))
+        df.columns = columns
+        return df
 
+@dataclass(order=True)
+class Generation:
+    generation_num:     int = field(init=True) # check that its same as in both populations without reindexing individuals in populations
+    children:           Population= field(default_factory=Population) 
+    survivors:          Population = field(default_factory=Population)
 
+    def __post_init__(self):
+        if self.generation_num != self.children.generation_num or self.generation_num != self.survivors.generation_num:
+            raise Warning(f'Generation {self.generation_num} has Children from generation {self.children.generation_num} and survivors from generation {self.survivors.generation_num}')
+
+    def save(self, directory):
+        filename = os.path.join(directory, 'GA_output.pkl')
+        with open(filename, 'ab+') as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+    def print(self, population='survivors'):
+        if population == 'survivors':
+            population = self.survivors
+        elif population == 'children':
+            population = self.children
+        else:
+            raise TypeError(f'{population} is not a valid option (survivors/children)')
+        table = []
+        for individual in population.molecules:
+            table.append(individual.list_of_props())
+        print(f'\nGeneration {self.generation_num:02d}')
+        print(tabulate(table, headers=['idx', 'score', 'energy', 'sa_score', 'smiles']))
+    
+    def gen2pd(self, population='survivors'):
+        if population == 'survivors':
+            population = self.survivors
+        elif population == 'children':
+            population = self.children
+        else:
+            raise TypeError(f'{population} is not a valid option (survivors/children)')
+        pd = population.pop2pd()
+        return pd
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}'
+                f'(generation_num={self.generation_num!r}, children_size={self.children.size}, survivors_size={self.survivors.size})')
+
+@dataclass(order=True)
+class GA_run:
+    num_generations:        int = field(default=None, init=True)
+    generations:            List[Generation] = field(default_factory=list)
+
+    def __post_init__(self):
+        self.num_generations = len(self.generations)
+
+    def append_gen(self, generation):
+        self.generations += [generation]
+        self.num_generations = len(self.generations)
+
+    def print(self, population='survivors'):
+        for generation in self.generations:
+            generation.print(population)
+
+    def ga2pd(self, population='survivors'):
+        df = pd.concat([generation.gen2pd(population) for generation in self.generations])
+        return df
 # %%
-# i1 = Individual(Chem.MolFromSmiles('CO'))
-# i2 = Individual(Chem.MolFromSmiles('O'))
-# i3 = Individual(Chem.MolFromSmiles('C'))
-# i4 = Individual(Chem.MolFromSmiles('C'))
 
+if __name__ == '__main__':
+    import sys
+    sys.path.append('/home/julius/soft/GB-GA/')
+    import GB_GA as ga 
 
-# # %%
-# pop = Population(generation_num=1, molecules=[i1,i2,i3])
-# pop.print()
+    # %%
+    population1 = ga.make_initial_population(5, '/home/julius/thesis/data/ZINC_1000_amines.smi')
+    population2 = ga.make_initial_population(5, '/home/julius/thesis/data/ZINC_1000_amines.smi')
+
+    gen = Generation(generation_num=0, children=population1, survivors=population2)
 # %%
 
 # %%

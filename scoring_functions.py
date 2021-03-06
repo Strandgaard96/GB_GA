@@ -38,8 +38,8 @@ from catalyst.utils import Population
 def calculate_score(args):
   '''Parallelize at the score level (not currently in use)'''
   individual, function, *scoring_args = args
-  value = function(individual, scoring_args)
-  return value
+  value, warning = function(individual, scoring_args)
+  return (value, warning)
 
 def calculate_scores_parallel(population, function, scoring_args, n_cpus, cpus_per_worker=1, consecutive_mols_per_worker=1):
   '''Parallelize at the score level (not currently in use)'''
@@ -50,8 +50,10 @@ def calculate_scores_parallel(population, function, scoring_args, n_cpus, cpus_p
     args_list.append([individual] + args)
 
   with Pool(processes=workers, maxtasksperchild=consecutive_mols_per_worker) as pool: #int(n_cpus%cpus_per_molecule
-    list_of_values = pool.map(calculate_score, args_list)
-  return population.setprop('energy', list_of_values)
+    list_of_values_warning = pool.map(calculate_score, args_list)
+  population.setprop('energy', [i[0] for i in list_of_values_warning])
+  population.appendprop('warnings', [i[1] for i in list_of_values_warning])
+  
 
 def calculate_scores(population,function,scoring_args):
   scores = []

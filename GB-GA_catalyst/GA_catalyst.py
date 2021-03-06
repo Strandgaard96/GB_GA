@@ -14,9 +14,10 @@ import scoring_functions as sc
 import GB_GA as ga 
 from sa import reweigh_scores_by_sa, neutralize_molecules
 from catalyst.ts_scoring import ts_scoring
+from catalyst.utils import Generation
 
 
-randomseed=99
+randomseed=9
 random.seed(randomseed)
 np.random.seed(randomseed)
 
@@ -34,20 +35,20 @@ warning_file_handler = logging.FileHandler('scoring_warning.log')
 warning_file_handler.setFormatter(warning_formatter)
 warning_logger.addHandler(warning_file_handler)
 
-# directory = sys.argv[-1]
-# n_cpus = int(sys.argv[-2])
+directory = sys.argv[-1]
+n_cpus = int(sys.argv[-2])
 
-directory = '.'
-n_cpus = 2
+# directory = '.'
+# n_cpus = 4
 
 scoring_function = ts_scoring
 n_confs = 1 # None calculates how many conformers based on 5+5*n_rot
 scoring_args = [n_confs, randomseed, timing_logger, warning_logger, directory]
 
 file_name = '/home/julius/soft/GB-GA/ZINC_1000_amines.smi'
-population_size = 4
-mating_pool_size = 4
-generations = 3
+population_size = 15
+mating_pool_size = 15
+generations = 15
 mutation_rate = 0.5
 co.average_size = 25. 
 co.size_stdev = 5.
@@ -71,7 +72,7 @@ print('* SA screening', sa_screening)
 print('* seeds seed', randomseed)
 print('* seeds', ','.join(map(str, seeds)))
 print('')
-
+# %%
 
 def GA(args):
     population_size, file_name, scoring_function, generations, mating_pool_size, mutation_rate,\
@@ -86,17 +87,18 @@ def GA(args):
         neutralize_molecules(population)
         reweigh_scores_by_sa(population)
     
-    new_population.sortby('score')
-    population.print()
-    
-    
+    population.sortby('score')
+    gen = Generation(generation_num=0, children=population, survivors=population)
+    gen.save('.')
+    gen.print()
 
     for generation in range(generations):
-        # Making new Population
+        generation_num = generation+1
+        # Making new Children
         ga.calculate_normalized_fitness(population)
         mating_pool = ga.make_mating_pool(population, mating_pool_size)
         new_population = ga.reproduce(mating_pool, population_size, mutation_rate, filter=None)
-        new_population.generation_num = generation + 1
+        new_population.generation_num = generation_num
         new_population.assign_idx()
 
         sc.calculate_scores_parallel(population=new_population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus)
@@ -105,40 +107,30 @@ def GA(args):
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
         new_population.sortby('score')
-        new_population.print()
 
         # Select best Individuals from old and new population
-        population = ga.sanitize(population+new_population, population_size, prune_population)
+        population = ga.sanitize(population.molecules+new_population.molecules, population_size, prune_population) # SURVIVORS
+        population.generation_num = generation_num
+        population.assign_idx()
 
-        # return (scores, population, high_scores)
+        gen = Generation(generation_num=generation_num, children=new_population, survivors=population)
+        gen.save('.')
+        gen.print()
+
 
 # %%
-    
 
 # Get Timings
 timing_logger.info(f'# Running on {n_cpus} cores')
 
-results = []
+
 t0 = time.time()
-all_scores = []
-generations_list = []
 
 args = [population_size, file_name, scoring_function, generations, mating_pool_size,
                   mutation_rate, scoring_args, prune_population, n_cpus, sa_screening, randomseed]
-
-
 # Run the GA
 GA(args)
 
-
-# for i in range(n_tries):     
-#     (scores, population, high_scores) = output[i]
-#     all_scores.append(scores)
-#     results.append(scores[0])
-#     generations_list.append(high_scores)
-
 t1 = time.time()
-print(f'* Total duration: {(t1-t0)/60.0:.2f} minutes')
+print(f'\n* Total duration: {(t1-t0)/60.0:.2f} minutes')
 
-
-# %%

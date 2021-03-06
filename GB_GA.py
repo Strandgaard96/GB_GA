@@ -1,4 +1,3 @@
-# %%
 '''
 Written by Jan H. Jensen 2018. 
 Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_baselines/tree/master/graph_ga
@@ -58,20 +57,6 @@ def make_mating_pool(population, mating_pool_size):
 
   return mating_pool
 
-# def reproduce(mating_pool,population_size,mutation_rate):
-#   new_population = []
-#   while len(new_population) < population_size:
-#     parent_A = random.choice(mating_pool)
-#     parent_B = random.choice(mating_pool)
-#     new_child = co.crossover(parent_A,parent_B)
-#     if new_child != None:
-#       mutated_child = mu.mutate(new_child,mutation_rate)
-#       if mutated_child != None:
-#         #print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
-#         new_population.append(mutated_child)
-
-#   return new_population
-
 def reproduce(mating_pool, population_size, mutation_rate, filter): # + filter
   """ Creates a new population based on the mating_pool """
   new_population = []
@@ -88,11 +73,11 @@ def reproduce(mating_pool, population_size, mutation_rate, filter): # + filter
   return Population(molecules=new_population)
 
 
-def sanitize(population, population_size, prune_population):
+def sanitize(molecules, population_size, prune_population):
     if prune_population:
       smiles_list = []
       new_population = Population()
-      for individual in population.molecules:
+      for individual in molecules:
         copy_individual = copy.deepcopy(individual)
         if copy_individual.smiles not in smiles_list:
             smiles_list.append(copy_individual.smiles)
@@ -101,11 +86,9 @@ def sanitize(population, population_size, prune_population):
       copy_population = copy.deepcopy(population)
       new_population = Population(molecules=copy_population.molecules)
 
-    new_population.sortby('score', reverse=True)
-    new_population.molecules = new_population.molecules[:population_size]
+    new_population.prune(population_size)
+    
     return new_population
 
 if __name__ == "__main__":
     pass
-
-# %%

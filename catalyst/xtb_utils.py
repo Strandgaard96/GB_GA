@@ -39,7 +39,7 @@ def write_xtb_input_files(fragment, name, destination='.'):
         file_paths.append(file_path)
     return file_paths
 
-def xtb_optimize(mol, name=None, constrains=None, charge=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1, warning_logger=None):
+def xtb_optimize(mol, name=None, constrains=None, charge=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1):
     org_dir = os.getcwd()
     if isinstance(mol, Chem.rdchem.Mol):
         if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
@@ -87,11 +87,7 @@ def xtb_optimize(mol, name=None, constrains=None, charge=None, method='gfn2', so
         output, err = p.communicate()
         out_file = 'xtbopt.xyz'
         if not os.path.exists(out_file) and os.path.exists('xtblast.xyz'):
-            if warning_logger:
-                warning_logger.warning(f"Optimization for {Chem.MolToSmiles(mol)} did not converge: {os.path.dirname('xtblast.xyz')}")
-            else:
-                print(f"Optimization for {Chem.MolToSmiles(mol)} did not converge: {os.path.dirname('xtblast.xyz')}")
-            out_file = 'xtblast.xyz'            
+            raise Exception(f'xTB Optimization did not converge')         
         try:
             energy = get_energy_from_xtb_sp(out_file)
         except:

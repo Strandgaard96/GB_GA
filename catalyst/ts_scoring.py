@@ -10,7 +10,7 @@ import shutil
 import os # this is jsut vor OMP
 import sys
 sys.path.append('/home/julius/soft/GB-GA/')
-from catalyst.utils import sdf2mol, draw3d, mol_from_xyz, vis_trajectory, Timer
+from catalyst.utils import sdf2mol, draw3d, mol_from_xyz, vis_trajectory, Timer, hartree2kcalmol
 from catalyst.make_structures import ConstrainedEmbedMultipleConfsMultipleFrags, connect_cat_2d
 from catalyst.xtb_utils import xtb_optimize, write_xtb_input_files 
 ts_dummy = sdf2mol('/home/julius/soft/GB-GA/catalyst/structures/ts_dummy.sdf')
@@ -21,21 +21,26 @@ frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 
 # directory = '/home/julius/thesis/sims/ts_embed_scoring'
 
 # %%
-def ts_scoring(individual, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
-    n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
-    warning = None
-    try:
-        energy = activation_barrier(cat=individual.rdkit_mol, gen_num=individual.idx[0], ind_num=individual.idx[1], n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
-    except Exception as e:
-        warning_logger.warning(f'{individual.smiles}: {traceback.print_exc()}')
-        energy = 1000
-        warning = str(e)
-    return energy, warning
+def scale_scores(population, scaling_function, sa_screening):
+    if sa_screening:
+        for individual in population.molecules:
+            if individual.energy == None:
+                individual.score = 0
+                individual.warnings += ['No Energy']
+            else:
+                individual.score = scaling_function(individual.energy) * individual.sa_score
+    else:
+        for individual in population.molecules:
+            if individual.energy == None:
+                individual.score = 0
+                individual.warnings += ['No Energy']
+            else:
+                individual.score = scaling_function(individual.energy)
 
-def scaling_function(value, from_min=-3, from_max = 1):
+def linear_scaling(val, from_min=-1.5, from_max=1):
     to_min = 0
     to_max = 10
-    scaled_value = (-value - from_min) * (to_max - to_min) / (from_max - from_min) + to_min
+    scaled_value = (val - from_max) * (to_max - to_min) / -(from_max - from_min) + to_min
     if scaled_value > to_max:
         return to_max
     elif scaled_value < to_min:
@@ -43,7 +48,36 @@ def scaling_function(value, from_min=-3, from_max = 1):
     else:
         return scaled_value
 
-def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThreads=1, timing_logger=None, warning_logger=None, directory='.'):
+def open_linear_scaling(val, from_max=60):
+    to_min = 0
+    to_max = 10
+    scaled_value = (val - from_max) * (to_max - to_min) / -80 + to_min
+    if scaled_value > to_max:
+        return scaled_value
+    elif scaled_value < to_min:
+        return to_min
+    else:
+        return scaled_value
+
+def sigmoid_scaling(val, a=0.2, b=-15):
+    scaled_value = 10/(1 + np.exp(a*(val-b)))
+    return scaled_value
+
+def ts_scoring(individual, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
+    n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
+    warning = None
+    try:
+        energy = activation_barrier(cat=individual.rdkit_mol, gen_num=individual.idx[0], ind_num=individual.idx[1], n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, timing_logger=timing_logger, warning_logger=warning_logger, directory=directory) 
+    except Exception as e:
+        if warning_logger:
+            warning_logger.warning(f'{individual.smiles}: {traceback.print_exc()}')
+        else:
+            print(f'{individual.smiles}: {traceback.print_exc()}')
+        energy = None
+        warning = str(e)
+    return energy, warning
+
+def activation_barrier(cat, ind_num, gen_num, n_confs=5, pruneRmsThresh=-1, randomseed=101, numThreads=1, timing_logger=None, warning_logger=None, directory='.'):
     if timing_logger:
         t1 = Timer(logger=None)
         t1.start()
@@ -60,7 +94,7 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
         tries = 0
         while not angles_ok or not bonds_ok and tries < max_tries:
             ts2d_copy = copy.deepcopy(ts2d)
-            ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(mol=ts2d_copy, core=ts_dummy, numConfs=int(n_confs), randomseed=int(randomseed), numThreads=int(numThreads), force_constant=int(force_constant))
+            ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(mol=ts2d_copy, core=ts_dummy, numConfs=int(n_confs), randomseed=int(randomseed), numThreads=int(numThreads), force_constant=int(force_constant), pruneRmsThresh=pruneRmsThresh)
             if compare_angles(ts3d, ts_dummy, threshold=5):
                 angles_ok = True
             else:
@@ -72,16 +106,13 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
             tries += 1
             if tries == max_tries:
                 if warning_logger:
-                    warning_logger.warning(f'{Chem.MolToSmiles(ts2d)} Embedding was not successful in {max_tries} tries with final forceconstant={force_constant}')
-                else:
-                    print(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
-                break
+                    warning_logger.warning(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
+                raise Exception(f'Embedding was not successful in {max_tries} tries')
         # xTB optimite TS
-        ts3d_file, ts3d_energy = xtb_optimize(ts3d, method='gfnff', name=os.path.join(ind_dir, f'const_iso{i:03d}'), charge=cat_charge, constrains='/home/julius/thesis/data/constr.inp', scratchdir=directory, remove_tmp=False, return_file=True, numThreads=numThreads, warning_logger=warning_logger)
+        ts3d_file, ts3d_energy = xtb_optimize(ts3d, method='gfnff', name=os.path.join(ind_dir, f'const_iso{i:03d}'), charge=cat_charge, constrains='/home/julius/thesis/data/constr.inp', scratchdir=directory, remove_tmp=False, return_file=True, numThreads=numThreads)
         # here should be a num frag check
         ts3d_energies.append(ts3d_energy)
         ts3d_files.append(ts3d_file)
-    # try:
     ts_energy = min(ts3d_energies)
     min_e_index = ts3d_energies.index(ts_energy)
     ts_file = ts3d_files[min_e_index] # lowest energy TS constitutional isomer
@@ -90,23 +121,17 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, randomseed=101, numThre
     os.mkdir(gfn2_opt_dir)
     minE_TS_regioisomer_file = os.path.join(gfn2_opt_dir, 'minE_TS_isomer.xyz')
     shutil.move(ts_file, minE_TS_regioisomer_file)
-    minE_TS_regioisomer_opt, gfn2_ts_energy = xtb_optimize(minE_TS_regioisomer_file, method='gfn2', constrains='/home/julius/thesis/data/constr.inp', name=None, charge=cat_charge, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads, warning_logger=warning_logger)
-    # except:
-    #     if warning_logger:
-    #         warning_logger.warning(f'xTB optimization led to missmatch in number of fragments for {Chem.MolToSmiles(ts2d)}')
-    #     else:
-    #         print(f'xTB optimization led to missmatch in number of fragments for {Chem.MolToSmiles(ts2d)}')
-    #     return(-100000)
+    minE_TS_regioisomer_opt, gfn2_ts_energy = xtb_optimize(minE_TS_regioisomer_file, method='gfn2', constrains='/home/julius/thesis/data/constr.inp', name=None, charge=cat_charge, scratchdir=directory, remove_tmp=False, return_file=True, numThreads=numThreads)
     
     # splitting and calcualating cat for min E constitutional conformer
     cat_path = os.path.join(directory, os.path.join(os.path.dirname(os.path.dirname(minE_TS_regioisomer_opt)), 'catalyst'))
     os.mkdir(cat_path)
     cat_file = isolate_cat_from_xyz(minE_TS_regioisomer_opt, os.path.join(cat_path, 'cat.xyz'))
-    cat_opt_file, cat_energy = xtb_optimize(cat_file, name=None, method='gfn2', charge=cat_charge, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads, warning_logger=warning_logger)
+    cat_opt_file, cat_energy = xtb_optimize(cat_file, name=None, method='gfn2', charge=cat_charge, scratchdir=directory, remove_tmp=False,return_file=True, numThreads=numThreads)
     if timing_logger:
         elapsed_time = t1.stop()
         timing_logger.info(f'{Chem.MolToSmiles(cat)} : {elapsed_time:0.4f} seconds')
-    return gfn2_ts_energy-cat_energy-frag_energies
+    return hartree2kcalmol(gfn2_ts_energy-cat_energy-frag_energies)
 
 def isolate_cat(mol, scarfold):
     cat = AllChem.ReplaceCore(mol, scarfold, replaceDummies=False)
@@ -201,4 +226,13 @@ if __name__ == '__main__':
     for i, mol in enumerate(population):
         result = activation_barrier(cat=mol, ind_num=i, gen_num=0, n_confs=1, randomseed=101, numThreads=4, directory=directory)
         results.append(result)
+
+
+# %%
+lll = []
+run = 1
+# embedding
+for i in range(20):
+    lll.append(f'/home/julius/thesis/scripts/n_confs/run{run}/G{run:02d}_I20/const_iso000/conf0{i:02d}/xtbopt.xyz') 
+draw3d(lll)
 # %%

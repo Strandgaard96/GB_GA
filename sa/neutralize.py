@@ -81,7 +81,6 @@ def reweigh_scores_by_sa(population):
     sa_scores = sa_score_modifier([calculateScore(individual.neutral_rdkit_mol) for individual in population.molecules])
     for individual, sa_score in zip(population.molecules, sa_scores):
         individual.sa_score = sa_score
-    population.update()
 
 if __name__ == '__main__':
     s_q = "c1ccccc1C(C(=O)[O-])c2ccccc2"

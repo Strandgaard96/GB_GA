@@ -53,22 +53,22 @@ def make_mating_pool(population, mating_pool_size):
   fitness = population.get('normalized_fitness')
   mating_pool = []
   for _ in range(mating_pool_size):
-  	mating_pool.append(copy.deepcopy(np.random.choice(population.molecules, p=fitness).rdkit_mol))
+  	mating_pool.append(copy.deepcopy(np.random.choice(population.molecules, p=fitness)))
 
-  return mating_pool
+  return mating_pool # list of Individuals
 
 def reproduce(mating_pool, population_size, mutation_rate, filter): # + filter
   """ Creates a new population based on the mating_pool """
   new_population = []
   while len(new_population) < population_size:
-    parent_A = random.choice(mating_pool)
-    parent_B = random.choice(mating_pool)
-    new_child = co.crossover(parent_A, parent_B, filter)
+    parent_A = copy.deepcopy(random.choice(mating_pool))
+    parent_B = copy.deepcopy(random.choice(mating_pool))
+    new_child = co.crossover(parent_A.rdkit_mol, parent_B.rdkit_mol, filter)
     if new_child != None:
       mutated_child = mu.mutate(new_child, mutation_rate, filter)
       if mutated_child != None:
         #print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
-        new_population.append(Individual(rdkit_mol=mutated_child))
+        new_population.append(Individual(rdkit_mol=mutated_child, parentA_idx=parent_A.idx, parentB_idx=parent_B.idx))
 
   return Population(molecules=new_population)
 
@@ -82,9 +82,9 @@ def sanitize(molecules, population_size, prune_population):
         if copy_individual.smiles not in smiles_list:
             smiles_list.append(copy_individual.smiles)
             new_population.molecules.append(copy_individual)
-    else:
-      copy_population = copy.deepcopy(population)
-      new_population = Population(molecules=copy_population.molecules)
+    # else:
+    #   copy_population = copy.deepcopy(molecules)
+    #   new_population = Population(molecules=copy_population.molecules)
 
     new_population.prune(population_size)
     

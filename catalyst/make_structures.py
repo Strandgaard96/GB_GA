@@ -2,12 +2,18 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+# for handlin of RDkit Errors
+from io import StringIO
+import sys
+Chem.WrapLogs()
+
 # %% 
 def connect_cat_2d(mol_with_dummy, cat):
     """Replaces Dummy Atom [*] in Mol with Cat via tertiary Amine, return list of all possible regioisomers"""
     dummy = Chem.MolFromSmiles('*')
     mols = []
     cat = Chem.AddHs(cat)
+    AllChem.AssignStereochemistry(cat)
     tert_amines = cat.GetSubstructMatches(
         Chem.MolFromSmarts('[#7X3;H0;D3;!+1]'))
     for amine in tert_amines:
@@ -100,10 +106,15 @@ def ConstrainedEmbedMultipleConfs(mol, core, numConfs=10, useTethers=True, coreC
     return mol
 
 def ConstrainedEmbedMultipleConfsMultipleFrags(mol, core, numConfs=10, useTethers=True, coreConfId=-1, randomseed=2342,
-                     getForceField=AllChem.UFFGetMoleculeForceField, numThreads=1, force_constant=1e3):
+                     getForceField=AllChem.UFFGetMoleculeForceField, numThreads=1, force_constant=1e3, pruneRmsThresh=1):
     match = mol.GetSubstructMatch(core)
     if not match:
         raise ValueError("molecule doesn't match the core")
+    sio = sys.stderr = StringIO()
+    if not AllChem.UFFHasAllMoleculeParams(mol):
+        raise Exception(Chem.MolToSmiles(mol), sio.getvalue())
+        sio = sys.stderr = StringIO()
+        
     coordMap = {}
     coreConf = core.GetConformer(coreConfId)
     for i, idxI in enumerate(match):
@@ -112,7 +123,7 @@ def ConstrainedEmbedMultipleConfsMultipleFrags(mol, core, numConfs=10, useTether
 
     mol_bonded = frags2bonded(mol)
     cids = AllChem.EmbedMultipleConfs(
-            mol=mol_bonded, numConfs=numConfs, coordMap=coordMap, randomSeed=randomseed, numThreads=numThreads)
+            mol=mol_bonded, numConfs=numConfs, coordMap=coordMap, randomSeed=randomseed, numThreads=numThreads, pruneRmsThresh=pruneRmsThresh, useRandomCoords=True)
     mol = bonded2frags(mol_bonded)
     Chem.SanitizeMol(mol)
 
@@ -139,12 +150,15 @@ def ConstrainedEmbedMultipleConfsMultipleFrags(mol, core, numConfs=10, useTether
     return mol
 
 
-def check_num_frags(mol, num_frags):
-    if len(Chem.GetMolFrags(mol)) != num_frags:
-        print(f'{Chem.MolToSmiles(mol)} has {len(Chem.GetMolFrags(mol))} frags')
-        return False
-    else:
-        return True
+# def check_num_frags(mol, num_frags, warning_logger=None):
+#     if len(Chem.GetMolFrags(mol)) != num_frags:
+#         if warning_logger:
+#             warning_logger.warning(f'{Chem.MolToSmiles(mol)} has {len(Chem.GetMolFrags(mol))} frags')
+#         else:
+#             print(f'{Chem.MolToSmiles(mol)} has {len(Chem.GetMolFrags(mol))} frags')
+#         return False
+#     else:
+#         return True
 
 
 # %%

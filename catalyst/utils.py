@@ -190,6 +190,11 @@ class Population:
     def __post_init__(self):
         self.size = len(self.molecules)
 
+    def clean_mutated_flag(self):
+       for mol in self.molecules:
+           mol.mutated = False 
+
+
     def assign_idx(self):
         for i, molecule in enumerate(self.molecules):
             setattr(molecule, 'idx', (self.generation_num, i))

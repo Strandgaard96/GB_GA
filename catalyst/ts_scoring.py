@@ -13,6 +13,7 @@ sys.path.append('/home/julius/soft/GB-GA/')
 from catalyst.utils import sdf2mol, draw3d, mol_from_xyz, vis_trajectory, Timer, hartree2kcalmol
 from catalyst.make_structures import ConstrainedEmbedMultipleConfsMultipleFrags, connect_cat_2d
 from catalyst.xtb_utils import xtb_optimize, write_xtb_input_files 
+from catalyst.fitness_scaling import scale_scores, linear_scaling, open_linear_scaling, exponential_scaling, sigmoid_scaling
 ts_dummy = sdf2mol('/home/julius/soft/GB-GA/catalyst/structures/ts_dummy.sdf')
 frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 34 atoms
 
@@ -21,47 +22,7 @@ frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 
 # directory = '/home/julius/thesis/sims/ts_embed_scoring'
 
 # %%
-def scale_scores(population, scaling_function, sa_screening):
-    if sa_screening:
-        for individual in population.molecules:
-            if individual.energy == None:
-                individual.score = 0
-                individual.warnings += ['No Energy']
-            else:
-                individual.score = scaling_function(individual.energy) * individual.sa_score
-    else:
-        for individual in population.molecules:
-            if individual.energy == None:
-                individual.score = 0
-                individual.warnings += ['No Energy']
-            else:
-                individual.score = scaling_function(individual.energy)
 
-def linear_scaling(val, from_min=-1.5, from_max=1):
-    to_min = 0
-    to_max = 10
-    scaled_value = (val - from_max) * (to_max - to_min) / -(from_max - from_min) + to_min
-    if scaled_value > to_max:
-        return to_max
-    elif scaled_value < to_min:
-        return to_min
-    else:
-        return scaled_value
-
-def open_linear_scaling(val, from_max=60):
-    to_min = 0
-    to_max = 10
-    scaled_value = (val - from_max) * (to_max - to_min) / -80 + to_min
-    if scaled_value > to_max:
-        return scaled_value
-    elif scaled_value < to_min:
-        return to_min
-    else:
-        return scaled_value
-
-def sigmoid_scaling(val, a=0.2, b=-15):
-    scaled_value = 10/(1 + np.exp(a*(val-b)))
-    return scaled_value
 
 def ts_scoring(individual, args_list): # to be used in calculate_scores_parallel(population,final_scoring,[gen_num, n_confs, randomseed],n_cpus)
     n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
@@ -133,22 +94,6 @@ def activation_barrier(cat, ind_num, gen_num, n_confs=5, pruneRmsThresh=-1, rand
         timing_logger.info(f'{Chem.MolToSmiles(cat)} : {elapsed_time:0.4f} seconds')
     return hartree2kcalmol(gfn2_ts_energy-cat_energy-frag_energies)
 
-def isolate_cat(mol, scarfold):
-    cat = AllChem.ReplaceCore(mol, scarfold, replaceDummies=False)
-    for atom in cat.GetAtoms():
-        if atom.GetAtomicNum() == 0:
-            dummy_atom = atom
-            break
-    for atom in dummy_atom.GetNeighbors():
-        if atom.GetAtomicNum() == 7 and atom.GetFormalCharge() == 1:
-            quart_amine = atom
-            break
-    quart_amine.SetFormalCharge(0)
-    edmol = Chem.EditableMol(cat)
-    edmol.RemoveAtom(dummy_atom.GetIdx())
-    cat = edmol.GetMol()
-    Chem.SanitizeMol(cat)
-    return cat
 
 def isolate_cat_from_xyz(xyz_file, cat_xyz, num_atoms_scarfold=34):
     common_path = os.path.dirname(xyz_file)

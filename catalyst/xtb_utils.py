@@ -39,7 +39,7 @@ def write_xtb_input_files(fragment, name, destination='.'):
         file_paths.append(file_path)
     return file_paths
 
-def xtb_optimize(mol, name=None, constrains=None, charge=None, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1):
+def xtb_optimize(mol, name=None, constrains=None, charge=0, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1):
     org_dir = os.getcwd()
     if isinstance(mol, Chem.rdchem.Mol):
         if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
@@ -106,7 +106,7 @@ def xtb_optimize(mol, name=None, constrains=None, charge=None, method='gfn2', so
     else:
         atoms, _, coordinates = read_xyz_file(min_e_file)
         # takes charge as defined before optimization
-        new_mol = xyz2mol(atoms, coordinates, true_charge)
+        new_mol = xyz2mol(atoms, coordinates, charge)
         return new_mol, energy
 
 def run_xtb_path(reactant_file, product_file, inp_file='/home/julius/thesis/data/path_template_allatoms.inp', charge=0, numThreads=1):

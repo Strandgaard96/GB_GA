@@ -65,10 +65,10 @@ def reproduce(mating_pool, population_size, mutation_rate, filter): # + filter
     parent_B = copy.deepcopy(random.choice(mating_pool))
     new_child = co.crossover(parent_A.rdkit_mol, parent_B.rdkit_mol, filter)
     if new_child != None:
-      mutated_child = mu.mutate(new_child, mutation_rate, filter)
+      mutated_child, mutated = mu.mutate(new_child, mutation_rate, filter)
       if mutated_child != None:
         #print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
-        new_population.append(Individual(rdkit_mol=mutated_child, parentA_idx=parent_A.idx, parentB_idx=parent_B.idx))
+        new_population.append(Individual(rdkit_mol=mutated_child, parentA_idx=parent_A.idx, parentB_idx=parent_B.idx, mutated=mutated))
 
   return Population(molecules=new_population)
 

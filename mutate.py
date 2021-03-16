@@ -95,7 +95,7 @@ def change_atom(mol):
 def mutate(mol,mutation_rate, filter):
 
   if random.random() > mutation_rate:
-    return mol
+    return mol, False
   
   Chem.Kekulize(mol,clearAromaticFlags=True)
   p = [0.15,0.14,0.14,0.14,0.14,0.14,0.15]
@@ -124,9 +124,9 @@ def mutate(mol,mutation_rate, filter):
         new_mols.append(m)
     
     if len(new_mols) > 0:
-      return random.choice(new_mols)
+      return random.choice(new_mols), True
   
-  return None
+  return None, None
 
 if __name__ == "__main__":
     pass

@@ -148,7 +148,6 @@ import pandas as pd
 # plt.plot(test,out)
 
 # %%
-# %%
 
 @dataclass
 class Individual:
@@ -163,6 +162,7 @@ class Individual:
     sa_score:           float = field(default=None, repr=False, compare=False)
     normalized_fitness: float = field(default=None, repr=False, compare=False)
     neutral_rdkit_mol:  Chem.rdchem.Mol = field(init=False, repr=False, compare=False)
+    mutated:            bool = field(default=False, repr=False, compare=False)
     warnings:           List[str] = field(default_factory=list, repr=False, compare=False) 
 
     def __post_init__(self):
@@ -365,26 +365,18 @@ if __name__ == '__main__':
     sys.path.append('/home/julius/soft/GB-GA/')
     import GB_GA as ga 
 
-    def load_GA(pkl):
-        with open(pkl, "rb") as rfp:
-            ga = GA_run()
-            while True:
-                try:
-                    generation = pickle.load(rfp)
-                    ga.append_gen(generation)
-                except EOFError:
-                    break
-        return ga
-
 # %%
-    ga = load_GA('/home/julius/thesis/data/ZINC_scoring/ts_scoring/GA_output.pkl')
+    ga = load_GA('/home/julius/soft/GB-GA/GB-GA_catalyst/lin_scaling/GA_output.pkl')
     
 # %%
     ind1 = Individual(Chem.MolFromSmiles('CCC'), energy=100, score=1)
     ind2 = Individual(Chem.MolFromSmiles('CNC'), energy=None, score=None)
-    ind3 = Individual(Chem.MolFromSmiles('COC'), energy=-2, score=10)
-
-    pop = Population(generation_num=0, molecules=[ind1,ind2,ind3])
+    ind3 = Individual(Chem.MolFromSmiles('COC'), energy=-2, score=10)    
+    ind4 = Individual(Chem.MolFromSmiles('O'), energy=-2, score=10)
+    ind5 = Individual(Chem.MolFromSmiles('CCCCCC'), energy=-2, score=10)
+    
+    
+    pop = Population(generation_num=0, molecules=[ind1,ind2,ind3,ind4,ind5])
     pop.assign_idx()
 
 # %%

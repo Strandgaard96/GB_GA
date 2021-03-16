@@ -106,7 +106,7 @@ def ConstrainedEmbedMultipleConfs(mol, core, numConfs=10, useTethers=True, coreC
     return mol
 
 def ConstrainedEmbedMultipleConfsMultipleFrags(mol, core, numConfs=10, useTethers=True, coreConfId=-1, randomseed=2342,
-                     getForceField=AllChem.UFFGetMoleculeForceField, numThreads=1, force_constant=1e3, pruneRmsThresh=1):
+                     getForceField=AllChem.UFFGetMoleculeForceField, numThreads=1, force_constant=1e3, pruneRmsThresh=1, atoms2join=((1,11), (11,29))):
     match = mol.GetSubstructMatch(core)
     if not match:
         raise ValueError("molecule doesn't match the core")
@@ -121,10 +121,10 @@ def ConstrainedEmbedMultipleConfsMultipleFrags(mol, core, numConfs=10, useTether
         corePtI = coreConf.GetAtomPosition(i)
         coordMap[idxI] = corePtI
 
-    mol_bonded = frags2bonded(mol)
+    mol_bonded = frags2bonded(mol,atoms2join=atoms2join)
     cids = AllChem.EmbedMultipleConfs(
             mol=mol_bonded, numConfs=numConfs, coordMap=coordMap, randomSeed=randomseed, numThreads=numThreads, pruneRmsThresh=pruneRmsThresh, useRandomCoords=True)
-    mol = bonded2frags(mol_bonded)
+    mol = bonded2frags(mol_bonded, atoms2frag=atoms2join)
     Chem.SanitizeMol(mol)
 
     cids = list(cids)

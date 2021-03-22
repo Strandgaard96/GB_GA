@@ -6,10 +6,10 @@ PWD=`pwd`
 JOB_NAME='GBGA_0432'
 outfile=log_GBGA.tar.gz
 
-PARTITION=mko
-TIME=24:00:00
+PARTITION=shortcoms
+TIME=168:00:00
 NCPUS=$1
-MEM=8GB
+MEM=12GB
 
 cat > $SUBMIT <<!EOF
 #!/bin/sh
@@ -35,7 +35,7 @@ cp /home/julius/soft/GB-GA/neutralize.json .
 export XTBHOME=/home/julius/soft/xtb-6.3.3/bin
 ulimit -s unlimited
 
-/home/julius/soft/miniconda3/envs/default/bin/python /home/julius/soft/GB-GA/GB-GA_catalyst/GA_catalyst.py $1 /scratch/\$SLURM_JOB_ID/all_generations/
+/home/julius/soft/miniconda3/envs/default/bin/python /home/julius/soft/GB-GA/GB-GA_catalyst/multiple_GA_catalyst.py $PWD $1 /scratch/\$SLURM_JOB_ID/all_generations/
 
 tar -czf $outfile -C /scratch/\$SLURM_JOB_ID/ .
 cp $outfile $PWD

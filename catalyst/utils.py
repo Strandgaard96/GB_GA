@@ -138,20 +138,14 @@ import pandas as pd
 
 
 
-# # %%
-# import matplotlib.pyplot as plt
-
-# test = np.linspace(-4,4)
-# out = []
-# for val in test:
-#     out.append(scaling_function(val, method='other'))
-# plt.plot(test,out)
 
 # %%
 
 @dataclass
 class Individual:
     rdkit_mol:          Chem.rdchem.Mol = field(repr=False, compare=False)
+    # tert_amine_idx:     
+    origin:             tuple = field(default=(None,None), repr=False, compare=False)
     smiles:             str = field(init=False, compare=True, repr=True)
     idx:                tuple = field(default=(None,None), repr=False, compare=False)
     parentA_idx:        tuple = field(default=None, repr=False, compare=False)
@@ -190,14 +184,19 @@ class Population:
     def __post_init__(self):
         self.size = len(self.molecules)
 
-    def clean_mutated_flag(self):
+    def clean_mutated_survival_and_parents(self):
        for mol in self.molecules:
-           mol.mutated = False 
+           mol.mutated = False
+           mol.parentA_idx = None
+           mol.parentB_idx = None
+           mol.survival_idx = None
 
 
     def assign_idx(self):
         for i, molecule in enumerate(self.molecules):
             setattr(molecule, 'idx', (self.generation_num, i))
+            if molecule.origin == (None, None):
+                setattr(molecule, 'origin', (self.generation_num, i))
         self.size = len(self.molecules)
     
     # def update(self):
@@ -254,8 +253,8 @@ class Generation:
         if self.generation_num != self.children.generation_num or self.generation_num != self.survivors.generation_num:
             raise Warning(f'Generation {self.generation_num} has Children from generation {self.children.generation_num} and survivors from generation {self.survivors.generation_num}')
 
-    def save(self, directory):
-        filename = os.path.join(directory, 'GA_output.pkl')
+    def save(self, directory, run=0):
+        filename = os.path.join(directory, f'GA{run:02d}.pkl')
         with open(filename, 'ab+') as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 

@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import subprocess
 
 from rdkit import Chem
 from rdkit.Chem import GetPeriodicTable
@@ -36,19 +37,70 @@ def write_gaussian_input_file(fragment, fragment_name, command='opt freq b3lyp/6
             file.write(f'\n')
     return file_name
 
-def compute_dft(mol, name=None, directory='.', command='opt freq b3lyp/6-31+g(d,p) scrf=(smd,solvent=methanol) empiricaldispersion=gd3', constr=None):
+def compute_dft(mol, name=None, directory='.', command='opt freq b3lyp/6-31+g(d,p) scrf=(smd,solvent=methanol) empiricaldispersion=gd3', constr=None, cpus=4):
     orgdir= os.getcwd()
     if not name:
         name = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     dir = os.path.join(directory, name)
     os.mkdir(dir)
     os.chdir(dir)
-    file_name = write_gaussian_input_file(mol, 'tsguess', constr=constr, command=command)
+    file_name = write_gaussian_input_file(mol, 'tsguess', constr=constr, command=command, cpus=cpus)
     # out = shell(f'/opt/gaussian/g16/legacy/g16/g16 < {file_name}.com > dft.out', shell=False)
     os.system(f'submit_gaussian_legacy {file_name}')
     os.chdir(orgdir)
 
-def compute_freq(oldchk, directory='.', command="freq external='~/soft/gau_xtb/xtb.sh' Geom=AllCheckpoint", mem=4, cpus=4):
+def make_gaussian_constrained_opt(xyz_file, bond_pairs_changed, charge):
+    """
+    This function prepares a Gaussian input file for a constrained
+    optimization freezing the bonds broken or created during the reaction.
+    The .com file is submitted to slurm using 'submit_gaus16' which returns a
+    jobid used to monitor the job
+    """
+    n_frozen_bonds = len(bond_pairs_changed)
+    com_file = xyz_file[:-4]+'_opt.com'
+    with open(com_file, 'w') as _file:
+        _file.write('%mem=1GB'+'\n')
+        _file.write('%nprocshared=1'+'\n')
+        _file.write("#opt external='~/soft/gau_xtb/xtb.sh' int=ultrafine ")# geom(modredundant, gic) ")
+        _file.write('scf=(maxcycles=1024)'+'\n\n')
+        _file.write(f'constroptxtb'+'\n\n')
+        _file.write(f'{charge} 1'+'\n') #hardcoded to neutral singlet, change if needed
+        with open(xyz_file, 'r') as file_in:
+            lines = file_in.readlines()
+            lines = lines[2:]
+            _file.writelines(lines)
+        _file.write('\n')
+        # for i, bond_pair in zip(range(n_frozen_bonds), bond_pairs_changed):
+        #     _file.write('bond'+str(i)+'(freeze)=B('+str(bond_pair[0]+1)+',')
+        #     _file.write(str(bond_pair[1]+1)+')'+'\n')
+        # _file.write('\n')
+
+        p = subprocess.Popen(f'submit_gaussian_legacy {com_file}', cwd=os.path.dirname(com_file), shell=True)
+        out_file = com_file[:-4]+".out"
+    return out_file
+
+def gauxtb(com_file):
+    orgdir= os.getcwd()
+    dir = os.path.dirname(com_file)
+    os.chdir(dir)
+    # out = shell(f'/opt/gaussian/g16/legacy/g16/g16 < {file_name}.com > dft.out', shell=False)
+    # os.system(f'submit_gaussian_legacy {com_file}')
+    p = subprocess.Popen(f'submit_gaussian_legacy ts_guess.com', shell=True)
+    _, _ = p.communicate()
+    os.chdir(orgdir)
+
+def subsequent_dft(oldchk, command='opt=(TS,noeigentest,calcfc) b3lyp/6-31+g(d,p) scrf=(smd,solvent=methanol) empiricaldispersion=gd3 Geom=AllCheckpoint', mem=4, cpus=4):
+    file_name = os.path.join(os.path.dirname(oldchk), 'dft_ts.com')
+    with open(file_name, "w") as file:
+        file.write(f'%mem={mem}GB\n%nprocshared={cpus}\n%oldchk={oldchk}\n%chk=dft_ts.chk\n# {command}\n\n\n')
+    # out = shell(f'/opt/gaussian/g16/legacy/g16/g16 < {file_name}.com > dft.out', shell=False)
+    orgdir= os.getcwd()
+    os.chdir(os.path.dirname(file_name))
+    p = subprocess.Popen(f'submit_gaussian_legacy dft_ts.com', shell=True)
+    _, _ = p.communicate()
+    os.chdir(orgdir)
+
+def compute_freq(oldchk, directory='.', command="freq external='~/soft/gau_xtb/xtb.sh' Geom=AllCheckpoint", mem=4, cpus=1):
     file_name = os.path.join(directory, 'tsfreq.com')
     if os.path.exists(file_name):
             os.remove(file_name)
@@ -58,8 +110,20 @@ def compute_freq(oldchk, directory='.', command="freq external='~/soft/gau_xtb/x
     orgdir= os.getcwd()
     os.chdir(os.path.dirname(file_name))
     print(os.getcwd())
-    os.system(f'submit_gaussian_legacy tsfreq.com')
+    p = subprocess.Popen(f'submit_gaussian_legacy tsfreq.com', shell=True)
+    _, _ = p.communicate()
     os.chdir(orgdir)
+
+def get_energy(out_file):
+    with open(out_file, 'r') as ofile:
+        line = ofile.readline()
+        while line:
+            if 'Recovered energy=' in line: # this is for externally calcualted energy
+                energy = float(line.split('=')[1].split(' ')[1])
+            if 'SCF Done:' in line:# this is for internally calculated energy
+                energy = float(line. split(':')[1]. split('=')[1].split('A.U.')[0])
+            line = ofile.readline()
+    return energy
 
 def extract_optimized_structure(out_file, return_mol=True, returnE=False):
     """

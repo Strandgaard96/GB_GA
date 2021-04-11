@@ -25,7 +25,7 @@ molecule_filter = filters.get_molecule_filters(None, '/home/julius/soft/GB-GA/fi
 
 # %%
 def GA(args):
-    population_size, file_name, scoring_function, scaling_function, generations, mating_pool_size, mutation_rate,\
+    population_size, file_name, scoring_script, scaling_function, generations, mating_pool_size, mutation_rate, crossover_rate,\
         scoring_args, prune_population, n_cpus, sa_screening, randomseed, run, dest_dir = args
 
     cpus_per_worker = int(np.ceil(n_cpus/population_size))
@@ -35,7 +35,7 @@ def GA(args):
     # sort molecules descending in size
     population.molecules.sort(
         key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
-    sc.calculate_scores_parallel(population=population, function=scoring_function,
+    sc.run_slurm_scores(population=population, scoring_script=scoring_script,
                                  scoring_args=scoring_args, n_cpus=n_cpus, cpus_per_worker=cpus_per_worker)
 
     if sa_screening:
@@ -50,20 +50,24 @@ def GA(args):
                      survivors=population)
     gen.save(dest_dir, run=run)
     gen.print()
+    stagnation_count = 0
+    stagnation = False
 
     for generation in range(generations):
         generation_num = generation+1
         population.clean_mutated_survival_and_parents()
         # Making new Children
         mating_pool = ga.make_mating_pool(population, mating_pool_size)
+        # new_population = ga.reproduce2(
+        #     mating_pool, population_size, mutation_rate, crossover_rate ,filter=molecule_filter)
         new_population = ga.reproduce(
             mating_pool, population_size, mutation_rate, filter=molecule_filter)
         new_population.generation_num = generation_num
         new_population.assign_idx()
         population.molecules.sort(
             key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
-        sc.calculate_scores_parallel(
-            population=new_population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus, cpus_per_worker=cpus_per_worker)
+        sc.run_slurm_scores(
+            population=new_population, scoring_script=scoring_script, scoring_args=scoring_args, n_cpus=n_cpus, cpus_per_worker=cpus_per_worker)
         if sa_screening:
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
@@ -84,6 +88,21 @@ def GA(args):
 
         gen = Generation(generation_num=generation_num,
                          children=new_population, survivors=population)
+
+        # num_new_children = len([x.parentB_idx for x in gen.survivors.molecules if type(x.parentB_idx) == tuple])
+
+        # if not stagnation:
+        #     if num_new_children < population_size*0.1:
+        #         stagnation_count += 1
+        #     else:
+        #         stagnation_count = 0
+        #     if stagnation_count == 3:
+        #         stagnation = True
+            
+        # else:
+        #     crossover_rate = 0
+        #     mutation_rate = 1
+        
         gen.save(dest_dir, run=run)
         gen.print()
 
@@ -126,6 +145,7 @@ if __name__ == '__main__':
     mating_pool_size = population_size
     generations = 8
     mutation_rate = 0.5
+    crossover_rate = 1
     co.average_size = 25.
     co.size_stdev = 5.
     prune_population = True
@@ -159,7 +179,7 @@ if __name__ == '__main__':
     t0 = time.time()
 
     args = [population_size, file_name, scoring_function, scaling_function, generations, mating_pool_size,
-            mutation_rate, scoring_args, prune_population, n_cpus, sa_screening, randomseed, 0, dest_dir]
+            mutation_rate, crossover_rate, scoring_args, prune_population, n_cpus, sa_screening, randomseed, 0, dest_dir]
     # Run the GA
     GA(args)
 

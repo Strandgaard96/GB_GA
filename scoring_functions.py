@@ -19,6 +19,8 @@ import os
 import shutil
 import string
 import random
+import pickle
+import time
 
 import sascorer
 
@@ -34,6 +36,60 @@ from catalyst.utils import Population
 # logP_std= np.std(logP_values)
 # cycle_mean = np.mean(cycle_scores)
 # cycle_std=np.std(cycle_scores)
+
+def wait_for_jobs_to_finish(job_ids):
+  """
+  This script checks with slurm if a specific set of jobids is finished with a
+  frequency of 1 minute.
+  Stops when the jobs are done.
+  """
+  while True:
+    job_info1 = os.popen("squeue -p mko").readlines()[1:]
+    job_info2 = os.popen("squeue -a -u julius").readlines()[1:]
+    current_jobs1 = {int(job.split()[0]) for job in job_info1}
+    current_jobs2 = {int(job.split()[0]) for job in job_info2}
+    current_jobs = current_jobs1|current_jobs2
+    if current_jobs.isdisjoint(job_ids):
+      break
+    else:
+      time.sleep(30)
+
+def run_slurm_scores(population, scoring_script, scoring_args, n_cpus, cpus_per_worker=1, consecutive_mols_per_worker=1): 
+  n_confs, randomseed, timing_logger, warning_logger, directory = scoring_args
+  gen_dir = os.path.join(directory, f'gen{population.generation_num:02d}') # is a temp dir just for scoring results
+  os.makedirs(gen_dir)
+  jobids = []
+  for individual in population.molecules:
+    time.sleep(2)
+    jobid = slurm_score(individual, scoring_script, n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_worker, os.path.abspath(gen_dir))
+    jobids.append(jobid)
+  wait_for_jobs_to_finish(set(jobids))
+
+  individuals = []
+  files = os.listdir(gen_dir)
+  files.sort()
+  for f in files:
+    if f.endswith('.pkl'):
+      with open(os.path.join(gen_dir, f), 'rb') as _file:
+        individual = pickle.load(_file)
+      individuals.append(individual)
+  population.molecules = individuals
+  shutil.rmtree(gen_dir)
+
+def slurm_score(individual, scoring_script, n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule, cwd):
+  filename = f'G{individual.idx[0]:02d}_I{individual.idx[1]:02d}.pkl'
+  pkl_file = os.path.join(cwd, filename)
+  with open(pkl_file, 'wb+') as ind_file:
+    pickle.dump(individual, ind_file)
+  p = subprocess.Popen(f'bash /home/julius/soft/GB-GA/catalyst/submit_scoring.sh {scoring_script} {filename} {n_confs} {randomseed} {timing_logger} {warning_logger} {directory} {cpus_per_molecule}', shell=True, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  output, err = p.communicate()
+  try:
+    jobid = int(output.split()[-1])
+    return jobid
+  except Exception as e:
+    with open('/home/julius/thesis/errors.err', 'w+') as err:
+      err.write(f'\nError: {str(e)}')
+  
 
 def calculate_score(args):
   '''Parallelize at the score level (not currently in use)'''
@@ -52,8 +108,7 @@ def calculate_scores_parallel(population, function, scoring_args, n_cpus, cpus_p
   with Pool(processes=workers, maxtasksperchild=consecutive_mols_per_worker) as pool: #int(n_cpus%cpus_per_molecule
     list_of_values_warning = pool.map(calculate_score, args_list)
   population.setprop('energy', [i[0] for i in list_of_values_warning])
-  population.appendprop('warnings', [i[1] for i in list_of_values_warning])
-  
+  population.appendprop('warnings', [i[1] for i in list_of_values_warning])  
 
 def calculate_scores(population,function,scoring_args):
   scores = []
@@ -61,7 +116,7 @@ def calculate_scores(population,function,scoring_args):
     score = function(gene,scoring_args)
     scores.append(score)
 
-  return scores 
+  return scores
 
 def logP_max(m, dummy):
   score = logP_score(m)
@@ -251,4 +306,3 @@ if __name__ == "__main__":
 
   score = absorbance_target(mol,[n_confs, xtb_path, target, sigma, threshold])
   print(score)
-

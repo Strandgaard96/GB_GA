@@ -3,6 +3,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
+import time
 import traceback
 import json
 import subprocess
@@ -25,28 +26,32 @@ frag_energies = np.sum([-8.232710038092, -19.734652802142, -32.543971411432]) # 
 def path_scoring(individual, args_list):
     n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule = args_list
     warning = None
+    ind_dir = os.path.join(directory, f'G{individual.idx[0]:02d}_I{individual.idx[1]:02d}')
     try:
-        if timing_logger:
-            t1 = Timer(logger=None)
-            t1.start()
+        # if timing_logger:
+        #     t1 = Timer(logger=None)
+        #     t1.start()
         charge = Chem.GetFormalCharge(individual.rdkit_mol)
         reactant = make_reactant(cat=individual.rdkit_mol, ind_num=individual.idx[1], gen_num=individual.idx[0], n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, warning_logger=warning_logger, directory=directory)
-        cat_energy = calc_cat(reactant=reactant, ind_directory=os.path.join(directory, f'G{individual.idx[0]:02d}_I{individual.idx[1]:02d}'), cat_charge=charge, numThreads=cpus_per_molecule)
+        cat_energy = calc_cat(reactant=reactant, ind_directory=ind_dir, cat_charge=charge, numThreads=cpus_per_molecule)
         product_file = make_product(reactant=reactant, cat_charge=charge, cat=individual.rdkit_mol, ind_num=individual.idx[1], gen_num=individual.idx[0], numThreads=cpus_per_molecule, directory=directory)
         path_dir = xtb_path(ind_num=individual.idx[1], gen_num=individual.idx[0], charge=charge, numThreads=cpus_per_molecule, inp_file='/home/julius/soft/GB-GA/catalyst/path_template.inp', directory=directory)
         ts_energy = run_refinement(path_dir, charge)
         energy = hartree2kcalmol(ts_energy-cat_energy-frag_energies)
-        if timing_logger:
-            elapsed_time = t1.stop()
-            timing_logger.info(f'{individual.smiles} : {elapsed_time:0.4f} seconds')
+        # if timing_logger:
+        #     elapsed_time = t1.stop()
+        #     timing_logger.info(f'{individual.smiles} : {elapsed_time:0.4f} seconds')
     except Exception as e:
-        if warning_logger:
-            warning_logger.warning(f'{individual.smiles}: {traceback.print_exc()}')
-        else:
-            print(f'{individual.smiles}: {traceback.print_exc()}')
+        # if warning_logger:
+        #     warning_logger.warning(f'{individual.smiles}: {traceback.print_exc()}')
+        # else:
+        # print(f'{individual.smiles}: {traceback.print_exc()}')
         energy = None
         warning = str(e)
-    return energy, warning
+    individual.energy = energy
+    individual.warnings.append(warning)
+    shutil.rmtree(ind_dir)
+    return individual
     
 
 
@@ -69,10 +74,10 @@ def make_reactant(cat, ind_num, gen_num, n_confs=5, pruneRmsThresh=-1, randomsee
             else:
                 force_constant = force_constant/1.2
             tries += 1
-            if tries == max_tries:
-                if warning_logger:
-                    warning_logger.warning(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
-                raise Exception(f'Embedding was not successful in {max_tries} tries')
+            # if tries == max_tries:
+            #     if warning_logger:
+            #         warning_logger.warning(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
+            #     raise Exception(f'Embedding was not successful in {max_tries} tries')
         # xTB optimite TS
         reactant3d_file, reactant3d_energy = xtb_optimize(reactant3d, method='gfnff', name=os.path.join(ind_dir, f'const_iso{i:03d}'), charge=cat_charge, constrains='/home/julius/thesis/data/constr.inp', scratchdir=directory, remove_tmp=False, return_file=True, numThreads=numThreads)
         # here should be a num frag check
@@ -99,7 +104,10 @@ def bonds_OK(mol, threshold):
     return True
 
 def isolate_cat(mol, scarfold):
-    cat = AllChem.ReplaceCore(mol, scarfold, replaceDummies=False)
+    if mol.HasSubstructMatch(scarfold):
+        cat = AllChem.ReplaceCore(mol, scarfold, replaceDummies=False)
+    else:
+        raise Exception(f'Change in BO or connectivity of Catalyst in reactant minimization (isolate_cat): {Chem.MolToSmiles(mol)}')
     for atom in cat.GetAtoms():
         if atom.GetAtomicNum() == 0:
             dummy_atom = atom
@@ -176,6 +184,12 @@ def make_product(reactant, cat_charge, cat, ind_num, gen_num, numThreads=1, dire
         if fragment.HasSubstructMatch(cat):
             catalyst = fragment
             break
+    
+    try:
+        catalyst
+    except NameError:
+        raise Exception(f'Change in BO or connectivity of Catalyst in reactant minimization (make_product): {Chem.MolToSmiles(fragments[0])} != {Chem.MolToSmiles(cat)}')
+
     cat_dummyidx = getAttachmentVector(catalyst)  # R N
     cat_overlap = cat_dummyidx + (get_connection_id(catalyst),)
     product_dummyidx = getAttachmentVector(product_dummy)  # R C
@@ -261,8 +275,20 @@ def xtb_path(ind_num, gen_num, charge, numThreads, inp_file='/home/julius/soft/G
     os.environ['MKL_NUM_THREADS'] = f'{numThreads}'
     os.environ['OMP_STACKSIZE'] = '6G'
     p = subprocess.Popen(f'/home/julius/soft/xtb-6.3.3/bin/xtb reactant.xyz --path product.xyz --input {inp_file} --gfn2 --chrg {charge} --alpb methanol --verbose > xtb_path.out', shell=True, cwd=path_dir, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, err = p.communicate()
-    return os.path.join(path_dir)
+    while p.poll() == None:
+        time.sleep(30)
+        if 'xtbpath_ts.xyz' in os.listdir(path_dir):
+            time.sleep(2) # so that xtbpath_0.xyz is completly written
+            return os.path.join(path_dir)
+        if 'xtbpath_3.xyz' in os.listdir(path_dir):
+            raise Exception(f'xTB path did not yield product in 3 runs')
+        p.poll()
+    (results, errors) = p.communicate()
+    if errors == '':
+        print(results)
+    else:
+        raise Exception(errors)    
+    
 
 def run_refinement(path_dir, charge):
     path_file = os.path.join(path_dir, 'xtbpath_0.xyz')
@@ -272,7 +298,7 @@ def run_refinement(path_dir, charge):
     run_sps(sp_dir, charge)
     inter_dir = find_xtb_max_from_sp_interpolation(sp_dir, True)
     atom_numbers_list, coordinates_list, n_atoms = get_coordinates(inter_dir)
-    make_sp_interpolation(inter_dir, atom_numbers_list, coordinates_list, n_atoms, 50)
+    make_sp_interpolation(inter_dir, atom_numbers_list, coordinates_list, n_atoms, 15)
     run_sps(inter_dir, charge)
     refined_path_ts_energy = find_xtb_max_from_sp_interpolation(inter_dir, False)
     return refined_path_ts_energy
@@ -322,7 +348,10 @@ def find_xtb_max_from_sp_interpolation(sp_directory, extract_max_structures):
         return inter_dir
     else:
         max_point = path_points[max_index]
-        shutil.copy(os.path.join(sp_directory, 'path_point_' + str(max_point)+'.xyz'), os.path.join(os.path.dirname(sp_directory), 'refined_TS.xyz'))
+        try:
+            shutil.copy(os.path.join(sp_directory, 'path_point_' + str(max_point)+'.xyz'), os.path.join(os.path.dirname(sp_directory), 'refined_TS.xyz'))
+        except:
+            pass
         return max(energies)
 
 def get_coordinates(interpolation_dir):
@@ -378,4 +407,28 @@ def make_sp_interpolation(interpolation_dir, atom_numbers_list, coordinates_list
                         path_file.write(atom_number+' ')
                         np.savetxt(_file, line, fmt='%.6f')
                         np.savetxt(path_file, line, fmt='%.6f')
+# %%
+if __name__ == '__main__':
+    import pickle
+    import sys
+    sys.path.append('/home/julius/soft/GB-GA/')
+    from catalyst.utils import Individual
 
+    ind_file = sys.argv[-7]
+    nconfs = sys.argv[-6]
+    randomseed = sys.argv[-5]
+    timing_logger = sys.argv[-4]
+    warning_logger = sys.argv[-3]
+    directory = sys.argv[-2]
+    cpus_per_molecule = sys.argv[-1]
+
+    args_list = [nconfs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule]
+    with open(ind_file, 'rb') as f:
+        ind = pickle.load(f)
+
+    individual = path_scoring(ind, args_list)
+
+    with open(ind_file, 'wb+') as new_file:
+        pickle.dump(individual, new_file)
+
+# %%

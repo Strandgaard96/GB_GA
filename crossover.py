@@ -1,3 +1,4 @@
+# %%
 '''
 Written by Jan H. Jensen 2018
 '''
@@ -92,13 +93,13 @@ def mol_issane(mol: Chem.Mol, filter) -> bool:
   """
   # always return True (molecule OK) if a filter is not supplied
   if filter is None:
-      return True
+    return True
 
   for pattern in filter:
-      if mol.HasSubstructMatch(pattern):
-        # print(smarts, row['rule_set_name']) #debug
-        # print("matches:", Chem.MolToSmarts(pattern))
-        return False
+    if mol.HasSubstructMatch(pattern):
+      # print(smarts, row['rule_set_name']) #debug
+      print("matches:", Chem.MolToSmarts(pattern))
+      return False
 
   return True
 
@@ -131,7 +132,6 @@ def mol_OK(mol, filter):
       return False
   except:
     return False
-
 
 def crossover_ring(parent_A,parent_B, filter):
   ring_smarts = Chem.MolFromSmarts('[R]')
@@ -185,7 +185,6 @@ def crossover_non_ring(parent_A,parent_B, filter):
     for fa in fragments_A:
       for fb in fragments_B:
         new_mol_trial.append(rxn.RunReactants((fa,fb))[0]) 
-                                 
     new_mols = []
     for mol in new_mol_trial:
       mol = mol[0]
@@ -203,7 +202,7 @@ def crossover(parent_A,parent_B, filter):
 	  Chem.Kekulize(parent_A,clearAromaticFlags=True)
 	  Chem.Kekulize(parent_B,clearAromaticFlags=True)
   except:
-  	pass
+    pass
   for i in range(10):
     if random.random() <= 0.5:
       #print 'non-ring crossover'
@@ -219,8 +218,8 @@ def crossover(parent_A,parent_B, filter):
         new_smiles = Chem.MolToSmiles(new_mol)
       if new_mol != None and new_smiles not in parent_smiles:
         return new_mol
-  
-  return None
+
+  return new_mol
 
 if __name__ == "__main__":
   smiles1 = 'CC(C)(C)c1ccc2occ(CC(=O)Nc3ccccc3F)c2c1'
@@ -232,9 +231,15 @@ if __name__ == "__main__":
   mol1 = Chem.MolFromSmiles(smiles1)
   mol2 = Chem.MolFromSmiles(smiles2)
 
-  child = crossover(mol1,mol2)
-  mutation_rate = 1.0
+  child = crossover(mol1,mol2, None)
+
+  # mutation_rate = 1.0
   #mutated_child = mutate(child,mutation_rate)
 
-  for i in range(100):
-    child = crossover(mol1,mol2)
+  # for i in range(100):
+  #   child = crossover(mol1,mol2, None)
+
+
+# %%
+
+# %%

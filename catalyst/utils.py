@@ -158,7 +158,8 @@ class Individual:
     neutral_rdkit_mol:  Chem.rdchem.Mol = field(init=False, repr=False, compare=False)
     mutated:            bool = field(default=False, repr=False, compare=False)
     warnings:           List[str] = field(default_factory=list, repr=False, compare=False) 
-
+    timing:             float = field(default=None, repr=False, compare=False)
+    
     def __post_init__(self):
         self.smiles = Chem.MolToSmiles(self.rdkit_mol)
         num_parents = 0
@@ -348,7 +349,7 @@ class GA_run:
         for generation in self.generations:
             generation.print(population)
 
-    def ga2pd(self, population='survivors', columns = ['score', 'energy', 'sa_score', 'rdkit_mol']):
+    def ga2pd(self, population='survivors', columns=['normalized_fitness', 'score', 'energy', 'sa_score', 'rdkit_mol', 'origin', 'parentA_idx', 'parentB_idx', 'mutated', 'warnings']):
         df = pd.concat([generation.gen2pd(population, columns=columns) for generation in self.generations])
         return df
 
@@ -370,17 +371,46 @@ if __name__ == '__main__':
     import GB_GA as ga 
 
 # %%
-    ga = load_GA('/home/julius/soft/GB-GA/GB-GA_catalyst/lin_scaling/GA_output.pkl')
+    ga_run = load_GA('/home/julius/thesis/sims/ga_runs/ts_scoring/GA00.pkl')
     
 # %%
-    ind1 = Individual(Chem.MolFromSmiles('CCC'), energy=100, score=1)
-    ind2 = Individual(Chem.MolFromSmiles('CNC'), energy=None, score=None)
-    ind3 = Individual(Chem.MolFromSmiles('COC'), energy=-2, score=10)    
-    ind4 = Individual(Chem.MolFromSmiles('O'), energy=-2, score=10)
-    ind5 = Individual(Chem.MolFromSmiles('CCCCCC'), energy=-2, score=10)
-    
-    
-    pop = Population(generation_num=0, molecules=[ind1,ind2,ind3,ind4,ind5])
-    pop.assign_idx()
+    ind1 = Individual(Chem.MolFromSmiles('N(C)(C)C'), idx=(2,5))
+    ind2 = Individual(Chem.MolFromSmiles('N(C)(O)C'), idx=(2,6))
+    ind3 = Individual(Chem.MolFromSmiles('N(C)(C)CCC'), idx=(2,7))    
+    # ind4 = Individual(Chem.MolFromSmiles('C[C@@H]1CN(C(=O)c2cc(Br)cn2C)CC[C@H]1[NH3+]'), energy=-2, score=20, sa_score=1)
+    # ind5 = Individual(Chem.MolFromSmiles('CCOc1ccc(OCC)c([C@H]2C(C#N)=C(N)N(c3ccccc3C(F)(F)F)C3=C2C(=O)CCC3)c1'), energy=-2, score=15, sa_score=1)
+    pop = Population(generation_num=2, molecules=[ind1])
+    from scoring_functions import run_slurm_scores, slurm_score
+    from catalyst.path_scoring import path_scoring
+    from catalyst.ts_scoring import ts_scoring
 
+    # slurm_score(ind1, '/home/julius/soft/GB-GA/catalyst/ts_scoring.py', 1, 101, 'a', 'b', '.', 1, '.')
+
+    pop.print()
+    run_slurm_scores(pop, '/home/julius/soft/GB-GA/catalyst/ts_scoring.py', [1, 1, 'a', 'b', '.'], 1)
+    pop.print()
+    # jobids = []
+    # for ind in [ind1,ind2]:
+    #     jobid = slurm_score(ind, 1, 1, None, None, '.', 1)
+    #     jobids.append(jobid)
+    
+    # pop = Population(generation_num=0, molecules=[ind1,ind2,ind3,ind4,ind5])
+    # pop.assign_idx()
+    # ga.calculate_normalized_fitness(pop)
+
+
+# %%
+    pop = ga_run.generations[-1].survivors
+    mating_pool = ga.make_mating_pool(pop, 3)
+# %%
+    import crossover as co
+    co.average_size = 25.
+    co.size_stdev = 5.
+    out = ga.reproduce2(mating_pool=mating_pool, population_size=3, mutation_rate=0, crossover_rate=1, filter=None) 
+
+# %%
+    with open('/home/julius/soft/GB-GA/catalyst/gen02/G02_I05.pkl', 'rb') as f:
+        out = pickle.load(f)
+# %%
+    out = ts_scoring(ind1, [1, 1, 'a', 'b', '.', 1])
 # %%

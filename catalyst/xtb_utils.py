@@ -8,6 +8,7 @@ import shutil
 import string
 import subprocess
 import logging
+import json
 
 
 # %%
@@ -39,7 +40,7 @@ def write_xtb_input_files(fragment, name, destination='.'):
         file_paths.append(file_path)
     return file_paths
 
-def xtb_optimize(mol, name=None, constrains=None, charge=0, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1):
+def xtb_optimize(mol, name=None, constrains=None, opt=True, charge=0, method='gfn2', solvent='alpb methanol', opt_level='tight', scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, return_file=False, numThreads=1):
     org_dir = os.getcwd()
     if isinstance(mol, Chem.rdchem.Mol):
         if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
@@ -79,11 +80,15 @@ def xtb_optimize(mol, name=None, constrains=None, charge=0, method='gfn2', solve
             charge_input = f'--chrg {charge}'
         else:
             charge_input = ''
+        if opt:
+            opt_input = f'--opt {opt_level}'
+        else:
+            opt_input = ''
         os.environ['OMP_NUM_THREADS'] = f'{numThreads},1'
         os.environ['MKL_NUM_THREADS'] = f'{numThreads}'
         os.environ['OMP_STACKSIZE'] = '4G'
         p = subprocess.Popen(
-            f'/home/julius/soft/xtb-6.3.3/bin/xtb --{method} {xyz_file} --opt {opt_level} {constrains_input} {solvent_input} {charge_input} --json > out.out', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            f'/home/julius/soft/xtb-6.3.3/bin/xtb --{method} {xyz_file} {opt_input} {constrains_input} {solvent_input} {charge_input} --json > out.out', shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, err = p.communicate()
         out_file = 'xtbopt.xyz'
         if not os.path.exists(out_file) and os.path.exists('xtblast.xyz'):
@@ -96,18 +101,24 @@ def xtb_optimize(mol, name=None, constrains=None, charge=0, method='gfn2', solve
         out_files.append(os.path.abspath(out_file))
     os.chdir(org_dir)
     min_e_index = energies.index(min(energies))
-    min_e_file = out_files[min_e_index]
-    shutil.copy(min_e_file, os.path.join(dest, 'min_e_conf.xyz'))
-    energy = get_energy_from_xtb_sp(os.path.join(dest, 'min_e_conf.xyz'))
-    if remove_tmp:
-        shutil.rmtree(dest)
-    if return_file:
-        return os.path.join(dest, 'min_e_conf.xyz'), energy
+    if opt:
+        min_e_file = out_files[min_e_index]
+        shutil.copy(min_e_file, os.path.join(dest, 'min_e_conf.xyz'))
+        energy = get_energy_from_xtb_sp(os.path.join(dest, 'min_e_conf.xyz'))
+        if remove_tmp:
+            shutil.rmtree(dest)
+        if return_file:
+            return os.path.join(dest, 'min_e_conf.xyz'), energy
+        else:
+            atoms, _, coordinates = read_xyz_file(min_e_file)
+            # takes charge as defined before optimization
+            new_mol = xyz2mol(atoms, coordinates, charge)
+            return new_mol, energy
     else:
-        atoms, _, coordinates = read_xyz_file(min_e_file)
-        # takes charge as defined before optimization
-        new_mol = xyz2mol(atoms, coordinates, charge)
-        return new_mol, energy
+        with open(os.path.join(dest, 'xtbout.json')) as js:
+            d = json.load(js)
+            energy = d['total energy']
+        return energy
 
 def run_xtb_path(reactant_file, product_file, inp_file='/home/julius/thesis/data/path_template_allatoms.inp', charge=0, numThreads=1):
     os.environ['OMP_NUM_THREADS'] = f'{numThreads},1'

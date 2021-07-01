@@ -12,7 +12,8 @@ _neutralize_reactions = None
 
 
 def read_neutralizers(name="neutralize"):
-    filename = f"{name}.json"
+    # filename = f"{name}.json"
+    filename = '/home/julius/soft/GB-GA/sa/neutralize.json'
     with open(filename) as json_file:
         reactions = json.load(json_file)
         neutralize_reactions = []

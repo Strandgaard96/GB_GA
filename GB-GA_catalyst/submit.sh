@@ -3,13 +3,13 @@
 SUBMIT=qsub.tmp
 
 PWD=`pwd`
-JOB_NAME='GBGA_0432'
-outfile=log_GBGA.tar.gz
+JOB_NAME='GBGA_0ts_scoring'
+outfile=log2_GBGA.tar.gz
 
 PARTITION=shortcoms
-TIME=168:00:00
+TIME=167:00:00
 NCPUS=$1
-MEM=12GB
+MEM=8GB
 
 cat > $SUBMIT <<!EOF
 #!/bin/sh
@@ -37,8 +37,9 @@ ulimit -s unlimited
 
 /home/julius/soft/miniconda3/envs/default/bin/python /home/julius/soft/GB-GA/GB-GA_catalyst/multiple_GA_catalyst.py $PWD $1 /scratch/\$SLURM_JOB_ID/all_generations/
 
-tar -czf $outfile -C /scratch/\$SLURM_JOB_ID/ .
-cp $outfile $PWD
+# tar -c ./* | pigz > $outfile
+#tar -czf $outfile -C /scratch/\$SLURM_JOB_ID/ .
+#cp $outfile $PWD
 
 cd ..
 

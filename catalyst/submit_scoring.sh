@@ -12,7 +12,7 @@ cpus_per_molecule=$8
 JOB=${IN%.*}
 
 PARTITION=mko # sauer or coms or teach
-TIME=1:00:00
+TIME=0:25:00
 
 SUBMIT=qsub.tmp
 

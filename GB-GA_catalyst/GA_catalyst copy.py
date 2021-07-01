@@ -25,7 +25,7 @@ molecule_filter = filters.get_molecule_filters(None, '/home/julius/soft/GB-GA/fi
 
 # %%
 def GA(args):
-    population_size, file_name, scoring_script, scaling_function, generations, mating_pool_size, mutation_rate, crossover_rate,\
+    population_size, file_name, scoring_function, scaling_function, generations, mating_pool_size, mutation_rate, crossover_rate,\
         scoring_args, prune_population, n_cpus, sa_screening, randomseed, run, dest_dir = args
 
     cpus_per_worker = int(np.ceil(n_cpus/population_size))
@@ -35,8 +35,8 @@ def GA(args):
     # sort molecules descending in size
     population.molecules.sort(
         key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
-    sc.run_slurm_scores(population=population, scoring_script=scoring_script,
-                                 scoring_args=scoring_args, n_cpus=n_cpus, cpus_per_worker=cpus_per_worker)            
+    sc.calculate_scores_parallel(population=population, function=scoring_function,
+                                 scoring_args=scoring_args, n_cpus=n_cpus, cpus_per_worker=cpus_per_worker)
 
     if sa_screening:
         neutralize_molecules(population)
@@ -66,8 +66,8 @@ def GA(args):
         new_population.assign_idx()
         population.molecules.sort(
             key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
-        sc.run_slurm_scores(
-            population=new_population, scoring_script=scoring_script, scoring_args=scoring_args, n_cpus=n_cpus, cpus_per_worker=cpus_per_worker)
+        sc.calculate_scores_parallel(
+            population=new_population, function=scoring_function, scoring_args=scoring_args, n_cpus=n_cpus, cpus_per_worker=cpus_per_worker)
         if sa_screening:
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
@@ -90,13 +90,15 @@ def GA(args):
                          children=new_population, survivors=population)
 
         # num_new_children = len([x.parentB_idx for x in gen.survivors.molecules if type(x.parentB_idx) == tuple])
+
         # if not stagnation:
         #     if num_new_children < population_size*0.1:
         #         stagnation_count += 1
         #     else:
         #         stagnation_count = 0
-        #     if stagnation_count == 2:
-        #         stagnation = True            
+        #     if stagnation_count == 3:
+        #         stagnation = True
+            
         # else:
         #     crossover_rate = 0
         #     mutation_rate = 1

@@ -28,9 +28,8 @@ def path_scoring(individual, args_list):
     warning = None
     ind_dir = os.path.join(directory, f'G{individual.idx[0]:02d}_I{individual.idx[1]:02d}')
     try:
-        # if timing_logger:
-        #     t1 = Timer(logger=None)
-        #     t1.start()
+        t1 = Timer(logger=None)
+        t1.start()
         charge = Chem.GetFormalCharge(individual.rdkit_mol)
         reactant = make_reactant(cat=individual.rdkit_mol, ind_num=individual.idx[1], gen_num=individual.idx[0], n_confs=n_confs, randomseed=randomseed, numThreads=cpus_per_molecule, warning_logger=warning_logger, directory=directory)
         cat_energy = calc_cat(reactant=reactant, ind_directory=ind_dir, cat_charge=charge, numThreads=cpus_per_molecule)
@@ -38,9 +37,6 @@ def path_scoring(individual, args_list):
         path_dir = xtb_path(ind_num=individual.idx[1], gen_num=individual.idx[0], charge=charge, numThreads=cpus_per_molecule, inp_file='/home/julius/soft/GB-GA/catalyst/path_template.inp', directory=directory)
         ts_energy = run_refinement(path_dir, charge)
         energy = hartree2kcalmol(ts_energy-cat_energy-frag_energies)
-        # if timing_logger:
-        #     elapsed_time = t1.stop()
-        #     timing_logger.info(f'{individual.smiles} : {elapsed_time:0.4f} seconds')
     except Exception as e:
         # if warning_logger:
         #     warning_logger.warning(f'{individual.smiles}: {traceback.print_exc()}')
@@ -50,7 +46,9 @@ def path_scoring(individual, args_list):
         warning = str(e)
     individual.energy = energy
     individual.warnings.append(warning)
-    shutil.rmtree(ind_dir)
+    # shutil.rmtree(ind_dir)
+    elapsed_time = t1.stop()
+    individual.timing = elapsed_time
     return individual
     
 

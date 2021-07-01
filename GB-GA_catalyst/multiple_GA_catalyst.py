@@ -51,9 +51,9 @@ n_cpus=1
 n_runs = 1
 population_size = 50
 mating_pool_size = population_size
-scoring_script = '/home/julius/soft/GB-GA/catalyst/path_scoring.py'
+scoring_script = '/home/julius/soft/GB-GA/catalyst/prereactant_scoring.py'
 scaling_function = open_linear_scaling
-generations = 50
+generations = 30
 mutation_rate = 0.5
 crossover_rate = 1
 co.average_size = 25.
@@ -64,7 +64,7 @@ prune_population = True
 sa_screening = True
 
 
-o=0 # start at #
+o=7 # start at #
 for m in range(n_runs):
     n = o+m
     file_name = os.path.join('/home/julius/soft/GB-GA/GB-GA_catalyst/chunks', f'pop{n:02d}.smi')

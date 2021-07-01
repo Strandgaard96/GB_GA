@@ -52,7 +52,7 @@ def wait_for_jobs_to_finish(job_ids):
     if current_jobs.isdisjoint(job_ids):
       break
     else:
-      time.sleep(30)
+      time.sleep(20)
 
 def run_slurm_scores(population, scoring_script, scoring_args, n_cpus, cpus_per_worker=1, consecutive_mols_per_worker=1): 
   n_confs, randomseed, timing_logger, warning_logger, directory = scoring_args
@@ -74,7 +74,7 @@ def run_slurm_scores(population, scoring_script, scoring_args, n_cpus, cpus_per_
         individual = pickle.load(_file)
       individuals.append(individual)
   population.molecules = individuals
-  shutil.rmtree(gen_dir)
+  # shutil.rmtree(gen_dir)
 
 def slurm_score(individual, scoring_script, n_confs, randomseed, timing_logger, warning_logger, directory, cpus_per_molecule, cwd):
   filename = f'G{individual.idx[0]:02d}_I{individual.idx[1]:02d}.pkl'
@@ -88,7 +88,7 @@ def slurm_score(individual, scoring_script, n_confs, randomseed, timing_logger, 
     return jobid
   except Exception as e:
     with open('/home/julius/thesis/errors.err', 'w+') as err:
-      err.write(f'\nError: {str(e)}')
+      err.write(f'{output}, {jobid}\nError: {str(e)}')
   
 
 def calculate_score(args):

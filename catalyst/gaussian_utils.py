@@ -85,22 +85,23 @@ def gauxtb(com_file):
     os.chdir(dir)
     # out = shell(f'/opt/gaussian/g16/legacy/g16/g16 < {file_name}.com > dft.out', shell=False)
     # os.system(f'submit_gaussian_legacy {com_file}')
-    p = subprocess.Popen(f'submit_gaussian_legacy ts_guess.com', shell=True)
+    p = subprocess.Popen(f'submit_gaussian_legacy {com_file}', shell=True)
     _, _ = p.communicate()
     os.chdir(orgdir)
 
-def subsequent_dft(oldchk, command='opt=(TS,noeigentest,calcfc) b3lyp/6-31+g(d,p) scrf=(smd,solvent=methanol) empiricaldispersion=gd3 Geom=AllCheckpoint', mem=4, cpus=4):
-    file_name = os.path.join(os.path.dirname(oldchk), 'dft_ts.com')
+def subsequent_dft(oldchk, command='opt=(TS,noeigentest,calcfc) b3lyp/6-31+g(d,p) scrf=(smd,solvent=methanol) empiricaldispersion=gd3 Geom=AllCheckpoint', mem=2, cpus=4):
+    name = os.path.basename(oldchk).split('.')[0]
+    file_name = os.path.join(os.path.dirname(oldchk), f'{name}631.com')
     with open(file_name, "w") as file:
-        file.write(f'%mem={mem}GB\n%nprocshared={cpus}\n%oldchk={oldchk}\n%chk=dft_ts.chk\n# {command}\n\n\n')
+        file.write(f'%mem={mem}GB\n%nprocshared={cpus}\n%oldchk={oldchk}\n%chk={name}631.chk\n# {command}\n\n\n')
     # out = shell(f'/opt/gaussian/g16/legacy/g16/g16 < {file_name}.com > dft.out', shell=False)
     orgdir= os.getcwd()
     os.chdir(os.path.dirname(file_name))
-    p = subprocess.Popen(f'submit_gaussian_legacy dft_ts.com', shell=True)
+    p = subprocess.Popen(f'submit_gaussian_legacy_42 {name}631.com', shell=True)
     _, _ = p.communicate()
     os.chdir(orgdir)
 
-def compute_freq(oldchk, directory='.', command="freq external='~/soft/gau_xtb/xtb.sh' Geom=AllCheckpoint", mem=4, cpus=1):
+def compute_freq(oldchk, directory='.', command="freq external='~/soft/gau_xtb/xtb.sh' Geom=AllCheckpoint", mem=2, cpus=4):
     file_name = os.path.join(directory, 'tsfreq.com')
     if os.path.exists(file_name):
             os.remove(file_name)
@@ -110,7 +111,7 @@ def compute_freq(oldchk, directory='.', command="freq external='~/soft/gau_xtb/x
     orgdir= os.getcwd()
     os.chdir(os.path.dirname(file_name))
     print(os.getcwd())
-    p = subprocess.Popen(f'submit_gaussian_legacy tsfreq.com', shell=True)
+    p = subprocess.Popen(f'submit_gaussian_legacy42 tsfreq.com', shell=True)
     _, _ = p.communicate()
     os.chdir(orgdir)
 

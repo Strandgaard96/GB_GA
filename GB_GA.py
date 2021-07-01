@@ -31,11 +31,14 @@ def read_file(file_name):
 
   return mol_list
 
-def make_initial_population(population_size, file_name):
+def make_initial_population(population_size, file_name, rand=False):
   mol_list = read_file(file_name)
   initial_population = Population()
-  for _ in range(population_size):
-    initial_population.molecules.append(Individual(random.choice(mol_list)))
+  for i in range(population_size):
+    if rand:
+      initial_population.molecules.append(Individual(random.choice(mol_list)))
+    else:
+      initial_population.molecules.append(Individual(mol_list[i]))
   initial_population.generation_num = 0
   initial_population.assign_idx()
 
@@ -72,6 +75,40 @@ def reproduce(mating_pool, population_size, mutation_rate, filter): # + filter
 
   return Population(molecules=new_population)
 
+
+def reproduce2(mating_pool, population_size, mutation_rate=0.5, crossover_rate=1, filter=None):
+  new_population = []
+  succeeded = True
+  counter = 0
+  while len(new_population) < population_size and counter < 10:
+    parent_A = copy.deepcopy(random.choice(mating_pool))
+    parent_B = copy.deepcopy(random.choice(mating_pool))
+    parent_A_idx = parent_A.idx
+    parent_B_idx = parent_B.idx
+    if succeeded:
+      x = random.random()
+    if x < crossover_rate:
+      new_child = co.crossover(parent_A.rdkit_mol, parent_B.rdkit_mol, filter)
+      if new_child == None:
+        succeeded = False
+        counter += 1
+        continue
+    else:
+      new_child = parent_A.rdkit_mol    
+      parent_A_idx = None
+      parent_B_idx = None
+      
+    mutated_child, mutated = mu.mutate(new_child, mutation_rate, filter)
+    if mutated_child == None:
+      succeeded = False
+      counter += 1
+      continue
+        
+    new_population.append(Individual(rdkit_mol=mutated_child, parentA_idx=parent_A_idx, parentB_idx=parent_B_idx, mutated=mutated))
+    succeeded = True
+    counter = 0
+
+  return Population(molecules=new_population)
 
 def sanitize(molecules, population_size, prune_population):
     if prune_population:

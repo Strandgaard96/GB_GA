@@ -14,24 +14,50 @@ def main():
 
     # Load intermediate
     mol = Chem.MolFromMolFile(
-        "/home/magstr/Documents/nitrogenase/schrock/diagrams_schrock/schrock_dft/Mo/ams.results/traj.mol")
+        "/home/magstr/Documents/nitrogenase/schrock/diagrams_schrock/schrock_dft/Mo_N2/ams.results/traj.mol", sanitize = False, removeHs=False)
 
     # Initialize substructure string
 
     # : matches aromatic bonds. Not == when it is delocalized
     # '[c]:[c][N]'
-
     # Smart for a nitrogen bound to aromatic carbon.
     smart = '[c][N]'
 
     patt = Chem.MolFromSmarts(smart)
-    a = Draw.MolToImage(mol, size=(800, 800))
-    a.show()
     print(Chem.MolToSmiles(patt), Chem.MolToSmiles(mol))
+
+    l = mol.GetPropNames()
     # Get indice of the carbon atom
+    print(l)
+    prop=mol.GetPropsAsDict()
     print(f'Has substructure match: {mol.HasSubstructMatch(patt)}')
     indices = mol.GetSubstructMatches(patt)
-    print(indices)
+
+
+    # Visualize
+    im = Chem.Draw.MolToImage(mol, size=(800, 800))
+    im.show()
+
+    # Cut the bond between the nitrogen and the carbon.
+    for tuple in indices:
+        # Get bond number
+        bond = [mol.GetBondBetweenAtoms(tuple[0], tuple[1]).GetIdx()]
+
+        # Cut
+        frag = Chem.FragmentOnBonds(mol, bond)
+        #Draw cut
+        #Chem.Draw.MolToImage(frag, size=(800, 800))
+        # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
+        frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
+
+        #Show a specific frag
+        im = Chem.Draw.MolToImage(frags[0], size=(800, 800))
+        im.show()
+
+        # Command for drawing all frags in one
+        # Draw.MolsToGridImage(frags)
+
+
 
 
 

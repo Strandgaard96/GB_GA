@@ -23,40 +23,43 @@ def main():
     # Smart for a nitrogen bound to aromatic carbon.
     smart = '[c][N]'
 
+    # Initialize pattern
     patt = Chem.MolFromSmarts(smart)
-    print(Chem.MolToSmiles(patt), Chem.MolToSmiles(mol))
 
-    l = mol.GetPropNames()
-    # Get indice of the carbon atom
-    print(l)
-    prop=mol.GetPropsAsDict()
+    # Substructure match
     print(f'Has substructure match: {mol.HasSubstructMatch(patt)}')
     indices = mol.GetSubstructMatches(patt)
 
-
     # Visualize
-    im = Chem.Draw.MolToImage(mol, size=(800, 800))
-    im.show()
+    #im = Chem.Draw.MolToImage(mol, size=(800, 800))
+    #im.show()
 
-    # Cut the bond between the nitrogen and the carbon.
+    bonds=[]
+    # Cut the bonds between the nitrogen and the carbon.
     for tuple in indices:
         # Get bond number
-        bond = [mol.GetBondBetweenAtoms(tuple[0], tuple[1]).GetIdx()]
+        bonds.append(mol.GetBondBetweenAtoms(tuple[0], tuple[1]).GetIdx())
 
-        # Cut
-        frag = Chem.FragmentOnBonds(mol, bond)
-        #Draw cut
-        #Chem.Draw.MolToImage(frag, size=(800, 800))
-        # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
-        frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
+    # Cut
+    frag = Chem.FragmentOnBonds(mol, bonds,addDummies=True,dummyLabels=[(1, 1),(1, 1),(1, 1)])
 
-        #Show a specific frag
-        im = Chem.Draw.MolToImage(frags[0], size=(800, 800))
-        im.show()
+    #Draw cut
+    #Chem.Draw.MolToImage(frag, size=(800, 800))
 
-        # Command for drawing all frags in one
-        # Draw.MolsToGridImage(frags)
+    # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
+    frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
+    #Show a specific frag
+    im = Chem.Draw.MolToImage(frags[1], size=(800, 800))
+    im.show()
+
+    # Command for drawing all frags in one
+    im = Draw.MolsToGridImage(frags)
+    im.show()
+
+    # Save frag to file
+    with open('frag.mol', 'w+') as f:
+        f.write(Chem.MolToMolBlock(frags[1]))
 
 
 

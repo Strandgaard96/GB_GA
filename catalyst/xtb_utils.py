@@ -1,6 +1,6 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
+from xyz2mol import read_xyz_file, xyz2mol
 
 import os
 import random

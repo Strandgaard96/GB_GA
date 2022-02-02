@@ -14,7 +14,7 @@ import os
 import sys
 
 sys.path.append("/home/julius/soft/")
-from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
+from xyz2mol import read_xyz_file, xyz2mol
 
 sys.path.append("/home/julius/soft/GB-GA")
 # from catalyst.gaussian_utils import extract_optimized_structure
@@ -309,8 +309,8 @@ class Generation:
                 f"Generation {self.generation_num} has Children from generation {self.children.generation_num} and survivors from generation {self.survivors.generation_num}"
             )
 
-    def save(self, directory, run=0):
-        filename = os.path.join(directory, f"GA{run:02d}.pkl")
+    def save(self, directory=None, run_No=0):
+        filename = os.path.join(directory, f"GA{run_No:02d}.pkl")
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 

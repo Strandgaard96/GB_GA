@@ -10,7 +10,6 @@ import shutil
 import os  # this is jsut vor OMP
 import sys
 
-sys.path.append("/home/julius/soft/GB-GA/")
 from catalyst.utils import (
     sdf2mol,
     draw3d,
@@ -32,7 +31,7 @@ from catalyst.fitness_scaling import (
     sigmoid_scaling,
 )
 
-ts_dummy = sdf2mol("/home/julius/soft/GB-GA/catalyst/structures/ts_dummy.sdf")
+ts_dummy = sdf2mol("/home/magstr/Documents/GB_GA/catalyst/structures/ts_dummy.sdf")
 frag_energies = np.sum(
     [-8.232710038092, -19.734652802142, -32.543971411432]
 )  # 34 atoms

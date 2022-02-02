@@ -28,15 +28,15 @@ import sascorer
 from catalyst.utils import Population
 
 
-# logP_values = np.loadtxt('logP_values.txt')
-# SA_scores = np.loadtxt('SA_scores.txt')
-# cycle_scores = np.loadtxt('cycle_scores.txt')
-# SA_mean =  np.mean(SA_scores)
-# SA_std=np.std(SA_scores)
-# logP_mean = np.mean(logP_values)
-# logP_std= np.std(logP_values)
-# cycle_mean = np.mean(cycle_scores)
-# cycle_std=np.std(cycle_scores)
+logP_values = np.loadtxt('logP_values.txt')
+SA_scores = np.loadtxt('SA_scores.txt')
+cycle_scores = np.loadtxt('cycle_scores.txt')
+SA_mean =  np.mean(SA_scores)
+SA_std=np.std(SA_scores)
+logP_mean = np.mean(logP_values)
+logP_std= np.std(logP_values)
+cycle_mean = np.mean(cycle_scores)
+cycle_std=np.std(cycle_scores)
 
 
 def wait_for_jobs_to_finish(job_ids):
@@ -163,8 +163,8 @@ def calculate_scores_parallel(
 
 def calculate_scores(population, function, scoring_args):
     scores = []
-    for gene in population:
-        score = function(gene, scoring_args)
+    for gene in population.molecules:
+        score = function(gene.rdkit_mol, scoring_args)
         scores.append(score)
 
     return scores

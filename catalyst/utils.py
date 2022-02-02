@@ -14,7 +14,7 @@ import os
 import sys
 
 sys.path.append("/home/julius/soft/")
-from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
+from xyz2mol import read_xyz_file, xyz2mol
 
 sys.path.append("/home/julius/soft/GB-GA")
 # from catalyst.gaussian_utils import extract_optimized_structure

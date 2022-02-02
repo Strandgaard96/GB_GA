@@ -8,11 +8,17 @@ import os
 import logging
 from multiprocessing import Pool
 import random
+import copy
 import GB_GA as ga
 
 # Rdkit stuff
 from rdkit import Chem
 
+import filters
+molecule_filter = filters.get_molecule_filters(None, './filters/alert_collection.csv')
+
+from catalyst.utils import Generation, mols_from_smi_file
+from catalyst.fitness_scaling import scale_scores, linear_scaling, sigmoid_scaling, open_linear_scaling, exponential_scaling
 from sa import reweigh_scores_by_sa, neutralize_molecules
 
 
@@ -41,13 +47,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=15,
+        default=5,
         help="How many conformers to generate",
     )
     parser.add_argument(
         "--generations",
         type=int,
-        default=50,
+        default=3,
         help="How many times is the population optimized",
     )
     parser.add_argument(
@@ -59,7 +65,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--prune_population",
         dest="prune_population",
-        default=False,
+        default=True,
         action="store_true",
     )
     parser.add_argument(
@@ -77,7 +83,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cpus",
         type=int,
-        default=4,
+        default=6,
         help="Number of cores to distribute over",
     )
     parser.add_argument(
@@ -100,6 +106,7 @@ def GA(args):
         population_size,
         file_name,
         scoring_function,
+        scaling_function,
         generations,
         mating_pool_size,
         mutation_rate,
@@ -116,66 +123,66 @@ def GA(args):
     population = ga.make_initial_population(population_size, file_name)
     prescores = sc.calculate_scores(population, scoring_function, scoring_args)
     # scores = normalize(prescores)
-    scores = prescores
+    population.setprop('score',prescores)
 
     if sa_screening:
-        scores, sascores = reweigh_scores_by_sa(
-            neutralize_molecules(population), scores
-        )
+        neutralize_molecules(population)
+        reweigh_scores_by_sa(population)
 
-    fitness = ga.calculate_normalized_fitness(scores)
+    # TODO THIS DOES NTO WORK. The scaling sets scores to zero
+    #scale_scores(population, scaling_function, sa_screening=sa_screening)
+    population.sortby('score')
 
-    if sa_screening:
-        print(
-            f"{list(zip(scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}"
-        )
-    else:
-        print(f"{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}")
+    ga.calculate_normalized_fitness(population)
 
-    high_scores = []
+    gen = Generation(generation_num=0, children=population,
+                     survivors=population)
+    dest_dir='test'
+    run=0
+    gen.save(dest_dir, run=run)
+    gen.print()
+
     for generation in range(generations):
-        mating_pool = ga.make_mating_pool(population, fitness, mating_pool_size)
-        new_population = ga.reproduce(mating_pool, population_size, mutation_rate)
-        new_prescores = sc.calculate_scores_parallel(
-            new_population, scoring_function, scoring_args, n_cpus
-        )
+        generation_num = generation + 1
+        population.clean_mutated_survival_and_parents()
+        # Making new Children
+        mating_pool = ga.make_mating_pool(population, mating_pool_size)
+        # new_population = ga.reproduce2(
+        #     mating_pool, population_size, mutation_rate, crossover_rate ,filter=molecule_filter)
+        new_population = ga.reproduce(
+            mating_pool, population_size, mutation_rate, filter=molecule_filter)
+        new_population.generation_num = generation_num
+        new_population.assign_idx()
+        population.molecules.sort(
+            key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
+
+        scores = sc.calculate_scores(population, scoring_function, scoring_args)
+        population.setprop('score', scores)
         if sa_screening:
-            new_scores, new_sascores = reweigh_scores_by_sa(
-                neutralize_molecules(new_population), new_prescores
-            )
-            population, scores, prescores, sascores = ga.sanitize(
-                population + new_population,
-                scores + new_scores,
-                population_size,
-                prune_population,
-                sa_screening,
-                prescores + new_prescores,
-                sascores + new_sascores,
-            )
-        else:
-            new_scores = new_prescores
-            population, scores = ga.sanitize(
-                population + new_population,
-                scores + new_scores,
-                population_size,
-                prune_population,
-                sa_screening,
-            )
+            neutralize_molecules(new_population)
+            reweigh_scores_by_sa(new_population)
 
-        fitness = ga.calculate_normalized_fitness(scores)
+        #scale_scores(new_population, scaling_function,
+        #            sa_screening=sa_screening)
+        new_population.sortby('score')
 
-        high_scores.append((scores[0], Chem.MolToSmiles(population[0])))
+        # Select best Individuals from old and new population
+        potential_survivors = copy.deepcopy(population.molecules)
+        for mol in potential_survivors:
+            mol.survival_idx = mol.idx
+        population = ga.sanitize(potential_survivors + new_population.molecules,
+                                 population_size, prune_population)  # SURVIVORS
+        population.generation_num = generation_num
+        population.assign_idx()
+        ga.calculate_normalized_fitness(population)
 
-        if sa_screening:
-            print(
-                f"{list(zip(scores, prescores, sascores, [Chem.MolToSmiles(mol) for mol in population]))}"
-            )
-        else:
-            print(f"{list(zip(scores, [Chem.MolToSmiles(mol) for mol in population]))}")
+        gen = Generation(generation_num=generation_num,
+                         children=new_population, survivors=population)
 
-    return (scores, population, high_scores)
-
+        gen.save(dest_dir, run=run)
+        gen.print()
+    return gen
 
 def main():
     args = get_arguments()
@@ -199,6 +206,8 @@ def main():
 
     # Default values from original code
     scoring_function = sc.logP_max
+    scaling_function = open_linear_scaling
+
     scoring_args = []
     co.average_size = 25.0
     co.size_stdev = 5.0
@@ -250,6 +259,7 @@ def main():
             args.population_size,
             args.file_name,
             scoring_function,
+            scaling_function,
             args.generations,
             args.mating_pool_size,
             args.mutation_rate,
@@ -266,18 +276,11 @@ def main():
         args_pass.append(x)
 
     # Run the GA
-
-    out = GA(args_pass[0])
-
     with Pool(args.n_cpus) as pool:
-        output = pool.map(GA, args_pass)
+        generations = pool.map(GA, args_pass)
 
-    for i in range(n_tries):
-        (scores, population, high_scores) = output[i]
-        all_scores.append(scores)
-        results.append(scores[0])
-        generations_list.append(high_scores)
-
+    for gen in generations:
+        print(gen)
     t1 = time.time()
     print(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 

@@ -143,9 +143,9 @@ def sanitize(molecules, population_size, prune_population):
             if copy_individual.smiles not in smiles_list:
                 smiles_list.append(copy_individual.smiles)
                 new_population.molecules.append(copy_individual)
-    # else:
-    #   copy_population = copy.deepcopy(molecules)
-    #   new_population = Population(molecules=copy_population.molecules)
+    else:
+        copy_population = copy.deepcopy(molecules)
+        new_population = Population(molecules=copy_population.molecules)
 
     new_population.prune(population_size)
 

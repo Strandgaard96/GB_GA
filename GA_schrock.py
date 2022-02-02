@@ -126,7 +126,8 @@ def GA(args):
         prune_population,
         n_cpus,
         sa_screening,
-        output_dir
+        output_dir,
+        seed
     ) = args
 
     # Create initial population and get initial score
@@ -208,11 +209,6 @@ def main():
             logging.StreamHandler(),
         ],
     )
-    # logging.debug('This is a debug message')
-    # logging.info('This is an info message')
-    # logging.warning('This is a warning message')
-    # logging.error('This is an error message')
-    # logging.critical('This is a critical message')
 
     # Default values from original code
     # scoring_function = ts_scoring function
@@ -226,11 +222,6 @@ def main():
 
     # Log the argparse set values
     logging.info("Input args: %r", args)
-
-    results = []
-    t0 = time.time()
-    all_scores = []
-    generations_list = []
 
     index = slice(0, n_tries) if args.prune_population else slice(n_tries, 2 * n_tries)
 
@@ -251,22 +242,25 @@ def main():
         for i in range(n_tries)
     ]
     args_pass = []
+
+    # Adding the seeds to the end of the list
     for x, y in zip(temp_args, seeds[index]):
         x.append(y)
         args_pass.append(x)
 
     # For debugging GA to prevent multiprocessing cluttering the traceback
-    # TODO ARGS IS WEIRD
-    out = GA(args_pass[0][0:-1])
+    generations = GA(args_pass[0])
 
+    # Start the time
+    t0 = time.time()
     # Run the GA
-    with Pool(args.n_cpus) as pool:
-        generations = pool.map(GA, args_pass)
+    #with Pool(args.n_cpus) as pool:
+    #    generations = pool.map(GA, args_pass)
 
     for gen in generations:
         print(gen)
     t1 = time.time()
-    print(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
+    logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 
 
 if __name__ == "__main__":

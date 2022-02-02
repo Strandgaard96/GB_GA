@@ -58,13 +58,13 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument(
         "--prune_population",
-        dest='prune_population',
+        dest="prune_population",
         default=False,
         action="store_true",
-        )
+    )
     parser.add_argument(
         "--sa_screening",
-        dest='sa_screening',
+        dest="sa_screening",
         default=False,
         action="store_true",
     )
@@ -94,6 +94,7 @@ def get_arguments(arg_list=None):
     )
     return parser.parse_args(arg_list)
 
+
 def GA(args):
     (
         population_size,
@@ -113,9 +114,7 @@ def GA(args):
     random.seed(seed)
 
     population = ga.make_initial_population(population_size, file_name)
-    prescores = sc.calculate_scores(
-        population, scoring_function, scoring_args
-    )
+    prescores = sc.calculate_scores(population, scoring_function, scoring_args)
     # scores = normalize(prescores)
     scores = prescores
 
@@ -177,6 +176,7 @@ def GA(args):
 
     return (scores, population, high_scores)
 
+
 def main():
     args = get_arguments()
 
@@ -191,11 +191,11 @@ def main():
             logging.StreamHandler(),
         ],
     )
-    #logging.debug('This is a debug message')
-    #logging.info('This is an info message')
-    #logging.warning('This is a warning message')
-    #logging.error('This is an error message')
-    #logging.critical('This is a critical message')
+    # logging.debug('This is a debug message')
+    # logging.info('This is an info message')
+    # logging.warning('This is a warning message')
+    # logging.error('This is an error message')
+    # logging.critical('This is a critical message')
 
     # Default values from original code
     scoring_function = sc.logP_max
@@ -205,9 +205,9 @@ def main():
     n_tries = args.n_tries
     seeds = np.random.randint(100_000, size=2 * n_tries)
 
-
     #
-    logging.info('''\nInitializing GA with args:
+    logging.info(
+        """\nInitializing GA with args:
                         n_confs %d,
                         population_size %d
                         mating_pool_size %d
@@ -221,10 +221,22 @@ def main():
                         inpput file %s
                         SA screening %s
                         seed %d
-    ''',args.n_confs,args.population_size,args.mating_pool_size,\
-                 args.generations, args.mutation_rate,co.average_size, co.size_stdev,\
-                 args.file_name,args.prune_population,args.n_tries,args.n_cpus,args.file_name,\
-                 args.sa_screening,args.seed)
+    """,
+        args.n_confs,
+        args.population_size,
+        args.mating_pool_size,
+        args.generations,
+        args.mutation_rate,
+        co.average_size,
+        co.size_stdev,
+        args.file_name,
+        args.prune_population,
+        args.n_tries,
+        args.n_cpus,
+        args.file_name,
+        args.sa_screening,
+        args.seed,
+    )
 
     results = []
     t0 = time.time()
@@ -269,5 +281,6 @@ def main():
     t1 = time.time()
     print(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

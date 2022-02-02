@@ -1,4 +1,3 @@
-
 """ Files and functionality related to synthetic accessibility """
 
 from .sascorer import calculateScore

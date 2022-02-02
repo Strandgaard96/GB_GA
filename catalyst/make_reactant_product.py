@@ -5,6 +5,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 from rdkit import RDLogger
+
 # RDLogger.DisableLog('rdApp.*')
 
 import random
@@ -16,33 +17,34 @@ import subprocess
 import os
 import shutil
 import sys
-sys.path.append('/home/julius/soft/')
+
+sys.path.append("/home/julius/soft/")
 
 from catalyst.make_structures import ConstrainedEmbedMultipleConfs
 from catalyst.xtb_utils import xtb_optimize
 
 # %%
-def write_xtb_input_files(fragment, name, destination='.'):
+def write_xtb_input_files(fragment, name, destination="."):
     number_of_atoms = fragment.GetNumAtoms()
     charge = Chem.GetFormalCharge(fragment)
     symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
     conformers = fragment.GetConformers()
     file_paths = []
     for i, conf in enumerate(fragment.GetConformers()):
-        conf_path = os.path.join(destination, f'conf{i:03d}')
+        conf_path = os.path.join(destination, f"conf{i:03d}")
         os.mkdir(conf_path)
-        file_name = f'{name}{i:03d}.xyz'
+        file_name = f"{name}{i:03d}.xyz"
         file_path = os.path.join(conf_path, file_name)
-        with open(file_path, 'w') as _file:
-            _file.write(str(number_of_atoms)+'\n')
-            _file.write(f'{file_name}\n')
+        with open(file_path, "w") as _file:
+            _file.write(str(number_of_atoms) + "\n")
+            _file.write(f"{file_name}\n")
             for atom, symbol in enumerate(symbols):
                 p = conf.GetAtomPosition(atom)
-                line = ' '.join((symbol, str(p.x), str(p.y), str(p.z), '\n'))
+                line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
                 _file.write(line)
         file_paths.append(file_path)
     if charge != 0:
-        with open('.CHRG', 'w') as _file:
+        with open(".CHRG", "w") as _file:
             _file.write(str(charge))
     return file_paths
 
@@ -65,9 +67,16 @@ def get_structure(start_mol, n_confs, randomSeed=-1, returnE=False):
     new_mol = Chem.Mol(mol)
 
     confIDs = AllChem.EmbedMultipleConfs(
-        mol, numConfs=n_confs, useExpTorsionAnglePrefs=True, useBasicKnowledge=True, maxAttempts=5000, randomSeed=randomSeed)
+        mol,
+        numConfs=n_confs,
+        useExpTorsionAnglePrefs=True,
+        useBasicKnowledge=True,
+        maxAttempts=5000,
+        randomSeed=randomSeed,
+    )
     energies = AllChem.MMFFOptimizeMoleculeConfs(
-        mol, maxIters=2000, nonBondedThresh=100.0)
+        mol, maxIters=2000, nonBondedThresh=100.0
+    )
 
     energies_list = [e[1] for e in energies]
     min_e_index = energies_list.index(min(energies_list))
@@ -81,16 +90,15 @@ def get_structure(start_mol, n_confs, randomSeed=-1, returnE=False):
 
 def connect_cat_2d(mol_with_dummy, cat):
     """Replaces Dummy Atom [*] in Mol with Cat via tertiary Amine, return list of all possible regioisomers"""
-    dummy = Chem.MolFromSmiles('*')
+    dummy = Chem.MolFromSmiles("*")
     mols = []
     cat = Chem.AddHs(cat)
-    tert_amines = cat.GetSubstructMatches(
-        Chem.MolFromSmarts('[#7X3;H0;D3;!+1]'))
+    tert_amines = cat.GetSubstructMatches(Chem.MolFromSmarts("[#7X3;H0;D3;!+1]"))
     for amine in tert_amines:
         mol = AllChem.ReplaceSubstructs(
-            mol_with_dummy, dummy, cat, replacementConnectionPoint=amine[0])[0]
-        quart_amine = mol.GetSubstructMatch(
-            Chem.MolFromSmarts('[#7X4;H0;D4;!+1]'))[0]
+            mol_with_dummy, dummy, cat, replacementConnectionPoint=amine[0]
+        )[0]
+        quart_amine = mol.GetSubstructMatch(Chem.MolFromSmarts("[#7X4;H0;D4;!+1]"))[0]
         mol.GetAtomWithIdx(quart_amine).SetFormalCharge(1)
         Chem.SanitizeMol(mol)
         mol.RemoveAllConformers()
@@ -103,11 +111,25 @@ def addMolAsConf(mol, mol2add):
     return mol
 
 
-def get_minE_conf(mol, constrained_atoms, scratchdir, n_confs=5, nonBondedThresh=100, xtb_opt=True, method='gfn2'):
+def get_minE_conf(
+    mol,
+    constrained_atoms,
+    scratchdir,
+    n_confs=5,
+    nonBondedThresh=100,
+    xtb_opt=True,
+    method="gfn2",
+):
     """Optimizes multiple conformers of mol and returns lowest energy one and its energy"""
     if xtb_opt:
         new_mol, energy = xtb_optimize(
-            mol, name='sel_gfnff_minE_reactant', scratchdir=scratchdir, constrains='/home/julius/thesis/data/constr.inp', remove_tmp=True, method=method)
+            mol,
+            name="sel_gfnff_minE_reactant",
+            scratchdir=scratchdir,
+            constrains="/home/julius/thesis/data/constr.inp",
+            remove_tmp=True,
+            method=method,
+        )
         return new_mol, energy
     else:
         new_mol = Chem.Mol(mol)
@@ -116,26 +138,45 @@ def get_minE_conf(mol, constrained_atoms, scratchdir, n_confs=5, nonBondedThresh
         energies = []
         for conf in conformers:
             energy = constrained_optimization(
-                mol, constrained_atoms, confId=conf.GetId(), nonBondedThresh=nonBondedThresh)
+                mol,
+                constrained_atoms,
+                confId=conf.GetId(),
+                nonBondedThresh=nonBondedThresh,
+            )
             energies.append(energy)
         min_e_index = energies.index(min(energies))
         new_mol.AddConformer(mol.GetConformer(min_e_index))
         return new_mol, min(energies)
 
 
-def constrained_optimization(mol, constrained_atoms, maxIts=10000, maxDispl=0.1, forceConstant=1e3, confId=-1, ignoreIncomplete=False, nonBondedThresh=100):
+def constrained_optimization(
+    mol,
+    constrained_atoms,
+    maxIts=10000,
+    maxDispl=0.1,
+    forceConstant=1e3,
+    confId=-1,
+    ignoreIncomplete=False,
+    nonBondedThresh=100,
+):
     """Performs MMFF Optimization while fixing provided atoms"""
     if len(constrained_atoms) == 0:
-        raise Exception('No match with core.')
+        raise Exception("No match with core.")
     if AllChem.MMFFHasAllMoleculeParams(mol):
         mmff_props = AllChem.MMFFGetMoleculeProperties(mol)
         ff = AllChem.MMFFGetMoleculeForceField(
-            mol, mmff_props, confId=confId, ignoreInterfragInteractions=False, nonBondedThresh=nonBondedThresh)
+            mol,
+            mmff_props,
+            confId=confId,
+            ignoreInterfragInteractions=False,
+            nonBondedThresh=nonBondedThresh,
+        )
         for atom in constrained_atoms:
             ff.MMFFAddPositionConstraint(atom, maxDispl, forceConstant)
     else:
         ff = AllChem.UFFGetMoleculeForceField(
-            mol, confId=confId, ignoreInterfragInteractions=False)
+            mol, confId=confId, ignoreInterfragInteractions=False
+        )
         for atom in constrained_atoms:
             ff.UFFAddPositionConstraint(atom, maxDispl, forceConstant)
     ff.Initialize()
@@ -146,7 +187,7 @@ def constrained_optimization(mol, constrained_atoms, maxIts=10000, maxDispl=0.1,
             energy = ff.CalcEnergy()
             return energy
         else:
-            raise Exception('Optimization incomplete.')
+            raise Exception("Optimization incomplete.")
     else:
         energy = ff.CalcEnergy()
         return energy
@@ -160,14 +201,23 @@ def get_connection_id(mol):
     return connection_id
 
 
-
-def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2', numThreads=1):
+def make_reactant(
+    mol,
+    reactant_dummy,
+    n_confs=5,
+    randomseed=100,
+    xtb_opt=False,
+    scratchdir="/home/julius/thesis/sims/scratch",
+    remove_tmp=True,
+    preopt_method="gfn2",
+    numThreads=1,
+):
     """Connects Catalyst with Reactant via dummy atom, returns min(E) conformer of all n_conf * n_tertary_amines conformers"""
     nonBondedThresh = 100
     energyCutOff = 400
     # test embed
     if test_embed(mol):
-        raise Exception('Mol is already embeded.')
+        raise Exception("Mol is already embeded.")
 
     # REACTANT
     # get min(Energy) conformer of each possible reactant
@@ -178,7 +228,8 @@ def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False,
     for possible_reactant in possible_reactants_2d:
         # create Multiple Conformations and get min(Energy) Conformer
         possible_reactant_conformers = ConstrainedEmbedMultipleConfs(
-            possible_reactant, reactant_dummy, n_confs, randomseed)
+            possible_reactant, reactant_dummy, n_confs, randomseed
+        )
         constrained_atoms = []  # only needed for FF get_minE
         for atom in possible_reactant.GetAtoms():
             if atom.GetIdx() < get_connection_id(possible_reactant):
@@ -186,7 +237,12 @@ def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False,
             else:
                 break
         minEconf, minE = get_minE_conf(
-            possible_reactant_conformers, constrained_atoms, scratchdir=scratchdir, nonBondedThresh=nonBondedThresh, method='gfnff')
+            possible_reactant_conformers,
+            constrained_atoms,
+            scratchdir=scratchdir,
+            nonBondedThresh=nonBondedThresh,
+            method="gfnff",
+        )
         possible_reactants.append(minEconf)
         energies.append(minE)
 
@@ -200,19 +256,26 @@ def make_reactant(mol, reactant_dummy, n_confs=5, randomseed=100, xtb_opt=False,
 
     if xtb_opt:
         reactant, xtb_energy = xtb_optimize(
-            reactant, name='reactant', scratchdir=scratchdir, remove_tmp=remove_tmp, method=preopt_method, numThreads=numThreads)
+            reactant,
+            name="reactant",
+            scratchdir=scratchdir,
+            remove_tmp=remove_tmp,
+            method=preopt_method,
+            numThreads=numThreads,
+        )
         reactant_minE = xtb_energy
 
     if reactant_minE > energyCutOff:
         print(
-            f'Energy exceeded {energyCutOff} ({reactant_minE:.2f}) while trying to optimize the reactant molecule with Catalyst: {Chem.MolToSmiles(mol)}.')
+            f"Energy exceeded {energyCutOff} ({reactant_minE:.2f}) while trying to optimize the reactant molecule with Catalyst: {Chem.MolToSmiles(mol)}."
+        )
 
     return reactant, reactant_minE
 
 
 # from https://pschmidtke.github.io/blog/rdkit/3d-editor/2021/01/23/grafting-fragments.html
 def getAttachmentVector(mol):
-    """ for a fragment to add, search for the position of the attachment point and extract the atom id's of the attachment point and the connected atom (currently only single bond supported)
+    """for a fragment to add, search for the position of the attachment point and extract the atom id's of the attachment point and the connected atom (currently only single bond supported)
     mol: fragment passed as rdkit molecule
     return: tuple (atom indices)
     """
@@ -220,15 +283,15 @@ def getAttachmentVector(mol):
     rindex = -1
     rindexNeighbor = -1
     for atom in mol.GetAtoms():
-        if(atom.GetAtomicNum() == 0):
+        if atom.GetAtomicNum() == 0:
             rindex = atom.GetIdx()
             neighbours = atom.GetNeighbors()
-            if(len(neighbours) == 1):
+            if len(neighbours) == 1:
                 rindexNeighbor = neighbours[0].GetIdx()
             else:
                 print("two attachment points not supported yet")
                 return None
-    return((rindex, rindexNeighbor))
+    return (rindex, rindexNeighbor)
 
 
 def connectMols(mol1, mol2, atom1, atom2):
@@ -240,26 +303,37 @@ def connectMols(mol1, mol2, atom1, atom2):
     atom1_idx = atom1.GetIdx()
     atom2_idx = atom2.GetIdx()
     bond_order = atom2.GetBonds()[0].GetBondType()
-    emol.AddBond(neighbor1_idx, neighbor2_idx +
-                 mol1.GetNumAtoms(), order=bond_order)
+    emol.AddBond(neighbor1_idx, neighbor2_idx + mol1.GetNumAtoms(), order=bond_order)
     emol.RemoveAtom(atom2_idx + mol1.GetNumAtoms())
     emol.RemoveAtom(atom1_idx)
     mol = emol.GetMol()
     return mol
 
 
-def make_product(mol, reactant, product_dummy, n_confs=5, nItsUnconstrained=100, randomseed=100, xtb_opt=False, scratchdir='/home/julius/thesis/sims/scratch', remove_tmp=True, preopt_method='gfn2', numThreads=1):
+def make_product(
+    mol,
+    reactant,
+    product_dummy,
+    n_confs=5,
+    nItsUnconstrained=100,
+    randomseed=100,
+    xtb_opt=False,
+    scratchdir="/home/julius/thesis/sims/scratch",
+    remove_tmp=True,
+    preopt_method="gfn2",
+    numThreads=1,
+):
     """Creates same Regioisomer of Cat+Product_dummy and ensures that similar Rotamer as Reactant is obtained"""
     energyCutOff = 400
     # test embed
     if test_embed(mol):
-        raise Exception('Mol is already embeded.')
+        raise Exception("Mol is already embeded.")
 
     # cut cat from reactant and attach to product_dummy
-    bs = [reactant.GetBondBetweenAtoms(
-        0, get_connection_id(reactant)).GetIdx()]
+    bs = [reactant.GetBondBetweenAtoms(0, get_connection_id(reactant)).GetIdx()]
     fragments_mol = Chem.FragmentOnBonds(
-        reactant, bs, addDummies=True, dummyLabels=[(1, 1)])
+        reactant, bs, addDummies=True, dummyLabels=[(1, 1)]
+    )
     fragments = AllChem.GetMolFrags(fragments_mol, asMols=True)
 
     for fragment in fragments:
@@ -269,10 +343,20 @@ def make_product(mol, reactant, product_dummy, n_confs=5, nItsUnconstrained=100,
     cat_dummyidx = getAttachmentVector(catalyst)  # R N
     product_dummyidx = getAttachmentVector(product_dummy)  # R C
 
-    rms = AllChem.AlignMol(product_dummy, catalyst, atomMap=(
-        (product_dummyidx[0], cat_dummyidx[1]), (product_dummyidx[1], cat_dummyidx[0])))
-    product = connectMols(product_dummy, catalyst, product_dummy.GetAtomWithIdx(
-        product_dummyidx[0]), catalyst.GetAtomWithIdx(cat_dummyidx[0]))
+    rms = AllChem.AlignMol(
+        product_dummy,
+        catalyst,
+        atomMap=(
+            (product_dummyidx[0], cat_dummyidx[1]),
+            (product_dummyidx[1], cat_dummyidx[0]),
+        ),
+    )
+    product = connectMols(
+        product_dummy,
+        catalyst,
+        product_dummy.GetAtomWithIdx(product_dummyidx[0]),
+        catalyst.GetAtomWithIdx(cat_dummyidx[0]),
+    )
     flags = Chem.SanitizeMol(product)
 
     # draw atoms of cat onto positions as in reactant
@@ -283,19 +367,22 @@ def make_product(mol, reactant, product_dummy, n_confs=5, nItsUnconstrained=100,
         else:
             break
 
-    AllChem.AlignMol(reactant, product, atomMap=list(
-        zip(constrained_atoms, constrained_atoms)))  # atom 11 is included but whatever
+    AllChem.AlignMol(
+        reactant, product, atomMap=list(zip(constrained_atoms, constrained_atoms))
+    )  # atom 11 is included but whatever
 
     if AllChem.MMFFHasAllMoleculeParams(product):
         mmff_props = AllChem.MMFFGetMoleculeProperties(product)
         ff = AllChem.MMFFGetMoleculeForceField(
-            product, mmff_props, ignoreInterfragInteractions=False)
+            product, mmff_props, ignoreInterfragInteractions=False
+        )
         ff.Initialize()
         for atom in constrained_atoms:
             ff.MMFFAddPositionConstraint(atom, 0, 1e3)
     else:
         ff = AllChem.UFFGetMoleculeForceField(
-            product, confId=-1, ignoreInterfragInteractions=False)
+            product, confId=-1, ignoreInterfragInteractions=False
+        )
         ff.Initialize()
         for atom in constrained_atoms:
             ff.UFFAddPositionConstraint(atom, 0, 1e3)
@@ -307,44 +394,59 @@ def make_product(mol, reactant, product_dummy, n_confs=5, nItsUnconstrained=100,
     reacconf = reactant.GetConformer()
     for atom in product_cat_atoms:
         p = reacconf.GetAtomPosition(atom)
-        pIdx = ff.AddExtraPoint(p.x, p.y, p.z, fixed=True)-1
+        pIdx = ff.AddExtraPoint(p.x, p.y, p.z, fixed=True) - 1
         ff.AddDistanceConstraint(pIdx, atom, 0, 0, 1e10)
     ff.Initialize()
     ff.Minimize(maxIts=1000000, energyTol=1e-4, forceTol=1e-3)
 
     # relax product geometry without additional catalyst constraint
     product_energy = constrained_optimization(
-        product, constrained_atoms, maxIts=nItsUnconstrained, maxDispl=0.01, forceConstant=1e3, ignoreIncomplete=True)
+        product,
+        constrained_atoms,
+        maxIts=nItsUnconstrained,
+        maxDispl=0.01,
+        forceConstant=1e3,
+        ignoreIncomplete=True,
+    )
 
     if xtb_opt:
         product, xtb_energy = xtb_optimize(
-            product, name='product', scratchdir=scratchdir, remove_tmp=remove_tmp, method=preopt_method, numThreads=numThreads)
+            product,
+            name="product",
+            scratchdir=scratchdir,
+            remove_tmp=remove_tmp,
+            method=preopt_method,
+            numThreads=numThreads,
+        )
         product_energy = xtb_energy
 
     if product_energy > energyCutOff:
         print(
-            f'Energy exceeded {energyCutOff} ({product_energy:.2f}) while trying to optimize the product molecule with Catalyst: {Chem.MolToSmiles(mol)}.')
+            f"Energy exceeded {energyCutOff} ({product_energy:.2f}) while trying to optimize the product molecule with Catalyst: {Chem.MolToSmiles(mol)}."
+        )
 
     return product, product_energy
 
 
 # %%
-if __name__ == '__main__':
-    mols = mols_from_smi_file('/home/julius/thesis/data/QD_cats.smi')
+if __name__ == "__main__":
+    mols = mols_from_smi_file("/home/julius/thesis/data/QD_cats.smi")
     mol = mols[3]
     reactant_dummy = sdf2mol(
-        '/home/julius/soft/GB-GA/catalyst/structures/reactant_dummy.sdf')
+        "/home/julius/soft/GB-GA/catalyst/structures/reactant_dummy.sdf"
+    )
     product_dummy = sdf2mol(
-        '/home/julius/soft/GB-GA/catalyst/structures/product_dummy.sdf')
+        "/home/julius/soft/GB-GA/catalyst/structures/product_dummy.sdf"
+    )
     # %%
     reactant, reactant_energy = make_reactant(mol, reactant_dummy, xtb_opt=True)
     product, product_energy = make_product(mol, reactant, product_dummy, xtb_opt=True)
     # %%
-    mols = mols_from_smi_file('/home/julius/thesis/data/QD_cats.smi')
+    mols = mols_from_smi_file("/home/julius/thesis/data/QD_cats.smi")
     ts_energies = []
     for i, mol in enumerate(mols):
-        moldir = f'/home/julius/thesis/scratch/1443976/mol00{i}'
-        ts_energy = get_energy_from_path_ts(os.path.join(moldir, 'xtbpath_ts.xyz'))
+        moldir = f"/home/julius/thesis/scratch/1443976/mol00{i}"
+        ts_energy = get_energy_from_path_ts(os.path.join(moldir, "xtbpath_ts.xyz"))
         ts_energies.append(ts_energy)
     # draw3d([f'/home/julius/thesis/scratch/1443976/mol00{i}/xtbpath_ts.xyz'])
     # %%

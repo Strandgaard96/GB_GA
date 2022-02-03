@@ -1,7 +1,30 @@
-import numpy as np
+"""Example Google style docstrings.
+
+This is the driver script for running a GA algorithm on the Schrock catalyst
+
+Example:
+    -H
+
+        $ python example_google.py
+
+Section breaks are created by resuming unindented text. Section breaks
+are also implicitly created anytime a new section starts.
+
+Attributes:
+    module_level_variable1 (int): Module level variables may be documented in
+        either the ``Attributes`` section of the module docstring, or in an
+        inline docstring immediately following the variable.
+
+        Either form is acceptable, but the two should not be mixed. Choose
+        one convention to document module level variables and be consistent
+        with it.
+
+Todo:
+    * For module TODOs
+
+"""
+
 import time
-import crossover as co
-import scoring_functions as sc
 import sys
 import argparse
 import os
@@ -9,16 +32,14 @@ import logging
 from multiprocessing import Pool
 import random
 import copy
-import GB_GA as ga
-
-# My own utils
+import numpy as np
 
 # Rdkit stuff
 from rdkit import Chem
 
-import filters
-
-molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
+# Homemade stuff from Julius mostly
+import crossover as co
+import scoring_functions as sc
 
 from catalyst.ts_scoring import ts_scoring
 from catalyst.utils import Generation, mols_from_smi_file
@@ -30,11 +51,26 @@ from catalyst.fitness_scaling import (
     exponential_scaling,
 )
 from sa import reweigh_scores_by_sa, neutralize_molecules
+import GB_GA as ga
+
+
+# Julius filter functionality.
+import filters
+molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 
 
 def get_arguments(arg_list=None):
+    '''
+
+    Args:
+        arg_list: Automatically obtained from the commandline if provided. Otherwise default arguments are used
+
+    Returns:
+        parser.parse_args(arg_list)(Namespace): Dictionary like class that contain the arguments
+
+    '''
     parser = argparse.ArgumentParser(
-        description="Train graph convolution network", fromfile_prefix_chars="+"
+        description="Run GA algorithm", fromfile_prefix_chars="+"
     )
     parser.add_argument(
         "--population_size",
@@ -118,18 +154,28 @@ def get_arguments(arg_list=None):
 
 
 def GA(args):
-    '''
-    Function that contain the GA functionality.
-    '''
+    """
+
+    Args:
+        args: Dictionary
+
+    Returns:
+        gen: Generation class that contains the results of the final generation
+    """
+
+    # Make the logger available to this function
+    logger = logging.getLogger("my logger")
 
     # Create initial population and get initial score
-    population = ga.make_initial_population(args['population_size'], args['file_name'])
-    prescores = sc.calculate_scores(population, args['scoring_function'], args['scoring_args'])
+    population = ga.make_initial_population(args["population_size"], args["file_name"])
+    prescores = sc.calculate_scores(
+        population, args["scoring_function"], args["scoring_args"]
+    )
     population.setprop("score", prescores)
     population.sortby("score")
 
     # Functionality to check synthetic accessibility
-    if args['sa_screening']:
+    if args["sa_screening"]:
         neutralize_molecules(population)
         reweigh_scores_by_sa(population)
 
@@ -139,29 +185,39 @@ def GA(args):
     # Instantiate generation class for containing the generation results
     gen = Generation(generation_num=0, children=population, survivors=population)
     run_No = 0
-    gen.save(directory=args['output_dir'], run_No=run_No)
+
+    # Save the generation as pickle file.
+    gen.save(directory=args["output_dir"], run_No=run_No)
     gen.print()
 
     # Start the generations based on the initialized population
-    for generation in range(args['generations']):
+    for generation in range(args["generations"]):
 
+        # Counter for tracking generation number
         generation_num = generation + 1
+
+        # TODO ADD COMMENT
         population.clean_mutated_survival_and_parents()
 
         # Making new Children
-        mating_pool = ga.make_mating_pool(population, args['mating_pool_size'])
+        mating_pool = ga.make_mating_pool(population, args["mating_pool_size"])
         new_population = ga.reproduce(
-            mating_pool, args['population_size'], args['mutation_rate'], filter=molecule_filter
+            mating_pool,
+            args["population_size"],
+            args["mutation_rate"],
+            filter=molecule_filter,
         )
         new_population.generation_num = generation_num
         new_population.assign_idx()
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
-        scores = sc.calculate_scores(new_population, args['scoring_function'], args['scoring_args'])
+        scores = sc.calculate_scores(
+            new_population, args["scoring_function"], args["scoring_args"]
+        )
         new_population.setprop("score", scores)
         new_population.sortby("score")
-        if args['sa_screening']:
+        if args["sa_screening"]:
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
 
@@ -171,19 +227,23 @@ def GA(args):
             mol.survival_idx = mol.idx
         population = ga.sanitize(
             potential_survivors + new_population.molecules,
-            args['population_size'],
-            args['prune_population'],
-        )  # SURVIVORS
+            args["population_size"],
+            args["prune_population"],
+        )
+
+        # SURVIVORS
         population.generation_num = generation_num
         population.assign_idx()
         ga.calculate_normalized_fitness(population)
 
+        # Create generation object from the result. And save for this generation
         gen = Generation(
             generation_num=generation_num, children=new_population, survivors=population
         )
-
-        gen.save(directory=args['output_dir'], run_No=run_No)
+        gen.save(directory=args["output_dir"], run_No=run_No)
+        # Awesome print functionality by julius that format some results as nice table in log file.
         gen.print()
+
     return gen
 
 
@@ -216,15 +276,12 @@ def main():
     index = slice(0, n_tries) if args.prune_population else slice(n_tries, 2 * n_tries)
 
     args_dict = vars(args)
-    args_dict['scoring_function'] = sc.logP_max
+    args_dict["scoring_function"] = sc.logP_max
 
-    GA_args = [
-        args_dict
-        for i in range(n_tries)
-    ]
+    GA_args = [args_dict for i in range(n_tries)]
 
     # For debugging GA to prevent multiprocessing cluttering the traceback
-    #generations = GA(GA_args[0])
+    # generations = GA(GA_args[0])
 
     # Start the time
     t0 = time.time()

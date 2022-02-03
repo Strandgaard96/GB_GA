@@ -41,14 +41,14 @@ from catalyst.fitness_scaling import (
 from sa import reweigh_scores_by_sa, neutralize_molecules
 import GB_GA as ga
 
-
 # Julius filter functionality.
 import filters
+
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 
 
 def get_arguments(arg_list=None):
-    '''
+    """
 
     Args:
         arg_list: Automatically obtained from the commandline if provided. Otherwise default arguments are used
@@ -56,7 +56,7 @@ def get_arguments(arg_list=None):
     Returns:
         parser.parse_args(arg_list)(Namespace): Dictionary like class that contain the arguments
 
-    '''
+    """
     parser = argparse.ArgumentParser(
         description="Run GA algorithm", fromfile_prefix_chars="+"
     )
@@ -250,8 +250,6 @@ def main():
         ],
     )
 
-    # Default values from original code
-
     # Variables for crossover module
     co.average_size = 25.0
     co.size_stdev = 5.0
@@ -261,11 +259,10 @@ def main():
     # Log the argparse set values
     logging.info("Input args: %r", args)
 
-    index = slice(0, n_tries) if args.prune_population else slice(n_tries, 2 * n_tries)
-
+    # Parse the set arguments and add scoring function to dict.
     args_dict = vars(args)
     args_dict["scoring_function"] = sc.logP_max
-
+    # Create list of dicts for the distributed GAs
     GA_args = [args_dict for i in range(n_tries)]
 
     # For debugging GA to prevent multiprocessing cluttering the traceback

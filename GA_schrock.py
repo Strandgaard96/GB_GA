@@ -1,15 +1,15 @@
-"""Example Google style docstrings.
+"""
 
 This is the driver script for running a GA algorithm on the Schrock catalyst
 
 Example:
-    How to run
+    How to run:
 
         $ python GA_schrock.py args
 
 Todo:
-    * For module TODOs
-
+    # Insert module todos:
+    *
 """
 
 import time
@@ -118,7 +118,7 @@ def get_arguments(arg_list=None):
         "--scoring_args",
         type=list,
         default=[],
-        help="How many overall runs of the GA",
+        help="List with args for scoring function",
     )
     parser.add_argument(
         "--n_cpus",
@@ -145,7 +145,7 @@ def GA(args):
     """
 
     Args:
-        args: Dictionary
+        args(dict): Dictionary containint all relevant args for the function
 
     Returns:
         gen: Generation class that contains the results of the final generation
@@ -167,7 +167,7 @@ def GA(args):
         neutralize_molecules(population)
         reweigh_scores_by_sa(population)
 
-    # TODO FILL IN COMMENT
+    # Normalize the score of population infividuals to value between 0 and 1
     ga.calculate_normalized_fitness(population)
 
     # Instantiate generation class for containing the generation results
@@ -184,7 +184,8 @@ def GA(args):
         # Counter for tracking generation number
         generation_num = generation + 1
 
-        # TODO ADD COMMENT
+        # I think this takes the population and reset some Individuals' attributes
+        # Such that they can be set in new generation.
         population.clean_mutated_survival_and_parents()
 
         # Making new Children
@@ -195,8 +196,12 @@ def GA(args):
             args["mutation_rate"],
             filter=molecule_filter,
         )
+        # Assign which generation the population is form.
         new_population.generation_num = generation_num
+        # Assign idx to molecules in population that contain the index in population, but also the generation each
+        # molecule comes from
         new_population.assign_idx()
+        # Sort population based on size
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
@@ -213,23 +218,36 @@ def GA(args):
         potential_survivors = copy.deepcopy(population.molecules)
         for mol in potential_survivors:
             mol.survival_idx = mol.idx
+
+        # Here the total population of new and old are sorted according to score, and the
+        # Remaining population is the ones with the highest scores
+        # Note that there is a namechange here. new_population is turned to population which is effectively
+        # the new population.
         population = ga.sanitize(
             potential_survivors + new_population.molecules,
             args["population_size"],
             args["prune_population"],
         )
 
-        # SURVIVORS
+        # Population now contains survivors after sanitation.
         population.generation_num = generation_num
+
+        # Re-assign idx to molecules in population that contain the index in population, but also the generation each
+        # molecule comes from
         population.assign_idx()
+
+        # Normalize new scores
         ga.calculate_normalized_fitness(population)
 
         # Create generation object from the result. And save for this generation
+        # Here new_population is the generated children. Not all of these are passed to the
+        # next generation which is held by survivors.
         gen = Generation(
             generation_num=generation_num, children=new_population, survivors=population
         )
+        # Save data from current generation
         gen.save(directory=args["output_dir"], run_No=run_No)
-        # Awesome print functionality by julius that format some results as nice table in log file.
+        # Awesome print functionality by Julius that format some results as nice table in log file.
         gen.print()
 
     return gen
@@ -253,8 +271,9 @@ def main():
     # Variables for crossover module
     co.average_size = 25.0
     co.size_stdev = 5.0
+
+    # How many times to run the GA.
     n_tries = args.n_tries
-    seeds = np.random.randint(100_000, size=2 * n_tries)
 
     # Log the argparse set values
     logging.info("Input args: %r", args)
@@ -266,14 +285,16 @@ def main():
     GA_args = [args_dict for i in range(n_tries)]
 
     # For debugging GA to prevent multiprocessing cluttering the traceback
-    # generations = GA(GA_args[0])
+    generations = GA(GA_args[0])
 
     # Start the time
     t0 = time.time()
+
     # Run the GA
     with Pool(args.n_cpus) as pool:
         generations = pool.map(GA, GA_args)
 
+    # Final output handling and logging
     for gen in generations:
         print(gen)
     t1 = time.time()

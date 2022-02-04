@@ -13,13 +13,16 @@ import shutil
 import os
 import sys
 
-sys.path.append("/home/julius/soft/")
+# Dataclass automatically adds an __init__ and __repr__ to Julius defined classes
+from dataclasses import dataclass, field
+
+from typing import List
+import pickle
+from tabulate import tabulate
+import copy
+import pandas as pd
+
 from xyz2mol import read_xyz_file, xyz2mol
-
-sys.path.append("/home/julius/soft/GB-GA")
-# from catalyst.gaussian_utils import extract_optimized_structure
-
-# %%
 
 
 def draw3d(
@@ -148,18 +151,7 @@ class Timer:
             self.logger(self.text.format(elapsed_time))
         return elapsed_time
 
-
-from dataclasses import dataclass, field
-from typing import List
-import pickle
-from tabulate import tabulate
-import copy
-import pandas as pd
-
-
 # %%
-
-
 @dataclass
 class Individual:
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
@@ -516,4 +508,3 @@ if __name__ == "__main__":
         out = pickle.load(f)
     # %%
     out = ts_scoring(ind1, [1, 1, "a", "b", ".", 1])
-# %%

@@ -6,5 +6,5 @@ usage example:
 ```
 python GA_logP.py ZINC_first_1000.smi
 ```
-The idea is that the py file serves as an input file.
+This branch contains my modified code for the Schrock catalyst. 
 

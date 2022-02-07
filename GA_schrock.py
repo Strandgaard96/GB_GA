@@ -285,7 +285,7 @@ def main():
     GA_args = [args_dict for i in range(n_tries)]
 
     # For debugging GA to prevent multiprocessing cluttering the traceback
-    generations = GA(GA_args[0])
+    #generations = GA(GA_args[0])
 
     # Start the time
     t0 = time.time()
@@ -296,7 +296,7 @@ def main():
 
     # Final output handling and logging
     for gen in generations:
-        print(gen)
+        gen.print()
     t1 = time.time()
     logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 

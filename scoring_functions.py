@@ -28,15 +28,15 @@ import sascorer
 from catalyst.utils import Population
 
 
-logP_values = np.loadtxt('logP_values.txt')
-SA_scores = np.loadtxt('SA_scores.txt')
-cycle_scores = np.loadtxt('cycle_scores.txt')
-SA_mean =  np.mean(SA_scores)
-SA_std=np.std(SA_scores)
+logP_values = np.loadtxt("logP_values.txt")
+SA_scores = np.loadtxt("SA_scores.txt")
+cycle_scores = np.loadtxt("cycle_scores.txt")
+SA_mean = np.mean(SA_scores)
+SA_std = np.std(SA_scores)
 logP_mean = np.mean(logP_values)
-logP_std= np.std(logP_values)
+logP_std = np.std(logP_values)
 cycle_mean = np.mean(cycle_scores)
-cycle_std=np.std(cycle_scores)
+cycle_std = np.std(cycle_scores)
 
 
 def wait_for_jobs_to_finish(job_ids):

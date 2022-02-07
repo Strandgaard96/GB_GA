@@ -1,6 +1,12 @@
+# Import module containing commonly used building blocks
 import os
 import sys
 from pathlib import Path
+sys.path.append(
+    os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..")))
 
 from my_utils import auto, my_utils, my_xtb_utils
 

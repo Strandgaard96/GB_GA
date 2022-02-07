@@ -151,6 +151,7 @@ class Timer:
             self.logger(self.text.format(elapsed_time))
         return elapsed_time
 
+
 # %%
 @dataclass
 class Individual:

@@ -33,6 +33,7 @@ def write_xtb_input_files(fragment, name, destination="."):
         file_paths.append(file_path)
     return file_paths
 
+
 def check_xtb_input():
     # Perform various checks. The exceptions here should be caught in driver script!
     if isinstance(mol, Chem.rdchem.Mol):
@@ -53,7 +54,7 @@ def check_xtb_input():
         raise Exception("Not mol object")
 
 
-def run_xtb(structure, type, method ,charge, spin, numThreads=None,**kwargs):
+def run_xtb(structure, type, method, charge, spin, numThreads=None, **kwargs):
 
     # Get numbre of cores available.
     # Careful with this when parallellizing
@@ -74,25 +75,25 @@ def run_xtb(structure, type, method ,charge, spin, numThreads=None,**kwargs):
             cmd += f" --{key} {value}"
 
     # Run the shell command
-    print(f'Running xtb with input string {cmd}')
+    print(f"Running xtb with input string {cmd}")
     out, err = shell(
         cmd,
         shell=True,
     )
-    with open('job.out', 'w') as f:
+    with open("job.out", "w") as f:
         f.write(out)
-    with open('err.out', 'w') as f:
+    with open("err.out", "w") as f:
         f.write(err)
-    #print(out, file=open("job.out", "a"))
+    # print(out, file=open("job.out", "a"))
 
     # Post processing
-    # Insert pos processing
+    # TODO Insert post processing
 
     return out, err
 
 
 def extract_energyxtb(logfile=None):
-    '''
+    """
     Extracts xtb energies from xtb logfile using regex matching.
 
     Args:
@@ -100,7 +101,7 @@ def extract_energyxtb(logfile=None):
 
     Returns:
         energy (list[float]): List of floats containing the energy in each step
-    '''
+    """
 
     re_energy = re.compile("energy: (-\\d+\\.\\d+)")
     energy = []
@@ -109,3 +110,39 @@ def extract_energyxtb(logfile=None):
             if "energy" in line:
                 energy.append(float(re_energy.search(line).groups()[0]))
     return energy
+
+
+def create_intermediates():
+    """Create cycle where X HIPT groups are removed"""
+
+    # Load intermediate
+    mol = Chem.MolFromMolFile(
+        "/home/magstr/Documents/nitrogenase/schrock/diagrams_schrock/schrock_dft/Mo_N2/ams.results/traj.mol",
+        sanitize=False,
+        removeHs=False,
+    )
+
+    # Smart for a nitrogen bound to aromatic carbon.
+    smart = "[c][N]"
+
+    # Initialize pattern
+    patt = Chem.MolFromSmarts(smart)
+
+    # Substructure match
+    print(f"Has substructure match: {mol.HasSubstructMatch(patt)}")
+    indices = mol.GetSubstructMatches(patt)
+
+    bonds = []
+    # Cut the bonds between the nitrogen and the carbon.
+    tuple = indices[0]
+    bonds.append(mol.GetBondBetweenAtoms(tuple[0], tuple[1]).GetIdx())
+
+    # Cut
+    frag = Chem.FragmentOnBonds(mol, bonds, addDummies=True, dummyLabels=[(1, 1)])
+
+    # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
+    frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
+
+    # Save frag to file
+    with open("frag.mol", "w+") as f:
+        f.write(Chem.MolToMolBlock(frags[1]))

@@ -1,6 +1,7 @@
 from collections import UserDict
 import os
 
+
 class DotDict(UserDict):
     """dot.notation access to dictionary attributes
     Currently not in use as it clashed with Multiprocessing-Pool pickling"""

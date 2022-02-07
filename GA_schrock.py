@@ -285,7 +285,7 @@ def main():
     GA_args = [args_dict for i in range(n_tries)]
 
     # For debugging GA to prevent multiprocessing cluttering the traceback
-    #generations = GA(GA_args[0])
+    # generations = GA(GA_args[0])
 
     # Start the time
     t0 = time.time()

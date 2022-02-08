@@ -51,11 +51,11 @@ def run_xtb(args):
         cwd=cwd,
     )
     output, err = popen.communicate()
-    results = read_xtb_out(output, err)
+    results = read_results(output, err)
     return results
 
 
-def read_xtb_out(output, err):
+def read_results(output, err):
     if not "normal termination" in err:
         raise Warning(err)
     lines = output.splitlines()
@@ -85,7 +85,7 @@ def xtb_optimize(
     opt_level="tight",
     input=None,
     name=None,
-    cleanup=True,
+    cleanup=False,
     numThreads=1,
 ):
     # check mol input

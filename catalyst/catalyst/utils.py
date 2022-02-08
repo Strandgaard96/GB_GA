@@ -4,6 +4,7 @@ from rdkit import Chem
 
 hartree2kcalmol = 627.5094740631
 
+
 @dataclass
 class Individual:
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)

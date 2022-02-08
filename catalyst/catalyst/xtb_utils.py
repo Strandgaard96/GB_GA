@@ -51,11 +51,11 @@ def run_xtb(args):
         cwd=cwd,
     )
     output, err = popen.communicate()
-    energy = read_energy(output, err)
-    return energy
+    results = read_xtb_results(output, err)
+    return results
 
 
-def read_energy(output, err):
+def read_xtb_results(output, err):
     if not "normal termination" in err:
         raise Warning(err)
     lines = output.splitlines()

@@ -129,7 +129,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--file_name",
         type=str,
-        default="data/ZINC_first_1000.smi",
+        default="data/ZINC_1000_amines.smi",
         help="",
     )
     parser.add_argument(

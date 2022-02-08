@@ -78,7 +78,7 @@ def run_xtb(structure, type, method, charge, spin, numThreads=None, **kwargs):
     print(f"Running xtb with input string {cmd}")
     out, err = shell(
         cmd,
-        shell=True,
+        shell=False,
     )
     with open("job.out", "w") as f:
         f.write(out)

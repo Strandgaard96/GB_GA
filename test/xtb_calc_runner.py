@@ -13,7 +13,7 @@ from my_utils import auto, my_utils, my_xtb_utils
 if __name__ == '__main__':
 
     path = Path(
-        "/home/energy/magstr/nitrogenase/xtb_optimization_pureXTB_6.3.3/bases/schrock_mol/part1")
+        "/home/magstr/Documents/nitrogenase/schrock/schrock_cycle_1HIPT")
     # Local path: /home/magstr/Documents/nitrogenase/schrock/cycle
     # Niflheim: /home/energy/magstr/nitrogenase/xtb_optimization_pureXTB_6.3.3/bases/schrock/part1
 

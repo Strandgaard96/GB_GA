@@ -15,12 +15,16 @@ RDLogger.DisableLog('rdApp.*')
 
 import numpy as np
 import random
+import heapq
 import time
 import sys
+
+from scipy.stats import rankdata
 
 import crossover as co
 import mutate as mu
 import scoring_functions as sc
+from catalyst.utils import Individual
 
 def read_file(file_name):
   mol_list = []
@@ -30,13 +34,16 @@ def read_file(file_name):
 
   return mol_list
 
-def make_initial_population(population_size,file_name):
-  mol_list = read_file(file_name)
-  population = []
-  for i in range(population_size):
-    population.append(random.choice(mol_list))
-    
-  return population
+def make_initial_population(population_size, file_name, random=True):
+    if random:
+        with open(file_name) as fin:
+            sample = heapq.nlargest(population_size, fin, key=lambda L: random.random())
+    else:
+        with open(file_name) as fin:
+            sample = [smiles for smiles in fin][:population_size]
+    population = [Chem.MolFromSmiles(smi.rstrip()) for smi in sample]
+
+    return population
 
 def calculate_normalized_fitness(scores):
   sum_scores = sum(scores)
@@ -44,74 +51,82 @@ def calculate_normalized_fitness(scores):
 
   return normalized_fitness
 
-def make_mating_pool(population,fitness,mating_pool_size):
-  mating_pool = []
-  for i in range(mating_pool_size):
-  	mating_pool.append(np.random.choice(population, p=fitness))
+def calculate_fitness(
+    scores, minimization=False, selection="roulette", selection_pressure=None
+):
+    if minimization:
+        scores = [-s for s in scores]
+    if selection == "roulette":
+        fitness = scores
+    elif selection == "rank":
+        scores = [
+            float("-inf") if np.isnan(x) else x for x in scores
+        ]  # works for minimization
+        ranks = rankdata(scores, method="ordinal")
+        n = len(ranks)
+        if selection_pressure:
+            fitness = [
+                2
+                - selection_pressure
+                + (2 * (selection_pressure - 1) * (rank - 1) / (n - 1))
+                for rank in ranks
+            ]
+        else:
+            fitness = [r / n for r in ranks]
+    else:
+        raise ValueError(
+            f"Rank-based ('rank') or roulette ('roulette') selection are available, you chose {selection}."
+        )
 
-  return mating_pool
+    return fitness
+
+def make_mating_pool(population, fitness, mating_pool_size):
+    mating_pool = []
+    for i in range(mating_pool_size):
+        mating_pool.append(random.choices(population, weights=fitness, k=1)[0])
+    return mating_pool
  
 
-def reproduce(mating_pool,population_size,mutation_rate):
-  new_population = []
-  while len(new_population) < population_size:
-    parent_A = random.choice(mating_pool)
-    parent_B = random.choice(mating_pool)
-    new_child = co.crossover(parent_A,parent_B)
-    if new_child != None:
-      mutated_child = mu.mutate(new_child,mutation_rate)
-      if mutated_child != None:
-        #print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
-        new_population.append(mutated_child)
+def reproduce(mating_pool, population_size, mutation_rate, molecule_filter, generation):
+    new_population = []
+    counter = 0
+    while len(new_population) < population_size:
+        if random.random() > mutation_rate:
+            parent_A = random.choice(mating_pool)
+            parent_B = random.choice(mating_pool)
+            new_child = co.crossover(
+                parent_A.rdkit_mol, parent_B.rdkit_mol, molecule_filter
+            )
+            if new_child != None:
+                idx = (generation, counter)
+                counter += 1
+                new_child = Individual(rdkit_mol=new_child, idx=idx)
+                new_population.append(new_child)
+        else:
+            parent = random.choice(mating_pool)
+            mutated_child = mu.mutate(parent.rdkit_mol, 1, molecule_filter)
+            if mutated_child != None:
+                idx = (generation, counter)
+                counter += 1
+                mutated_child = Individual(
+                    rdkit_mol=mutated_child,
+                    idx=idx,
+                )
+                new_population.append(mutated_child)
+    return new_population
 
-  return new_population
-
-def sanitize(population,scores,population_size, prune_population):
+def sanitize(population, population_size, prune_population):
     if prune_population:
-      smiles_list = []
-      population_tuples = []
-      for score, mol in zip(scores,population):
-          smiles = Chem.MolToSmiles(mol)
-          smiles = Chem.MolToSmiles(Chem.MolFromSmiles(smiles))
-          if smiles not in smiles_list:
-              smiles_list.append(smiles)
-              population_tuples.append((score,mol))
+        sanitized_population = []
+        for ind in population:
+            if ind.smiles not in [si.smiles for si in sanitized_population]:
+                sanitized_population.append(ind)
     else:
-      population_tuples = list(zip(scores,population))
+        sanitized_population = population
 
-    population_tuples = sorted(population_tuples, key=lambda x: x[0], reverse=True)[:population_size]
-    new_population = [t[1] for t in population_tuples]
-    new_scores = [t[0] for t in population_tuples]
+    sanitized_population.sort(
+        key=lambda x: float("inf") if np.isnan(x.score) else x.score
+    )  # np.nan is highest value, works for minimization of score
 
-    return new_population, new_scores
-
-def GA(args):
-  population_size, file_name,scoring_function,generations,mating_pool_size,mutation_rate, \
-  scoring_args, max_score, prune_population, seed = args
-
-  np.random.seed(seed)
-  random.seed(seed)
-  
-  high_scores = [] 
-  population = make_initial_population(population_size,file_name)
-  scores = sc.calculate_scores(population,scoring_function,scoring_args)
-  #reorder so best score comes first
-  population, scores = sanitize(population, scores, population_size, False)  
-  high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
-  fitness = calculate_normalized_fitness(scores)
-
-  for generation in range(generations):
-    mating_pool = make_mating_pool(population,fitness,mating_pool_size)
-    new_population = reproduce(mating_pool,population_size,mutation_rate)
-    new_scores = sc.calculate_scores(new_population,scoring_function,scoring_args)
-    population, scores = sanitize(population+new_population, scores+new_scores, population_size, prune_population)  
-    fitness = calculate_normalized_fitness(scores)
-    high_scores.append((scores[0],Chem.MolToSmiles(population[0])))
-    if scores[0] >= max_score:
-      break
-
-  return (scores, population, high_scores, generation+1)
-
-
-if __name__ == "__main__":
-    pass
+    new_population = sanitized_population[:population_size]
+    return new_population  # selects individuals with lowest values

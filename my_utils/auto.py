@@ -105,7 +105,7 @@ def get_paths_custom(source, struct, dest):
     for root, dirs, files in os.walk(dest):
         for file in files:
             if file.endswith(struct):
-                paths.append(os.path.join(root, file))
+                paths.append(Path(os.path.join(root, file)))
     return paths
 
 

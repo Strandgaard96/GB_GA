@@ -1,6 +1,6 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from xyz2mol import read_xyz_file, xyz2mol
+from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
 from .auto import shell
 
 import os
@@ -112,12 +112,15 @@ def extract_energyxtb(logfile=None):
     return energy
 
 
-def create_intermediates():
+def create_intermediates(file=None,charge=0):
     """Create cycle where X HIPT groups are removed"""
 
-    # Load intermediate
-    mol = Chem.MolFromMolFile(
-        "/home/magstr/Documents/nitrogenase/schrock/diagrams_schrock/schrock_dft/Mo_N2/ams.results/traj.mol",
+    # Load xyz file and turn to mole object
+    # Currently this does not work. Valence complains when i use the xyz file
+    #atoms, _, coordinates = read_xyz_file(file)
+    #new_mol = xyz2mol(atoms, coordinates, charge)
+
+    mol = Chem.MolFromMolFile(file,
         sanitize=False,
         removeHs=False,
     )
@@ -143,6 +146,25 @@ def create_intermediates():
     # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
+    # Substructure match to find the fragment with the Mo-core
+    smart = "[Mo]"
+
+    # Initialize pattern
+    patt = Chem.MolFromSmarts(smart)
+
+    # Substructure match
+    for idx, struct in enumerate(frags):
+        if struct.HasSubstructMatch(patt):
+            print(f"Found the molybdenum core at index: {idx}")
+            break
+
+    # Replace dummy with hydrogen in the frag:
+    for a in frags[idx].GetAtoms():
+        if a.GetSymbol() == '*':
+            a.SetAtomicNum(1)
+
     # Save frag to file
-    with open("frag.mol", "w+") as f:
-        f.write(Chem.MolToMolBlock(frags[1]))
+    fragname = "1_HIPT_frag.mol"
+    with open(fragname, "w+") as f:
+        f.write(Chem.MolToMolBlock(frags[idx]))
+    return fragname

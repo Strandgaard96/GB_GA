@@ -13,10 +13,11 @@ from my_utils import auto, my_utils, my_xtb_utils
 if __name__ == '__main__':
 
     path = Path(
-        "/home/energy/magstr/nitrogenase/xtb_optimization_pureXTB_6.3.3/bases/schrock/part1")
+        "/home/energy/magstr/nitrogenase/xtb_optimization_pureXTB_6.3.3/bases/schrock_mol/part1")
+    # Local path: /home/magstr/Documents/nitrogenase/schrock/cycle
+    # Niflheim: /home/energy/magstr/nitrogenase/xtb_optimization_pureXTB_6.3.3/bases/schrock/part1
 
-    spin = True
-    struct = ".xyz"
+    struct = ".mol"
     paths = auto.get_paths_custom(
         source=path,
         struct=struct,
@@ -24,8 +25,8 @@ if __name__ == '__main__':
 
     print(f'Optimizing at following locations: {paths}')
     for elem in paths:
-        print(f'Optimizing {elem}')
-        with my_utils.cd(elem[0:len(elem.split('/')[-1])]):
+        print(f'Processing {elem}')
+        with my_utils.cd(elem.parent):
 
             # Get spin and charge
             with open('default.in', 'r') as f:
@@ -34,8 +35,12 @@ if __name__ == '__main__':
             charge = data[0].split('=')[-1].split('\n')[0]
             spin = data[1].split('=')[-1].split('\n')[0]
 
+            file = elem.name.replace('.xyz', '.mol')
+            # Cut 1 HIPT group and convert to mol object
+            fragname = my_xtb_utils.create_intermediates(file=elem.name, charge=int(charge))
+
             my_xtb_utils.run_xtb(
-                structure=elem.split('/')[-1],
+                structure=fragname,
                 method='gfn2',
                 type="ohess",
                 charge=charge,

@@ -112,15 +112,16 @@ def extract_energyxtb(logfile=None):
     return energy
 
 
-def create_intermediates(file=None,charge=0):
+def create_intermediates(file=None, charge=0):
     """Create cycle where X HIPT groups are removed"""
 
     # Load xyz file and turn to mole object
     # Currently this does not work. Valence complains when i use the xyz file
-    #atoms, _, coordinates = read_xyz_file(file)
-    #new_mol = xyz2mol(atoms, coordinates, charge)
+    # atoms, _, coordinates = read_xyz_file(file)
+    # new_mol = xyz2mol(atoms, coordinates, charge)
 
-    mol = Chem.MolFromMolFile(file,
+    mol = Chem.MolFromMolFile(
+        file,
         sanitize=False,
         removeHs=False,
     )
@@ -160,7 +161,7 @@ def create_intermediates(file=None,charge=0):
 
     # Replace dummy with hydrogen in the frag:
     for a in frags[idx].GetAtoms():
-        if a.GetSymbol() == '*':
+        if a.GetSymbol() == "*":
             a.SetAtomicNum(1)
 
     # Save frag to file

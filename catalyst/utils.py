@@ -22,7 +22,7 @@ from tabulate import tabulate
 import copy
 import pandas as pd
 
-from xyz2mol import read_xyz_file, xyz2mol
+from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
 
 
 def draw3d(

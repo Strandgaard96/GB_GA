@@ -141,6 +141,7 @@ if __name__ == '__main__':
     file_name = '/home/julius/soft/GB-GA/ZINC_1000_amines.smi'
     population_size = 8
     mating_pool_size = population_size
+    mating_pool_size = population_size
     generations = 8
     mutation_rate = 0.5
     crossover_rate = 1

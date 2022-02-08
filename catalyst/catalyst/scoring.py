@@ -10,7 +10,7 @@ catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 
 from xtb_utils import xtb_optimize
-from utils import read_xyz, hartree2kcalmol
+from utils import hartree2kcalmol
 from make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
 
 

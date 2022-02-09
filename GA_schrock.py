@@ -129,7 +129,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--file_name",
         type=str,
-        default="ZINC_first_1000.smi",
+        default="data/ZINC_1000_amines.smi",
         help="",
     )
     parser.add_argument(
@@ -210,6 +210,7 @@ def GA(args):
         )
         new_population.setprop("score", scores)
         new_population.sortby("score")
+
         if args["sa_screening"]:
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)

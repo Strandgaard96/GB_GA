@@ -29,7 +29,7 @@ import os.path as op
 _fscores = None
 
 
-def readFragmentScores(name="fpscores"):
+def readFragmentScores(name="data/fpscores"):
     import gzip
 
     global _fscores

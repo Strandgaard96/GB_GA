@@ -28,9 +28,9 @@ import sascorer
 from catalyst.utils import Population
 
 
-logP_values = np.loadtxt("logP_values.txt")
-SA_scores = np.loadtxt("SA_scores.txt")
-cycle_scores = np.loadtxt("cycle_scores.txt")
+logP_values = np.loadtxt("data/logP_values.txt")
+SA_scores = np.loadtxt("data/SA_scores.txt")
+cycle_scores = np.loadtxt("data/cycle_scores.txt")
 SA_mean = np.mean(SA_scores)
 SA_std = np.std(SA_scores)
 logP_mean = np.mean(logP_values)

@@ -210,6 +210,7 @@ def GA(args):
         )
         new_population.setprop("score", scores)
         new_population.sortby("score")
+
         if args["sa_screening"]:
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)

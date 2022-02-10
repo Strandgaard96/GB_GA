@@ -13,11 +13,8 @@ from rdkit.Chem import rdmolops
 
 import numpy as np
 import random
-import heapq
 import time
 import sys
-
-from scipy.stats import rankdata
 
 import crossover as co
 import mutate as mu
@@ -28,106 +25,132 @@ import copy
 
 
 def read_file(file_name):
-  mol_list = []
-  with open(file_name,'r') as file:
-    for smiles in file:
-      mol_list.append(Chem.MolFromSmiles(smiles))
+    mol_list = []
+    with open(file_name, "r") as file:
+        for smiles in file:
+            mol_list.append(Chem.MolFromSmiles(smiles))
 
-  return mol_list
+    return mol_list
 
-def make_initial_population(population_size, file_name, random=True):
-    if random:
-        with open(file_name) as fin:
-            sample = heapq.nlargest(population_size, fin, key=lambda L: random.random())
-    else:
-        with open(file_name) as fin:
-            sample = [smiles for smiles in fin][:population_size]
-    population = [Chem.MolFromSmiles(smi.rstrip()) for smi in sample]
 
-    return population
-
-def calculate_normalized_fitness(scores):
-  sum_scores = sum(scores)
-  normalized_fitness = [score/sum_scores for score in scores]
-
-  return normalized_fitness
-
-def calculate_fitness(
-    scores, minimization=False, selection="roulette", selection_pressure=None
-):
-    if minimization:
-        scores = [-s for s in scores]
-    if selection == "roulette":
-        fitness = scores
-    elif selection == "rank":
-        scores = [
-            float("-inf") if np.isnan(x) else x for x in scores
-        ]  # works for minimization
-        ranks = rankdata(scores, method="ordinal")
-        n = len(ranks)
-        if selection_pressure:
-            fitness = [
-                2
-                - selection_pressure
-                + (2 * (selection_pressure - 1) * (rank - 1) / (n - 1))
-                for rank in ranks
-            ]
+def make_initial_population(population_size, file_name, rand=False):
+    mol_list = read_file(file_name)
+    initial_population = Population()
+    for i in range(population_size):
+        if rand:
+            initial_population.molecules.append(Individual(random.choice(mol_list)))
         else:
-            fitness = [r / n for r in ranks]
-    else:
-        raise ValueError(
-            f"Rank-based ('rank') or roulette ('roulette') selection are available, you chose {selection}."
+            initial_population.molecules.append(Individual(mol_list[i]))
+    initial_population.generation_num = 0
+    initial_population.assign_idx()
+
+    return initial_population
+
+
+def calculate_normalized_fitness(population):
+    scores = population.get("score")
+    min_score = np.min(scores)
+    shifted_scores = [score - min_score for score in scores]
+    sum_scores = sum(shifted_scores)
+    for individual, shifted_score in zip(population.molecules, shifted_scores):
+        individual.normalized_fitness = shifted_score / sum_scores
+
+
+def make_mating_pool(population, mating_pool_size):
+    fitness = population.get("normalized_fitness")
+    mating_pool = []
+    for _ in range(mating_pool_size):
+        mating_pool.append(
+            copy.deepcopy(np.random.choice(population.molecules, p=fitness))
         )
 
-    return fitness
+    return mating_pool  # list of Individuals
 
-def make_mating_pool(population, fitness, mating_pool_size):
-    mating_pool = []
-    for i in range(mating_pool_size):
-        mating_pool.append(random.choices(population, weights=fitness, k=1)[0])
-    return mating_pool
- 
 
-def reproduce(mating_pool, population_size, mutation_rate, molecule_filter, generation):
+def reproduce(mating_pool, population_size, mutation_rate, filter):  # + filter
+    """Creates a new population based on the mating_pool"""
     new_population = []
-    counter = 0
     while len(new_population) < population_size:
-        if random.random() > mutation_rate:
-            parent_A = random.choice(mating_pool)
-            parent_B = random.choice(mating_pool)
-            new_child = co.crossover(
-                parent_A.rdkit_mol, parent_B.rdkit_mol, molecule_filter
-            )
-            if new_child != None:
-                idx = (generation, counter)
-                counter += 1
-                new_child = Individual(rdkit_mol=new_child, idx=idx)
-                new_population.append(new_child)
-        else:
-            parent = random.choice(mating_pool)
-            mutated_child = mu.mutate(parent.rdkit_mol, 1, molecule_filter)
+        parent_A = copy.deepcopy(random.choice(mating_pool))
+        parent_B = copy.deepcopy(random.choice(mating_pool))
+        new_child = co.crossover(parent_A.rdkit_mol, parent_B.rdkit_mol, filter)
+        if new_child != None:
+            mutated_child, mutated = mu.mutate(new_child, mutation_rate, filter)
             if mutated_child != None:
-                idx = (generation, counter)
-                counter += 1
-                mutated_child = Individual(
-                    rdkit_mol=mutated_child,
-                    idx=idx,
+                # print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
+                new_population.append(
+                    Individual(
+                        rdkit_mol=mutated_child,
+                        parentA_idx=parent_A.idx,
+                        parentB_idx=parent_B.idx,
+                        mutated=mutated,
+                    )
                 )
-                new_population.append(mutated_child)
+
+    return Population(molecules=new_population)
+
+
+def reproduce2(
+    mating_pool, population_size, mutation_rate=0.5, crossover_rate=1, filter=None
+):
+    new_population = []
+    succeeded = True
+    counter = 0
+    while len(new_population) < population_size and counter < 10:
+        parent_A = copy.deepcopy(random.choice(mating_pool))
+        parent_B = copy.deepcopy(random.choice(mating_pool))
+        parent_A_idx = parent_A.idx
+        parent_B_idx = parent_B.idx
+        if succeeded:
+            x = random.random()
+        if x < crossover_rate:
+            new_child = co.crossover(parent_A.rdkit_mol, parent_B.rdkit_mol, filter)
+            if new_child == None:
+                succeeded = False
+                counter += 1
+                continue
+        else:
+            new_child = parent_A.rdkit_mol
+            parent_A_idx = None
+            parent_B_idx = None
+
+        mutated_child, mutated = mu.mutate(new_child, mutation_rate, filter)
+        if mutated_child == None:
+            succeeded = False
+            counter += 1
+            continue
+
+        new_population.append(
+            Individual(
+                rdkit_mol=mutated_child,
+                parentA_idx=parent_A_idx,
+                parentB_idx=parent_B_idx,
+                mutated=mutated,
+            )
+        )
+        succeeded = True
+        counter = 0
+
+    return Population(molecules=new_population)
+
+
+def sanitize(molecules, population_size, prune_population):
+    if prune_population:
+        smiles_list = []
+        new_population = Population()
+        for individual in molecules:
+            copy_individual = copy.deepcopy(individual)
+            if copy_individual.smiles not in smiles_list:
+                smiles_list.append(copy_individual.smiles)
+                new_population.molecules.append(copy_individual)
+    else:
+        copy_population = copy.deepcopy(molecules)
+        new_population = Population(molecules=copy_population.molecules)
+
+    new_population.prune(population_size)
+
     return new_population
 
-def sanitize(population, population_size, prune_population):
-    if prune_population:
-        sanitized_population = []
-        for ind in population:
-            if ind.smiles not in [si.smiles for si in sanitized_population]:
-                sanitized_population.append(ind)
-    else:
-        sanitized_population = population
 
-    sanitized_population.sort(
-        key=lambda x: float("inf") if np.isnan(x.score) else x.score
-    )  # np.nan is highest value, works for minimization of score
-
-    new_population = sanitized_population[:population_size]
-    return new_population  # selects individuals with lowest values
+if __name__ == "__main__":
+    pass

@@ -28,7 +28,7 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
     Args:
         cat (rdkit.Mol): Molecule containing one tertiary amine
         n_confs (int, optional): Nubmer of confomers used for embedding. Defaults to 10.
-        cleanup (bool, optional): Clean up files after calculation. 
+        cleanup (bool, optional): Clean up files after calculation.
                                   Defaults to False, needs to be False to work with submitit.
 
     Returns:

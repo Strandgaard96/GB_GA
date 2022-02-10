@@ -13,17 +13,11 @@ Todo:
 """
 
 import time
-import sys
 import argparse
 import os
 import logging
 from multiprocessing import Pool
-import random
 import copy
-import numpy as np
-
-# Rdkit stuff
-from rdkit import Chem
 
 # Homemade stuff from Julius mostly
 import crossover as co
@@ -31,13 +25,6 @@ import scoring_functions as sc
 
 from catalyst.ts_scoring import ts_scoring
 from catalyst.utils import Generation, mols_from_smi_file
-from catalyst.fitness_scaling import (
-    scale_scores,
-    linear_scaling,
-    sigmoid_scaling,
-    open_linear_scaling,
-    exponential_scaling,
-)
 from sa import reweigh_scores_by_sa, neutralize_molecules
 import GB_GA as ga
 
@@ -233,8 +220,8 @@ def GA(args):
         # Population now contains survivors after sanitation.
         population.generation_num = generation_num
 
-        # Re-assign idx to molecules in population that contain the index in population, but also the generation each
-        # molecule comes from
+        # Re-assign idx to molecules in population that contain the index in population,
+        # but also the generation each molecule comes from
         population.assign_idx()
 
         # Normalize new scores

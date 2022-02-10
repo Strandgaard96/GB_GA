@@ -61,24 +61,27 @@ def reweigh_scores_by_number_of_rotatable_bonds_target(
         ns * lts for ns, lts in zip(scores, number_of_rotatable_target_scores)
     ]  # rescale scores and force list type
 
+
 def print_results(population, fitness, generation):
-            print(f"\nGeneration {generation+1}", flush=True)
-            print(
-                tabulate(
-                    [
-                        [ind.idx, fit, ind.score, ind.energy, ind.sa_score, ind.smiles]
-                        for ind, fit in zip(population, fitness)
-                    ],
-                    headers=[
-                        "idx",
-                        "normalized fitness",
-                        "score",
-                        "energy",
-                        "sa score",
-                        "smiles",
-                    ],
-                ), flush=True
-            )
+    print(f"\nGeneration {generation+1}", flush=True)
+    print(
+        tabulate(
+            [
+                [ind.idx, fit, ind.score, ind.energy, ind.sa_score, ind.smiles]
+                for ind, fit in zip(population, fitness)
+            ],
+            headers=[
+                "idx",
+                "normalized fitness",
+                "score",
+                "energy",
+                "sa score",
+                "smiles",
+            ],
+        ),
+        flush=True,
+    )
+
 
 def GA(args):
     (
@@ -153,7 +156,7 @@ def GA(args):
             [ind.rdkit_mol for ind in new_population],
             [ind.idx for ind in new_population],
         )
-        
+
         new_energies = [res[0] for res in new_resuls]
         new_geometries = [res[1] for res in new_resuls]
 
@@ -188,8 +191,8 @@ def GA(args):
             selection_method,
             selection_pressure,
         )
-        fitness = ga.calculate_normalized_fitness(fitness)       
-        
+        fitness = ga.calculate_normalized_fitness(fitness)
+
         print_results(population, fitness, generation)
 
 

@@ -12,6 +12,7 @@ import sys
 import numpy as np
 from datetime import datetime
 
+
 def write_xtb_input_files(fragment, name, destination="."):
     number_of_atoms = fragment.GetNumAtoms()
     symbols = [a.GetSymbol() for a in fragment.GetAtoms()]

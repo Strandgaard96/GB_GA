@@ -50,13 +50,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=4,
+        default=2,
         help="Sets the size of population pool",
     )
     parser.add_argument(
         "--mating_pool_size",
         type=int,
-        default=4,
+        default=1,
         help="Size of mating pool",
     )
     parser.add_argument(
@@ -68,13 +68,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=5,
+        default=1,
         help="How many conformers to generate",
     )
     parser.add_argument(
         "--generations",
         type=int,
-        default=2,
+        default=1,
         help="How many times is the population optimized",
     )
     parser.add_argument(
@@ -98,7 +98,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_tries",
         type=int,
-        default=2,
+        default=1,
         help="How many overall runs of the GA",
     )
     parser.add_argument(
@@ -121,13 +121,14 @@ def get_arguments(arg_list=None):
     )
     return parser.parse_args(arg_list)
 
+
 def get_scoring_args(args):
 
     scoring_args = {}
 
-    scoring_args['n_confs'] = args.n_confs
-    scoring_args['cpus_per_task'] = 4
-
+    scoring_args["n_confs"] = args.n_confs
+    scoring_args["cpus_per_task"] = 1
+    scoring_args["cleanup"] = False
     return scoring_args
 
 
@@ -146,11 +147,14 @@ def GA(args):
 
     # Create initial population and get initial score
     population = ga.make_initial_population(args["population_size"], args["file_name"])
-    prescores = sc.slurm_scoring(args["scoring_function"],
-                                 population,args["scoring_args"]
+    results = sc.slurm_scoring(
+        args["scoring_function"], population, args["scoring_args"]
     )
-    population.setprop("score", prescores)
-    population.sortby("score")
+    energies = [res[0] for res in results]
+    geometries = [res[1] for res in results]
+
+    population.setprop("scores", energies)
+    population.sortby("scores")
 
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
@@ -195,11 +199,14 @@ def GA(args):
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
-        scores = sc.calculate_scores(
-            new_population, args["scoring_function"], scoring_args
+        results = sc.slurm_scoring(
+            args["scoring_function"], population, args["scoring_args"]
         )
-        new_population.setprop("score", scores)
-        new_population.sortby("score")
+
+        energies = [res[0] for res in results]
+        geometries = [res[1] for res in results]
+        new_population.setprop("scores", energies)
+        new_population.sortby("scores")
 
         if args["sa_screening"]:
             neutralize_molecules(new_population)
@@ -233,7 +240,8 @@ def GA(args):
         # Create generation object from the result. And save for this generation
         # Here new_population is the generated children. Not all of these are passed to the
         # next generation which is held by survivors.
-        gen = Generation(generation_num=generation_num, children=new_population, survivors=population
+        gen = Generation(
+            generation_num=generation_num, children=new_population, survivors=population
         )
         # Save data from current generation
         gen.save(directory=args["output_dir"], run_No=run_No)
@@ -259,8 +267,8 @@ def main():
     )
 
     # Variables for crossover module
-    co.average_size = 25.0
-    co.size_stdev = 5.0
+    co.average_size = 8.0
+    co.size_stdev = 4.0
 
     # How many times to run the GA.
     n_tries = args.n_tries
@@ -274,21 +282,20 @@ def main():
     args_dict["scoring_args"] = get_scoring_args(args)
 
     # Create list of dicts for the distributed GAs
-    GA_args = [args_dict for i in range(n_tries)]
-
-    # For debugging GA to prevent multiprocessing cluttering the traceback
-    generations = GA(GA_args[0])
+    GA_args = args_dict
 
     # Start the time
     t0 = time.time()
 
     # Run the GA
-    #with Pool(args.n_cpus) as pool:
+    # with Pool(args.n_cpus) as pool:
     #    generations = pool.map(GA, GA_args)
 
+    # For debugging GA to prevent multiprocessing cluttering the traceback
+    generations = GA(GA_args)
+
     # Final output handling and logging
-    for gen in generations:
-        gen.print()
+    generations.print()
     t1 = time.time()
     logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 

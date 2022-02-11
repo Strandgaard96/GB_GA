@@ -6,13 +6,15 @@ import copy
 import numpy as np
 
 from .xtb_utils import xtb_optimize
-from .utils import hartree2kcalmol
+from my_utils.my_xtb_utils import run_xtb
 from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
 
 
 catalyst_dir = os.path.dirname(__file__)
 ts_file = os.path.join(catalyst_dir, "input_files/ts7_dummy.sdf")
 ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
+
+hartree2kcalmol = 627.5094740631
 
 frag_energies = np.sum(
     [-8.232710038092, -19.734652802142, -32.543971411432]
@@ -32,10 +34,10 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
         Tuple: Contains energy difference, Geom of TS and Geom of Cat
     """
 
-    ts2ds = connect_cat_2d(ts_dummy, cat)
+    ts2ds = connect_cat_2d(ts_dummy, cat.rdkit_mol)
     if len(ts2ds) > 1:
         print(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(cat))} contains more than one tertiary amine"
+            f"{Chem.MolToSmiles(Chem.RemoveHs(cat.rdkit_mol))} contains more than one tertiary amine"
         )
     ts2d = ts2ds[0]
 
@@ -52,7 +54,7 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
     ts3d_energy, ts3d_geom = xtb_optimize(
         ts3d,
         gbsa="methanol",
-        opt_level="tight",
+        opt_level="loose",
         name=f"{idx[0]:03d}_{idx[1]:03d}_ts",
         input=os.path.join(catalyst_dir, "input_files/constr.inp"),
         numThreads=ncpus,
@@ -60,7 +62,7 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
     )
 
     # Embed Catalyst
-    cat3d = copy.deepcopy(cat)
+    cat3d = copy.deepcopy(cat.rdkit_mol)
     cat3d = Chem.AddHs(cat3d)
     cids = Chem.rdDistGeom.EmbedMultipleConfs(
         cat3d, numConfs=n_confs, pruneRmsThresh=0.1

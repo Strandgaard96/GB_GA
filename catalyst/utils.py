@@ -24,6 +24,8 @@ import pandas as pd
 
 from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
 
+hartree2kcalmol = 627.5094740631
+
 
 def draw3d(
     mols,

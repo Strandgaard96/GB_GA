@@ -48,10 +48,16 @@ def make_initial_population(population_size, file_name, rand=False):
 
 
 def calculate_normalized_fitness(population):
-    scores = population.get("score")
+    scores = population.get("scores")
     min_score = np.min(scores)
     shifted_scores = [score - min_score for score in scores]
     sum_scores = sum(shifted_scores)
+    if sum_scores == 0:
+        print(
+            "WARNING: Shifted scores are zero. Normalized fitness is therefore dividing with "
+            "zero, could be because the population only contains one individual"
+        )
+
     for individual, shifted_score in zip(population.molecules, shifted_scores):
         individual.normalized_fitness = shifted_score / sum_scores
 

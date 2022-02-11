@@ -171,6 +171,7 @@ def calculate_scores(population, function, scoring_args):
 
 
 def logP_max(m, dummy):
+    scoring
     score = logP_score(m)
     return max(0.0, score)
 
@@ -210,27 +211,6 @@ def logP_score(m):
     score_one = SA_score_norm + logp_norm + cycle_score_norm
 
     return score_one
-
-
-def shell(cmd, shell=False):
-
-    if shell:
-        p = subprocess.Popen(
-            cmd,
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-    else:
-        cmd = cmd.split()
-        p = subprocess.Popen(
-            cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-
-    output, err = p.communicate()
-    return output
-
 
 def write_xtb_input_file(fragment, fragment_name):
     number_of_atoms = fragment.GetNumAtoms()
@@ -335,7 +315,57 @@ def rediscovery(mol, args):
         return None
 
 
-def MCS(mol, args):
+def MCS(mol, args):import numpy as np
+import shutil
+import submitit
+
+
+def slurm_scoring(sc_function, population, scoring_args):
+    """Evaluates a scoring function for population on SLURM cluster
+    Args:
+        sc_function (function): Scoring function which takes molecules and id (int,int) as input
+        population (List): List of rdkit Molecules
+        ids (List of Tuples of Int): Index of each molecule (Generation, Individual)
+    Returns:
+        List: List of results from scoring function
+    """
+    executor = submitit.AutoExecutor(
+        folder="scoring_tmp",
+        slurm_max_num_timeout=0,
+    )
+    executor.update_parameters(
+        name=f"sc_g{population.molecules[0].idx[0]}",
+        cpus_per_task=scoring_args["cpus_per_task"],
+        slurm_mem_per_cpu="1GB",
+        timeout_min=30,
+        slurm_partition="kemi1",
+        slurm_array_parallelism=100,
+    )
+
+    #Extract ids
+    ids = []
+    for ind in population.molecules:
+        ids.append(ind.idx)
+
+    # cpus per task needs to be list
+    args = [scoring_args['cpus_per_task'] for p in population.molecules]
+    jobs = executor.map_array(sc_function, population.molecules, ids, args)
+
+    results = [
+        catch(job.result, handle=lambda e: (np.nan, None)) for job in jobs
+    ]  # catch submitit exceptions and return same output as scoring function (np.nan, None) for (energy, geometry)
+    if cleanup:
+        shutil.rmtree("scoring_tmp")
+    return results
+
+
+def catch(func, *args, handle=lambda e: e, **kwargs):
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        print(e)
+        return handle(e)
+
     target = args[0]
     try:
         mcs = rdFMCS.FindMCS(

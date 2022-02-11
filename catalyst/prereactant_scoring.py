@@ -1,12 +1,7 @@
 # %%
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import AllChem
 
-import traceback
-import json
-import subprocess
-import copy
 import shutil
 import os  # this is jsut vor OMP
 import sys
@@ -15,16 +10,12 @@ sys.path.append("/home/julius/soft/GB-GA/")
 
 from catalyst.utils import (
     sdf2mol,
-    draw3d,
     mol_from_xyz,
-    vis_trajectory,
     Timer,
     hartree2kcalmol,
-    Individual,
 )
 from catalyst.make_structures import ConstrainedEmbedMultipleConfs, connect_cat_2d
-from catalyst.xtb_utils import xtb_optimize, write_xtb_input_files
-
+from catalyst.xtb_utils import xtb_optimize
 
 prereactant_dummy = sdf2mol(
     "/home/julius/soft/GB-GA/catalyst/structures/prereactant_dummy.sdf"
@@ -203,7 +194,6 @@ if __name__ == "__main__":
     import sys
 
     sys.path.append("/home/julius/soft/GB-GA/")
-    from catalyst.utils import Individual
 
     ind_file = sys.argv[-7]
     nconfs = sys.argv[-6]

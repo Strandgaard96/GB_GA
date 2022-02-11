@@ -1,21 +1,11 @@
 # %%
-from catalyst.utils import mols_from_smi_file, draw3d, sdf2mol, vis_trajectory
-from xyz2mol.xyz2mol import read_xyz_file, xyz2AC, xyz2mol, get_AC
+from catalyst.utils import mols_from_smi_file, sdf2mol
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from rdkit import RDLogger
-
 # RDLogger.DisableLog('rdApp.*')
 
-import random
-import copy
-import json
-import string
-import time
-import subprocess
 import os
-import shutil
 import sys
 
 sys.path.append("/home/julius/soft/")

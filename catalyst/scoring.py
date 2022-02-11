@@ -5,15 +5,12 @@ import sys
 import copy
 import numpy as np
 
+from .xtb_utils import xtb_optimize
+from .utils import hartree2kcalmol
+from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
+
+
 catalyst_dir = os.path.dirname(__file__)
-
-sys.path.append(catalyst_dir)
-
-from xtb_utils import xtb_optimize
-from utils import hartree2kcalmol
-from make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
-
-
 ts_file = os.path.join(catalyst_dir, "input_files/ts7_dummy.sdf")
 ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
 

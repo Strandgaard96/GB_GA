@@ -23,7 +23,7 @@ import copy
 import crossover as co
 import scoring_functions as sc
 
-from catalyst.ts_scoring import ts_scoring
+from catalyst import ts_scoring
 from catalyst.utils import Generation, mols_from_smi_file
 from sa import reweigh_scores_by_sa, neutralize_molecules
 import GB_GA as ga
@@ -102,12 +102,6 @@ def get_arguments(arg_list=None):
         help="How many overall runs of the GA",
     )
     parser.add_argument(
-        "--scoring_args",
-        type=list,
-        default=[],
-        help="List with args for scoring function",
-    )
-    parser.add_argument(
         "--n_cpus",
         type=int,
         default=6,
@@ -127,12 +121,21 @@ def get_arguments(arg_list=None):
     )
     return parser.parse_args(arg_list)
 
+def get_scoring_args(args):
+
+    scoring_args = {}
+
+    scoring_args['n_confs'] = args.n_confs
+    scoring_args['cpus_per_task'] = 4
+
+    return scoring_args
+
 
 def GA(args):
     """
 
     Args:
-        args(dict): Dictionary containint all relevant args for the function
+        args(dict): Dictionary containint all relevant args for the functionscoring_a
 
     Returns:
         gen: Generation class that contains the results of the final generation
@@ -143,8 +146,8 @@ def GA(args):
 
     # Create initial population and get initial score
     population = ga.make_initial_population(args["population_size"], args["file_name"])
-    prescores = sc.calculate_scores(
-        population, args["scoring_function"], args["scoring_args"]
+    prescores = sc.slurm_scoring(args["scoring_function"],
+                                 population,args["scoring_args"]
     )
     population.setprop("score", prescores)
     population.sortby("score")
@@ -193,7 +196,7 @@ def GA(args):
 
         # Calculate new scores based on new population
         scores = sc.calculate_scores(
-            new_population, args["scoring_function"], args["scoring_args"]
+            new_population, args["scoring_function"], scoring_args
         )
         new_population.setprop("score", scores)
         new_population.sortby("score")
@@ -230,8 +233,7 @@ def GA(args):
         # Create generation object from the result. And save for this generation
         # Here new_population is the generated children. Not all of these are passed to the
         # next generation which is held by survivors.
-        gen = Generation(
-            generation_num=generation_num, children=new_population, survivors=population
+        gen = Generation(generation_num=generation_num, children=new_population, survivors=population
         )
         # Save data from current generation
         gen.save(directory=args["output_dir"], run_No=run_No)
@@ -268,19 +270,21 @@ def main():
 
     # Parse the set arguments and add scoring function to dict.
     args_dict = vars(args)
-    args_dict["scoring_function"] = sc.logP_max
+    args_dict["scoring_function"] = ts_scoring
+    args_dict["scoring_args"] = get_scoring_args(args)
+
     # Create list of dicts for the distributed GAs
     GA_args = [args_dict for i in range(n_tries)]
 
     # For debugging GA to prevent multiprocessing cluttering the traceback
-    # generations = GA(GA_args[0])
+    generations = GA(GA_args[0])
 
     # Start the time
     t0 = time.time()
 
     # Run the GA
-    with Pool(args.n_cpus) as pool:
-        generations = pool.map(GA, GA_args)
+    #with Pool(args.n_cpus) as pool:
+    #    generations = pool.map(GA, GA_args)
 
     # Final output handling and logging
     for gen in generations:

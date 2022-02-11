@@ -4,7 +4,6 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 
 import time
-import traceback
 import json
 import subprocess
 import copy
@@ -16,19 +15,14 @@ sys.path.append("/home/julius/soft/GB-GA/")
 
 from catalyst.utils import (
     sdf2mol,
-    draw3d,
-    mol_from_xyz,
-    vis_trajectory,
     Timer,
     hartree2kcalmol,
-    Individual,
 )
 from catalyst.make_structures import (
     ConstrainedEmbedMultipleConfsMultipleFrags,
     connect_cat_2d,
 )
-from catalyst.xtb_utils import xtb_optimize, write_xtb_input_files
-
+from catalyst.xtb_utils import xtb_optimize
 
 reactant_dummy = sdf2mol("/home/julius/thesis/data/rr_dummy.sdf")
 product_dummy = sdf2mol("/home/julius/thesis/data/pp_dummy.sdf")
@@ -616,7 +610,6 @@ if __name__ == "__main__":
     import sys
 
     sys.path.append("/home/julius/soft/GB-GA/")
-    from catalyst.utils import Individual
 
     ind_file = sys.argv[-7]
     nconfs = sys.argv[-6]

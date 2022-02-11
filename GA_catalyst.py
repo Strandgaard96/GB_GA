@@ -9,9 +9,7 @@ from tabulate import tabulate
 
 from typing import List
 
-catalyst_dir = os.path.dirname(__file__)
-
-sys.path.append(catalyst_dir)
+sys.path.append(os.path.dirname(__file__))
 
 import crossover as co
 import scoring_functions as sc
@@ -176,7 +174,14 @@ def GA(args):
             new_sa_scores,
             new_geometries,
         ):
-            ind.score = score
+            ind.score = score    (
+        n_confs,
+        randomseed,
+        timing_logger,
+        warning_logger,
+        directory,
+        cpus_per_molecule,
+    ) = args_list
             ind.energy = energy
             ind.sa_score = sa_score
             ind.structure = structure

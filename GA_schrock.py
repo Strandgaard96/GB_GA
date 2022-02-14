@@ -150,10 +150,10 @@ def GA(args):
     population = ga.make_initial_population(args["population_size"], args["file_name"])
 
     # Use contextmanager to dump calc in output dr
-    with my_utils.cd(args['output_dir']):
-        results = sc.slurm_scoring(
-            args["scoring_function"], population, args["scoring_args"]
-        )
+    #with my_utils.cd(args['output_dir']):
+    results = sc.slurm_scoring(
+        args["scoring_function"], population, args["scoring_args"]
+    )
     energies = [res[0] for res in results]
     geometries = [res[1] for res in results]
 
@@ -206,10 +206,10 @@ def GA(args):
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
-        with my_utils.cd(args['output_dir']):
-            results = sc.slurm_scoring(
-                args["scoring_function"], population, args["scoring_args"]
-            )
+        #with my_utils.cd(args['output_dir']):
+        results = sc.slurm_scoring(
+            args["scoring_function"], population, args["scoring_args"]
+        )
 
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]

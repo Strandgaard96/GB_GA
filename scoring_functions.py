@@ -74,7 +74,7 @@ def slurm_scoring(sc_function, population, scoring_args):
         cpus_per_task=scoring_args["cpus_per_task"],
         slurm_mem_per_cpu="1GB",
         timeout_min=30,
-        slurm_partition="kemi1",
+        slurm_partition="thul",
         slurm_array_parallelism=100,
     )
 

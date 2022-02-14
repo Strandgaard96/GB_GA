@@ -4,6 +4,7 @@ import os
 import sys
 import copy
 import numpy as np
+import logging
 
 from .xtb_utils import xtb_optimize
 from my_utils.my_xtb_utils import run_xtb
@@ -50,6 +51,8 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
         force_constant=1e12,
     )
 
+
+    #logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
     # Calc Energy of TS
     ts3d_energy, ts3d_geom = xtb_optimize(
         ts3d,

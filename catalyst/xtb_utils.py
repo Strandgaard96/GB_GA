@@ -13,7 +13,6 @@ import numpy as np
 from datetime import datetime
 
 
-
 def write_xtb_input_files(fragment, name, destination="."):
     number_of_atoms = fragment.GetNumAtoms()
     symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
@@ -36,11 +35,11 @@ def write_xtb_input_files(fragment, name, destination="."):
                 line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
                 _file.write(line)
         file_paths.append(file_path)
-    return file_paths
+    return file_paths, conf_path
 
 
 def run_xtb(args):
-    xyz_file, xtb_cmd, numThreads = args
+    xyz_file, xtb_cmd, numThreads, conf_path = args
     print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
     cwd = os.path.dirname(xyz_file)
     xyz_file = os.path.basename(xyz_file)
@@ -49,7 +48,7 @@ def run_xtb(args):
     os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
     os.environ["OMP_STACKSIZE"] = "2G"
-    print(f'run xtb command {cmd}')
+    print(f"run xtb command {cmd}")
     popen = subprocess.Popen(
         cmd.split(),
         stdout=subprocess.PIPE,
@@ -59,9 +58,9 @@ def run_xtb(args):
         cwd=cwd,
     )
     output, err = popen.communicate()
-    with open("job.out", "w") as f:
+    with open(Path(conf_path) / "job.out", "w") as f:
         f.write(output)
-    with open("err.out", "w") as f:
+    with open(Path(conf_path) / "err.out", "w") as f:
         f.write(err)
     results = read_results(output, err)
     return results
@@ -124,9 +123,7 @@ def xtb_optimize(
     print(f"SCRATCH DIR = {scr_dir}")
 
     charge = Chem.GetFormalCharge(mol)
-    xyz_files = write_xtb_input_files(
-        mol, "xtbmol", destination=name
-    )
+    xyz_files, conf_path = write_xtb_input_files(mol, "xtbmol", destination=name)
 
     # xtb options
     XTB_OPTIONS = {
@@ -142,11 +139,9 @@ def xtb_optimize(
         if value:
             cmd += f" --{key} {value}"
 
-
     workers = np.min([numThreads, n_confs])
     cpus_per_worker = numThreads // workers
-    args = [(xyz_file, cmd, cpus_per_worker) for xyz_file in xyz_files]
-
+    args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(run_xtb, args)

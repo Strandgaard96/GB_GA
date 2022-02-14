@@ -38,6 +38,7 @@ molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection
 
 import logging as GA_logger
 
+
 def get_arguments(arg_list=None):
     """
 
@@ -147,12 +148,9 @@ def GA(args):
         gen: Generation class that contains the results of the final generation
     """
 
-
     # Create initial population and get initial score
     population = ga.make_initial_population(args["population_size"], args["file_name"])
 
-    # Use contextmanager to dump calc in output dr
-    #with my_utils.cd(args['output_dir']):
     results = sc.slurm_scoring(
         args["scoring_function"], population, args["scoring_args"]
     )
@@ -186,6 +184,7 @@ def GA(args):
 
         # Counter for tracking generation number
         generation_num = generation + 1
+        GA_logger.info("Starting generation %d", generation_num)
 
         # I think this takes the population and reset some Individuals' attributes
         # Such that they can be set in new generation.
@@ -208,7 +207,6 @@ def GA(args):
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
-        #with my_utils.cd(args['output_dir']):
         results = sc.slurm_scoring(
             args["scoring_function"], population, args["scoring_args"]
         )
@@ -256,6 +254,7 @@ def GA(args):
             generation_num=generation_num, children=new_population, survivors=population
         )
         # Save data from current generation
+        GA_logger.info("Saving current generation")
         gen.save(directory=args["output_dir"], run_No=run_No)
         # Awesome print functionality by Julius that format some results as nice table in log file.
         gen.print()
@@ -269,7 +268,6 @@ def main():
 
     # Create output_dir
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-
 
     # Setup logging
     GA_logger.basicConfig(
@@ -304,10 +302,6 @@ def main():
     # Start the time
     t0 = time.time()
 
-    # Run the GA
-    # with Pool(args.n_cpus) as pool:
-    #    generations = pool.map(GA, GA_args)
-
     # For debugging GA to prevent multiprocessing cluttering the traceback
     generations = GA(GA_args)
 
@@ -315,7 +309,11 @@ def main():
     generations.print()
     t1 = time.time()
     logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
+
+    # Addded this to return to the commandline if running this driver
+    # On the frontend.
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

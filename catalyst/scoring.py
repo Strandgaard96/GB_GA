@@ -25,7 +25,7 @@ frag_energies = np.sum(
 )  # 34 atomsPath(output_dir)/
 
 
-def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir = '.'):
+def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."):
     """Calculates electronic energy difference in kcal/mol between TS and reactants
 
     Args:
@@ -54,8 +54,7 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir =
         force_constant=1e12,
     )
 
-
-    #logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
+    # logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
     # Calc Energy of TS
     with cd(output_dir):
         ts3d_energy, ts3d_geom = xtb_optimize(
@@ -91,6 +90,6 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir =
         )
 
     # Calculate electronic activation energy
-    print(ts3d_energy,frag_energies,cat3d_energy,hartree2kcalmol)
+    print(ts3d_energy, frag_energies, cat3d_energy, hartree2kcalmol)
     De = (ts3d_energy - frag_energies - cat3d_energy) * hartree2kcalmol
     return De, (ts3d_geom, cat3d_geom)

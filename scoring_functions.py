@@ -67,7 +67,7 @@ def slurm_scoring(sc_function, population, scoring_args):
         List: List of results from scoring function
     """
     executor = submitit.AutoExecutor(
-        folder=Path(scoring_args['output_dir'])/"scoring_tmp",
+        folder=Path(scoring_args["output_dir"]) / "scoring_tmp",
         slurm_max_num_timeout=0,
     )
     executor.update_parameters(

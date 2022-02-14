@@ -33,6 +33,7 @@ import filters
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 
+import logging as GA_logger
 
 def get_arguments(arg_list=None):
     """
@@ -142,8 +143,6 @@ def GA(args):
         gen: Generation class that contains the results of the final generation
     """
 
-    # Make the logger available to this function
-    logger = logging.getLogger("my logger")
 
     # Create initial population and get initial score
     population = ga.make_initial_population(args["population_size"], args["file_name"])
@@ -172,6 +171,8 @@ def GA(args):
     # Save the generation as pickle file.
     gen.save(directory=args["output_dir"], run_No=run_No)
     gen.print()
+
+    GA_logger.info("Finished initial generation")
 
     # Start the generations based on the initialized population
     for generation in range(args["generations"]):
@@ -255,15 +256,16 @@ def GA(args):
 
 
 def main():
+
     args = get_arguments()
 
     # Setup logging
-    logging.basicConfig(
+    GA_logger.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
         handlers=[
             logging.FileHandler(
-                os.path.join(args.output_dir, "printlog.txt"), mode="w"
+                os.path.join('.', "printlog.txt"), mode="w"
             ),
             logging.StreamHandler(),
         ],
@@ -277,7 +279,7 @@ def main():
     n_tries = args.n_tries
 
     # Log the argparse set values
-    logging.info("Input args: %r", args)
+    GA_logger.info("Input args: %r", args)
 
     # Parse the set arguments and add scoring function to dict.
     args_dict = vars(args)

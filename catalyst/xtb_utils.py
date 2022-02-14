@@ -13,6 +13,7 @@ import numpy as np
 from datetime import datetime
 
 
+
 def write_xtb_input_files(fragment, name, destination="."):
     number_of_atoms = fragment.GetNumAtoms()
     symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
@@ -47,6 +48,7 @@ def run_xtb(args):
     os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
     os.environ["OMP_STACKSIZE"] = "2G"
+    print(f'run xtb command {cmd}')
     popen = subprocess.Popen(
         cmd.split(),
         stdout=subprocess.PIPE,
@@ -56,6 +58,7 @@ def run_xtb(args):
         cwd=cwd,
     )
     output, err = popen.communicate()
+    print(output,err)
     results = read_results(output, err)
     return results
 
@@ -134,10 +137,16 @@ def xtb_optimize(
     for key, value in XTB_OPTIONS.items():
         if value:
             cmd += f" --{key} {value}"
+    print(f'XTB command {cmd}')
+    print(f'{xyz_files}')
+
 
     workers = np.min([numThreads, n_confs])
     cpus_per_worker = numThreads // workers
     args = [(xyz_file, cmd, cpus_per_worker) for xyz_file in xyz_files]
+    print(f'worgkers: {workers}, cpu per worker {cpus_per_worker}')
+    print(f'{args}')
+
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(run_xtb, args)

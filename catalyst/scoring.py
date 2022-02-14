@@ -79,7 +79,7 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
     cat3d_energy, cat3d_geom = xtb_optimize(
         cat3d,
         gbsa="methanol",
-        opt_level="tight",
+        opt_level="loose",
         name=f"{idx[0]:03d}_{idx[1]:03d}_cat",
         numThreads=ncpus,
         cleanup=cleanup,

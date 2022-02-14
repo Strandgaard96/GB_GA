@@ -104,7 +104,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cpus",
         type=int,
-        default=6,
+        default=16,
         help="Number of cores to distribute over",
     )
     parser.add_argument(
@@ -127,7 +127,7 @@ def get_scoring_args(args):
     scoring_args = {}
 
     scoring_args["n_confs"] = args.n_confs
-    scoring_args["cpus_per_task"] = 1
+    scoring_args["cpus_per_task"] = 2
     scoring_args["cleanup"] = False
     return scoring_args
 

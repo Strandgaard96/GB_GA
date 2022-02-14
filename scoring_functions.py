@@ -74,8 +74,8 @@ def slurm_scoring(sc_function, population, scoring_args):
         cpus_per_task=scoring_args["cpus_per_task"],
         slurm_mem_per_cpu="1GB",
         timeout_min=30,
-        slurm_partition="kemi1",
-        slurm_array_parallelism=100,
+        slurm_partition="xeon16",
+        slurm_array_parallelism=20,
     )
 
     # Extract ids

@@ -83,5 +83,6 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
     )
 
     # Calculate electronic activation energy
+    print(ts3d_energy,frag_energies,cat3d_energy,hartree2kcalmol)
     De = (ts3d_energy - frag_energies - cat3d_energy) * hartree2kcalmol
     return De, (ts3d_geom, cat3d_geom)

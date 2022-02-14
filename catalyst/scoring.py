@@ -5,9 +5,12 @@ import sys
 import copy
 import numpy as np
 import logging
+from pathlib import Path
+import sys
 
 from .xtb_utils import xtb_optimize
 from my_utils.my_xtb_utils import run_xtb
+from my_utils.my_utils import cd
 from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
 
 
@@ -19,10 +22,10 @@ hartree2kcalmol = 627.5094740631
 
 frag_energies = np.sum(
     [-8.232710038092, -19.734652802142, -32.543971411432]
-)  # 34 atoms
+)  # 34 atomsPath(output_dir)/
 
 
-def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
+def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir = '.'):
     """Calculates electronic energy difference in kcal/mol between TS and reactants
 
     Args:
@@ -54,15 +57,16 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
 
     #logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
     # Calc Energy of TS
-    ts3d_energy, ts3d_geom = xtb_optimize(
-        ts3d,
-        gbsa="methanol",
-        opt_level="loose",
-        name=f"{idx[0]:03d}_{idx[1]:03d}_ts",
-        input=os.path.join(catalyst_dir, "input_files/constr.inp"),
-        numThreads=ncpus,
-        cleanup=cleanup,
-    )
+    with cd(output_dir):
+        ts3d_energy, ts3d_geom = xtb_optimize(
+            ts3d,
+            gbsa="methanol",
+            opt_level="loose",
+            name=f"{idx[0]:03d}_{idx[1]:03d}_ts",
+            input=os.path.join(catalyst_dir, "input_files/constr.inp"),
+            numThreads=ncpus,
+            cleanup=cleanup,
+        )
 
     # Embed Catalyst
     cat3d = copy.deepcopy(cat.rdkit_mol)
@@ -76,14 +80,15 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False):
         )
 
     # Calc Energy of Cat
-    cat3d_energy, cat3d_geom = xtb_optimize(
-        cat3d,
-        gbsa="methanol",
-        opt_level="loose",
-        name=f"{idx[0]:03d}_{idx[1]:03d}_cat",
-        numThreads=ncpus,
-        cleanup=cleanup,
-    )
+    with cd(output_dir):
+        cat3d_energy, cat3d_geom = xtb_optimize(
+            cat3d,
+            gbsa="methanol",
+            opt_level="loose",
+            name=f"{idx[0]:03d}_{idx[1]:03d}_cat",
+            numThreads=ncpus,
+            cleanup=cleanup,
+        )
 
     # Calculate electronic activation energy
     print(ts3d_energy,frag_energies,cat3d_energy,hartree2kcalmol)

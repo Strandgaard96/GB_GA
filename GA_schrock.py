@@ -20,6 +20,7 @@ from multiprocessing import Pool
 import copy
 from pathlib import Path
 from my_utils import my_utils
+import sys
 
 # Homemade stuff from Julius mostly
 import crossover as co
@@ -132,6 +133,7 @@ def get_scoring_args(args):
     scoring_args["n_confs"] = args.n_confs
     scoring_args["cpus_per_task"] = 3
     scoring_args["cleanup"] = False
+    scoring_args["output_dir"] = args.output_dir
     return scoring_args
 
 
@@ -313,7 +315,7 @@ def main():
     generations.print()
     t1 = time.time()
     logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
-
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

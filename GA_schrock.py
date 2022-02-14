@@ -104,7 +104,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cpus",
         type=int,
-        default=16,
+        default=6,
         help="Number of cores to distribute over",
     )
     parser.add_argument(
@@ -127,7 +127,7 @@ def get_scoring_args(args):
     scoring_args = {}
 
     scoring_args["n_confs"] = args.n_confs
-    scoring_args["cpus_per_task"] = 2
+    scoring_args["cpus_per_task"] = 3
     scoring_args["cleanup"] = False
     return scoring_args
 
@@ -153,8 +153,9 @@ def GA(args):
     energies = [res[0] for res in results]
     geometries = [res[1] for res in results]
 
-    population.setprop("scores", energies)
-    population.sortby("scores")
+    population.setprop("energy", energies)
+    population.setprop("score", energies)
+    population.sortby("score")
 
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
@@ -205,8 +206,10 @@ def GA(args):
 
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]
-        new_population.setprop("scores", energies)
-        new_population.sortby("scores")
+
+        new_population.setprop("energy", energies)
+        new_population.setprop("score", energies)
+        new_population.sortby("score")
 
         if args["sa_screening"]:
             neutralize_molecules(new_population)

@@ -44,7 +44,8 @@ def run_xtb(args):
     print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
     cwd = os.path.dirname(xyz_file)
     xyz_file = os.path.basename(xyz_file)
-    cmd = f"{xtb_cmd} -- {xyz_file} | tee out.out"
+    print(xyz_file)
+    cmd = f"{xtb_cmd} -- {xyz_file} "
     os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
     os.environ["OMP_STACKSIZE"] = "2G"

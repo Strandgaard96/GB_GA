@@ -59,7 +59,10 @@ def run_xtb(args):
         cwd=cwd,
     )
     output, err = popen.communicate()
-    print(output,err)
+    with open("job.out", "w") as f:
+        f.write(output)
+    with open("err.out", "w") as f:
+        f.write(err)
     results = read_results(output, err)
     return results
 
@@ -122,7 +125,7 @@ def xtb_optimize(
 
     charge = Chem.GetFormalCharge(mol)
     xyz_files = write_xtb_input_files(
-        mol, "xtbmol", destination=os.path.join(scr_dir, name)
+        mol, "xtbmol", destination=name
     )
 
     # xtb options
@@ -138,15 +141,11 @@ def xtb_optimize(
     for key, value in XTB_OPTIONS.items():
         if value:
             cmd += f" --{key} {value}"
-    print(f'XTB command {cmd}')
-    print(f'{xyz_files}')
 
 
     workers = np.min([numThreads, n_confs])
     cpus_per_worker = numThreads // workers
     args = [(xyz_file, cmd, cpus_per_worker) for xyz_file in xyz_files]
-    print(f'worgkers: {workers}, cpu per worker {cpus_per_worker}')
-    print(f'{args}')
 
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:

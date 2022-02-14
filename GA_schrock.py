@@ -18,6 +18,8 @@ import os
 import logging
 from multiprocessing import Pool
 import copy
+from pathlib import Path
+from my_utils import my_utils
 
 # Homemade stuff from Julius mostly
 import crossover as co
@@ -117,7 +119,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="test",
+        default="generation",
         help="Directory to put various files",
     )
     return parser.parse_args(arg_list)
@@ -146,9 +148,12 @@ def GA(args):
 
     # Create initial population and get initial score
     population = ga.make_initial_population(args["population_size"], args["file_name"])
-    results = sc.slurm_scoring(
-        args["scoring_function"], population, args["scoring_args"]
-    )
+
+    # Use contextmanager to dump calc in output dr
+    with my_utils.cd(args['output_dir']):
+        results = sc.slurm_scoring(
+            args["scoring_function"], population, args["scoring_args"]
+        )
     energies = [res[0] for res in results]
     geometries = [res[1] for res in results]
 
@@ -201,9 +206,10 @@ def GA(args):
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
-        results = sc.slurm_scoring(
-            args["scoring_function"], population, args["scoring_args"]
-        )
+        with my_utils.cd(args['output_dir']):
+            results = sc.slurm_scoring(
+                args["scoring_function"], population, args["scoring_args"]
+            )
 
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]
@@ -259,13 +265,17 @@ def main():
 
     args = get_arguments()
 
+    # Create output_dir
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+
     # Setup logging
     GA_logger.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
         handlers=[
             logging.FileHandler(
-                os.path.join('.', "printlog.txt"), mode="w"
+                os.path.join(args.output_dir, "printlog.txt"), mode="w"
             ),
             logging.StreamHandler(),
         ],

@@ -3,6 +3,7 @@ from rdkit.Chem import AllChem
 
 import subprocess
 import concurrent.futures
+from pathlib import Path
 
 import os
 import random

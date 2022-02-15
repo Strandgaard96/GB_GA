@@ -15,12 +15,11 @@ Todo:
 import time
 import argparse
 import os
-import logging
-from multiprocessing import Pool
 import copy
 from pathlib import Path
-from my_utils import my_utils
 import sys
+import logging
+
 
 # Homemade stuff from Julius mostly
 import crossover as co
@@ -35,8 +34,6 @@ import GB_GA as ga
 import filters
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
-
-import logging as GA_logger
 
 
 def get_arguments(arg_list=None):
@@ -177,14 +174,14 @@ def GA(args):
     gen.save(directory=args["output_dir"], run_No=run_No)
     gen.print()
 
-    GA_logger.info("Finished initial generation")
+    logging.info("Finished initial generation")
 
     # Start the generations based on the initialized population
     for generation in range(args["generations"]):
 
         # Counter for tracking generation number
         generation_num = generation + 1
-        GA_logger.info("Starting generation %d", generation_num)
+        logging.info("Starting generation %d", generation_num)
 
         # I think this takes the population and reset some Individuals' attributes
         # Such that they can be set in new generation.
@@ -254,7 +251,7 @@ def GA(args):
             generation_num=generation_num, children=new_population, survivors=population
         )
         # Save data from current generation
-        GA_logger.info("Saving current generation")
+        logging.info("Saving current generation")
         gen.save(directory=args["output_dir"], run_No=run_No)
         # Awesome print functionality by Julius that format some results as nice table in log file.
         gen.print()
@@ -270,7 +267,7 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Setup logging
-    GA_logger.basicConfig(
+    logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
         handlers=[
@@ -289,7 +286,7 @@ def main():
     n_tries = args.n_tries
 
     # Log the argparse set values
-    GA_logger.info("Input args: %r", args)
+    logging.info("Input args: %r", args)
 
     # Parse the set arguments and add scoring function to dict.
     args_dict = vars(args)

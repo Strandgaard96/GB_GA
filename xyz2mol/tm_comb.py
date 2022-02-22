@@ -6,9 +6,8 @@ from rdkit.Chem import rdDistGeom
 from rdkit.Chem import rdMolDescriptors
 from rdkit import rdBase
 
-from .parameters import TM_charge_list, TMs
+from parameters import TM_charge_list, TMs
 import itertools
-
 
 def get_TM_charges(atoms):
     TM_charges_all = {}

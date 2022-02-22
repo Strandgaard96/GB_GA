@@ -15,7 +15,7 @@ from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultip
 
 
 catalyst_dir = os.path.dirname(__file__)
-ts_file = os.path.join(catalyst_dir, "input_files/ts7_dummy.sdf")
+ts_file = "input_files/core_noHS.mol"
 ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
 
 hartree2kcalmol = 627.5094740631
@@ -93,3 +93,9 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="
     print(ts3d_energy, frag_energies, cat3d_energy, hartree2kcalmol)
     De = (ts3d_energy - frag_energies - cat3d_energy) * hartree2kcalmol
     return De, (ts3d_geom, cat3d_geom)
+
+
+def molSimplify_scoring(ligand, idx=(0, 0), ncpus=1, cleanup=False, output_dir="."):
+    """Future function that will do the scoring through embedding with mol
+    Simplify"""
+    return

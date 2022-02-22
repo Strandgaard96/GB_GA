@@ -101,7 +101,7 @@ def get_paths_custom(source, struct, dest):
     print("getting paths")
     paths = []
 
-    shutil.copytree(source, dest, dirs_exist_ok=True)
+    shutil.copytree(source, dest)
     for root, dirs, files in os.walk(dest):
         for file in files:
             if file.endswith(struct):

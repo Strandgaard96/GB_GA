@@ -1,21 +1,22 @@
 from my_utils.my_utils import cd
-from my_utils.auto import shell
+from my_utils.my_xtb_utils import run_xtb
+from my_utils.auto import shell, get_paths_custom
 from pathlib import Path
 import json
 import shutil
 import os
 
-def create_cycleMS(new_core=None, smi_path=None):
+def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
 
 
-    with open(smi_path,encoding='utf8') as f:
+    with open(smi_path) as f:
         smi_dict = json.load(f)
 
     for key,value in smi_dict.items():
 
-        intermediate_cmd = f"molsimplify -core {new_core} -lig {value} -ligocc 1" \
+        intermediate_cmd = f"molsimplify -core {new_core} -lig {value['smi']} -ligocc 1" \
                    f" -ccatoms 8 -skipANN True -spin 1 -oxstate 3 -ffoption no" \
-                   f" -smicat 1 -suff {key} -rundir Runs_cycle"
+                   f" -smicat 1 -suff intermediate_{key} -rundir {run_dir}"
 
         # Modify string if multiple ligands.
         # Which is the case for equatorial NN at Mo_N2_NH3.
@@ -24,7 +25,7 @@ def create_cycleMS(new_core=None, smi_path=None):
             intermediate_cmd = f"molsimplify -core {new_core} -oxstate 3 -lig [NH3],N#N" \
                                f" -ligocc 1,1 -ligloc True -ccatoms 8,8 -spin 1 -oxstate 3" \
                                f" -skipANN True -smicat [1],[1]" \
-                               f" -ffoption no -suff {key} -rundir Runs_cycle"
+                               f" -ffoption no -suff intermediate_{key} -rundir {run_dir}"
 
         print(f"String passed to shell: {intermediate_cmd}")
         out, err = shell(
@@ -37,6 +38,39 @@ def create_cycleMS(new_core=None, smi_path=None):
             f.write(err)
 
     return
+
+def xtb_calc(run_dir=None,param_path=None):
+
+    struct = ".xyz"
+    paths = get_paths_custom(source=run_dir, struct=struct, dest="out")
+
+    # Get spin and charge dict
+    with open(param_path) as f:
+        parameters = json.load(f)
+
+    print(f"Optimizing at following locations: {paths}")
+    for elem in paths:
+        print(f"Processing {elem}")
+        with cd(elem.parent):
+
+            # Cumbersome way of getting intermediate name
+            intermediate_name = str(elem.parent.parent).split('intermediate_')[-1]
+
+            charge = parameters[intermediate_name]['charge']
+            spin = parameters[intermediate_name]['spin']
+
+            # Run the xtb calculation on the cut molecule
+            run_xtb(
+                structure=elem.name,
+                method="gfn2",
+                type="ohess",
+                charge=charge,
+                spin=spin,
+                gbsa="Benzene",
+            )
+
+            if elem == paths[-1]:
+                sys.exit(0)
 
 def main():
 
@@ -68,8 +102,10 @@ def main():
     shutil.copy(new_core[0], './new_core.xyz')
 
     if new_core:
+        print('lol')
         # Pass the output structure to cycle creation
-        create_cycleMS(new_core='new_core.xyz', smi_path=intermediate_smi_path)
+        create_cycleMS(new_core='new_core.xyz', smi_path=intermediate_smi_path, run_dir='Runs_cycle')
 
+    xtb_calc(run_dir='Runs_cycle',param_path=intermediate_smi_path)
 if __name__ == '__main__':
     main()

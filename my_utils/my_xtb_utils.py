@@ -91,7 +91,6 @@ def run_xtb(structure, type, method, charge, spin, numThreads=None, **kwargs):
 
     return out, err
 
-
 def extract_energyxtb(logfile=None):
     """
     Extracts xtb energies from xtb logfile using regex matching.

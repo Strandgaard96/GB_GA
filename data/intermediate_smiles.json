@@ -1,9 +1,4 @@
 {
-  "Mo": {
-    "smi": None,
-    "charge": 0,
-    "spin": 1
-  },
   "Mo_N": {
     "smi": "[N]",
     "charge": 0,
@@ -11,8 +6,8 @@
   },
   "Mo_N2": {
     "smi": "N#N",
-    "charge":0,
-    "spin":1
+    "charge": 0,
+    "spin": 1
   },
   "Mo_N2_NH3": {
     "smi": "[NH3],N#N",
@@ -61,8 +56,8 @@
   },
   "Mo_NNH2+": {
     "smi": "[N-]=[NH2]",
-    "charge":1,
-    "spin":0
+    "charge": 1,
+    "spin": 0
   },
   "Mo_NNH3+": {
     "smi": "[N-]=[NH3]",

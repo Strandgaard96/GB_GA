@@ -83,16 +83,16 @@ def plt_handler():
 def see_structures():
     """Visualize xyz structures in folder"""
     paths = []
-    struct = "xtbopt.log"
-    dest = "some_folder"
+    struct = ".xyz"
+    dest = "/home/magstr/Documents/GB_GA/test/Runs_cycle"
     for root, _, files in os.walk(dest):
         for file in files:
             if file.endswith(struct):
                 paths.append(os.path.join(root, file))
     for elem in paths:
         print(elem)
-        shutil.copyfile(elem, elem[0 : -len(struct)] + "traj.xyz")
-        atoms = read(elem[0 : -len(struct)] + "traj.xyz", index=":")
+        #shutil.copyfile(elem, elem[0 : -len(struct)] + "traj.xyz")
+        atoms = read(elem, index=":")
         view(atoms, block=True)
 
 

@@ -15,7 +15,7 @@ from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultip
 
 
 catalyst_dir = os.path.dirname(__file__)
-ts_file = "input_files/core_noHS.mol"
+ts_file = "/home/magstr/Documents/GB_GA/catalyst/input_files/ts7_dummy.sdf"
 ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
 
 hartree2kcalmol = 627.5094740631

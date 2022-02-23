@@ -1,0 +1,37 @@
+name: GA_molS
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - keras
+  - pymongo
+  - hyperopt
+  - pandas
+  - iodata
+  - openbabel
+  - pytorch
+  - tensorflow
+  - torchvision
+  - xtb
+  - python
+  - qt
+  - libffi
+  - scipy
+  - pyqt
+  - pip
+  - pip:
+      -ase
+      -tabulate
+  - scikit-learn
+  - psi4
+  - gpy
+  - xtb-python
+  - rdkit
+  - networkx
+  - jupyterlab
+  - nb_conda_kernels
+  - nb_conda
+  - numpy==1.21.3
+  - submitit
+  - py3dmol
+prefix: /home/magstr/miniconda3/envs/GA_molS

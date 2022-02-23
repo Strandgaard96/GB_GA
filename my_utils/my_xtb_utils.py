@@ -1,6 +1,7 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
-#from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
+
+# from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
 from .auto import shell
 
 import os
@@ -90,6 +91,7 @@ def run_xtb(structure, type, method, charge, spin, numThreads=None, **kwargs):
     # TODO Insert post processing
 
     return out, err
+
 
 def extract_energyxtb(logfile=None):
     """

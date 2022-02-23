@@ -9,6 +9,7 @@ from rdkit import rdBase
 from parameters import TM_charge_list, TMs
 import itertools
 
+
 def get_TM_charges(atoms):
     TM_charges_all = {}
     for i, atom in enumerate(atoms):

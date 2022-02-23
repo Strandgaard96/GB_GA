@@ -91,7 +91,7 @@ def see_structures():
                 paths.append(os.path.join(root, file))
     for elem in paths:
         print(elem)
-        #shutil.copyfile(elem, elem[0 : -len(struct)] + "traj.xyz")
+        # shutil.copyfile(elem, elem[0 : -len(struct)] + "traj.xyz")
         atoms = read(elem, index=":")
         view(atoms, block=True)
 

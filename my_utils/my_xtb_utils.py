@@ -138,11 +138,12 @@ def create_intermediates(file=None, charge=0):
 
     bonds = []
     # Cut the bonds between the nitrogen and the carbon.
-    tuple = indices[0]
-    bonds.append(mol.GetBondBetweenAtoms(tuple[0], tuple[1]).GetIdx())
-
+    
+    for tuple in indices:
+        bonds.append(mol.GetBondBetweenAtoms(tuple[0], tuple[1]).GetIdx())
+    
     # Cut
-    frag = Chem.FragmentOnBonds(mol, bonds, addDummies=True, dummyLabels=[(1, 1)])
+    frag = Chem.FragmentOnBonds(mol, bonds, addDummies=True, dummyLabels=[(1, 1),(1,1),(1,1)])
 
     # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
@@ -152,6 +153,7 @@ def create_intermediates(file=None, charge=0):
 
     # Initialize pattern
     patt = Chem.MolFromSmarts(smart)
+
 
     # Substructure match
     for idx, struct in enumerate(frags):
@@ -165,7 +167,7 @@ def create_intermediates(file=None, charge=0):
             a.SetAtomicNum(1)
 
     # Save frag to file
-    fragname = "1_HIPT_frag.mol"
+    fragname = "no_HIPT_frag.mol"
     with open(fragname, "w+") as f:
         f.write(Chem.MolToMolBlock(frags[idx]))
     return fragname

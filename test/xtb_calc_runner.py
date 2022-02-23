@@ -9,12 +9,12 @@ from my_utils import auto, my_utils, my_xtb_utils
 
 if __name__ == "__main__":
 
-    path = Path("/home/energy/magstr/nitrogenase/schrock/schrock_cycle_1HIPT/part2")
+    path = Path("/home/energy/magstr/nitrogenase/schrock/GB_GA/test/fixed_struct")
     # Local path: /home/magstr/Documents/nitrogenase/schrock/cycle
     # Niflheim: /home/energy/magstr/nitrogenase/xtb_optimization_pureXTB_6.3.3/bases/schrock/part1
 
-    struct = ".mol"
-    paths = auto.get_paths_custom(source=path, struct=struct, dest="out")
+    struct = ".xyz"
+    paths = auto.get_paths_custom(source=path, struct=struct, dest="fix_struct")
 
     print(f"Optimizing at following locations: {paths}")
     for elem in paths:
@@ -28,12 +28,13 @@ if __name__ == "__main__":
             charge = data[0].split("=")[-1].split("\n")[0]
             spin = data[1].split("=")[-1].split("\n")[0]
 
-            file = elem.name.replace(".xyz", ".mol")
+            #file = elem.name.replace(".xyz", ".mol")
             # Cut 1 HIPT group and convert to mol object
-            fragname = my_xtb_utils.create_intermediates(
-                file=elem.name, charge=int(charge)
-            )
-
+            #fragname = my_xtb_utils.create_intermediates(
+            #    file=elem.name, charge=int(charge)
+            #)
+            
+            fragname='Mo_NNH3+.xyz'
             # Run the xtb calculation on the cut molecule
             my_xtb_utils.run_xtb(
                 structure=fragname,

@@ -38,7 +38,9 @@ cat > $SUBMIT <<!EOF
 
 ulimit -s unlimited
 
-source activate /home/energy/magstr/miniconda3/envs/nitrogenase
+module use /home/energy/stly/modules/modules/all
+module load xtb/6.2.3
+source activate /home/energy/magstr/miniconda3/envs/GA
 
 python $SCRIPT
 

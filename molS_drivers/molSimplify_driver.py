@@ -145,10 +145,7 @@ def collect_logfiles():
     os.makedirs(dest)
     for file in glob.glob('*.out'):
         shutil.move(file, dest)
-
-    molS_files = ['CLIinput.inp']
-    for file in molS_files:
-        shutil.move(file,d)
+    shutil.move("CLIinput.inp","Runs")
     os.remove('new_core.xyz')
 
     return

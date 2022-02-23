@@ -84,7 +84,7 @@ def see_structures():
     """Visualize xyz structures in folder"""
     paths = []
     struct = ".xyz"
-    dest = "/home/magstr/Documents/GB_GA/test/Runs_cycle"
+    dest = "/home/magstr/Documents/GB_GA/molS_drivers/Runs_cycle"
     for root, _, files in os.walk(dest):
         for file in files:
             if file.endswith(struct):

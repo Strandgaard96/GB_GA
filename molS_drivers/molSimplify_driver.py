@@ -9,6 +9,7 @@ from pathlib import Path
 import json
 import shutil
 import argparse
+import glob
 
 def get_arguments(arg_list=None):
     """
@@ -138,11 +139,19 @@ def cleanup(xtbout=None):
     '''
     return
 
+def collect_logfiles():
+
+    dest = 'out/logfiles/'
+    os.makedirs(dest)
+    for file in glob.glob('*.out'):
+        shutil.move(file, dest)
+    return
+
 def main():
 
     args = get_arguments()
 
-    # What ligand do i want to test?
+    # What ligand do i want to molS_drivers?
     lig_smi = args.ligand_smi
     core_file = Path("../templates/core_withHS.xyz")
     replig = 1
@@ -182,8 +191,8 @@ def main():
 
     xtb_calc(run_dir=args.cycle_dir, param_path=intermediate_smi_path)
     if args.cleanup:
+        collect_logfiles()
         cleanup(xtbout="out")
-        print('Do something')
 
 if __name__ == "__main__":
     main()

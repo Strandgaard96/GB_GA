@@ -205,7 +205,7 @@ def make_reactant(
     """Connects Catalyst with Reactant via dummy atom, returns min(E) conformer of all n_conf * n_tertary_amines conformers"""
     nonBondedThresh = 100
     energyCutOff = 400
-    # test embed
+    # molS_drivers embed
     if test_embed(mol):
         raise Exception("Mol is already embeded.")
 
@@ -315,7 +315,7 @@ def make_product(
 ):
     """Creates same Regioisomer of Cat+Product_dummy and ensures that similar Rotamer as Reactant is obtained"""
     energyCutOff = 400
-    # test embed
+    # molS_drivers embed
     if test_embed(mol):
         raise Exception("Mol is already embeded.")
 

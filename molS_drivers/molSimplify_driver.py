@@ -146,7 +146,7 @@ def collect_logfiles():
     for file in glob.glob('*.out'):
         shutil.move(file, dest)
     shutil.move("CLIinput.inp","Runs")
-    os.remove('new_core.xyz')
+    s('new_core.xyz')
 
     return
 

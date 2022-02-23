@@ -1,4 +1,9 @@
 {
+  "Mo": {
+    "smi": "Mo",
+    "charge": 0,
+    "spin": 1
+  },
   "Mo_N": {
     "smi": "[N]",
     "charge": 0,

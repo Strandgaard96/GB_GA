@@ -88,7 +88,7 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
 
     # Finaly create directory that contains the simple core
     # (for consistentxtb calcs)
-    bare_core_dir = Path(run_dir)/"Mo"/"struct"
+    bare_core_dir = Path(run_dir)/"intermediate_Mo"/"struct"
     bare_core_dir.mkdir(parents=True,exist_ok=True)
     shutil.copy(new_core, bare_core_dir)
 
@@ -145,6 +145,12 @@ def collect_logfiles():
     os.makedirs(dest)
     for file in glob.glob('*.out'):
         shutil.move(file, dest)
+
+    molS_files = ['CLIinput.inp']
+    for file in molS_files:
+        shutil.move(file,d)
+    os.remove('new_core.xyz')
+
     return
 
 def main():

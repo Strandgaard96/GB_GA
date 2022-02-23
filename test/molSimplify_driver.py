@@ -85,6 +85,12 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
         with open(f"err_{key}.out", "w") as f:
             f.write(err)
 
+    # Finaly create directory that contains the simple core
+    # (for consistentxtb calcs)
+    bare_core_dir = Path(run_dir)/"Mo"/"struct"
+    bare_core_dir.mkdir(parents=True,exist_ok=True)
+    shutil.copy(new_core, bare_core_dir)
+
     return
 
 
@@ -176,6 +182,7 @@ def main():
 
     xtb_calc(run_dir=args.cycle_dir, param_path=intermediate_smi_path)
     if args.cleanup:
+        cleanup(xtbout="out")
         print('Do something')
 
 if __name__ == "__main__":

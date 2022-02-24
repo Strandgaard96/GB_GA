@@ -160,6 +160,8 @@ def collect_logfiles(dest=None):
     """
     for file in glob.glob("*.out"):
         shutil.move(file, dest)
+    os.remove('CLIinput.inp')
+    os.remove('new_core.xyz')
     return
 
 
@@ -207,7 +209,7 @@ def main():
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    dest = Path(args.xtbout) / timestr
+    dest = Path(args.cycle_dir) / timestr
     dest.mkdir(parents=True, exist_ok=False)
     if args.cleanup:
         print("lol")

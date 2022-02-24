@@ -109,6 +109,34 @@ def get_paths_custom(source, struct, dest):
     return paths
 
 
+def get_paths_molsimplify(source, struct, dest):
+    """
+    Get the paths for all molS results. Create new folder structure
+    that contains suffix as folder name and
+    Args:
+        source (str): Folder to look for files with struct extention
+        struct (str): files types to look for in source.
+        dest Path(str):
+    Returns:
+        paths List(Path): Returns path objects to xyz files in newly created tree.
+    """
+
+    paths = []
+
+    for root, dirs, files in os.walk(source):
+        for file in files:
+            if file.endswith(struct):
+
+                # Get intermediate name. A bit ugly and could break.
+                new_dir = root.split("/")[-2].split("intermediate_")[-1]
+                # Crreate this folder
+                os.mkdir(os.path.join(dest, new_dir))
+                # Copy the xyz file into the new directory and append the new file path
+                shutil.copy(os.path.join(root, file), os.path.join(dest, new_dir))
+                paths.append(Path(os.path.join(dest, new_dir, file)))
+    return paths
+
+
 if __name__ == "__main__":
     # plt_handler()
     # get_indices_cofactor()

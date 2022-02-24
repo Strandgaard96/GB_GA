@@ -1,15 +1,18 @@
 import sys
 import os
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from my_utils.my_utils import cd
 from my_utils.my_xtb_utils import run_xtb
-from my_utils.auto import shell, get_paths_custom
+from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
 from pathlib import Path
 import json
 import shutil
 import argparse
 import glob
+import time
+
 
 def get_arguments(arg_list=None):
     """
@@ -37,19 +40,24 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument(
         "--cleanup",
-        dest='cleanup',
-        action='store_true',
+        dest="cleanup",
+        action="store_true",
         help="Cleans xtb output folders",
     )
     parser.set_defaults(cleanup=True)
     parser.add_argument(
         "--ligand_smi",
         type=str,
-        default='[CH4]',
+        default="[CH4]",
         help="Set the ligand to put on the core",
     )
+    parser.add_argument(
+        "--xtbout",
+        type=str,
+        default="xtbout",
+        help="Directory to put xtb calculations",
+    )
     return parser.parse_args(arg_list)
-
 
 
 def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
@@ -88,17 +96,17 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
 
     # Finaly create directory that contains the simple core
     # (for consistentxtb calcs)
-    bare_core_dir = Path(run_dir)/"intermediate_Mo"/"struct"
-    bare_core_dir.mkdir(parents=True,exist_ok=True)
+    bare_core_dir = Path(run_dir) / "intermediate_Mo" / "struct"
+    bare_core_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(new_core, bare_core_dir)
 
     return
 
 
-def xtb_calc(run_dir=None, param_path=None):
+def xtb_calc(cycle_dir=None, param_path=None, dest="xtbout"):
 
     struct = ".xyz"
-    paths = get_paths_custom(source=run_dir, struct=struct, dest="out")
+    paths = get_paths_molsimplify(source=cycle_dir, struct=struct, dest=dest)
 
     # Get spin and charge dict
     with open(param_path) as f:
@@ -110,7 +118,7 @@ def xtb_calc(run_dir=None, param_path=None):
         with cd(elem.parent):
 
             # Cumbersome way of getting intermediate name
-            intermediate_name = str(elem.parent.parent).split("intermediate_")[-1]
+            intermediate_name = elem.parent.name
 
             charge = parameters[intermediate_name]["charge"]
             spin = parameters[intermediate_name]["spin"]
@@ -128,27 +136,32 @@ def xtb_calc(run_dir=None, param_path=None):
             if elem == paths[-1]:
                 sys.exit(0)
 
+
 def cleanup(xtbout=None):
-    '''
+    """
     Function to clean up file paths and make the xtb results
     easierly accesible
     Args:
         xtbout (str): path to the dir where xtb calcs were put
     Returns:
         None
-    '''
+    """
     return
 
-def collect_logfiles():
 
-    dest = 'out/logfiles/'
-    os.makedirs(dest)
-    for file in glob.glob('*.out'):
+def collect_logfiles(dest=None):
+    """
+
+    Args:
+        dest:
+
+    Returns:
+
+    """
+    for file in glob.glob("*.out"):
         shutil.move(file, dest)
-    shutil.move("CLIinput.inp","Runs")
-    s('new_core.xyz')
-
     return
+
 
 def main():
 
@@ -192,10 +205,16 @@ def main():
             run_dir=args.cycle_dir,
         )
 
-    xtb_calc(run_dir=args.cycle_dir, param_path=intermediate_smi_path)
+    # Create xtb outpout folder
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    dest = Path(args.xtbout) / timestr
+    dest.mkdir(parents=True, exist_ok=False)
     if args.cleanup:
-        collect_logfiles()
-        cleanup(xtbout="out")
+        print("lol")
+        collect_logfiles(dest=dest)
+
+    xtb_calc(cycle_dir=args.cycle_dir, param_path=intermediate_smi_path, dest=dest)
+
 
 if __name__ == "__main__":
     main()

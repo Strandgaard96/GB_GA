@@ -17,7 +17,7 @@ short_description = "Catalyst Scoring"
 
 
 setuptools.setup(
-    name="catalyst",
+    name="catalysts",
     version=__version__,
     description=short_description,
     python_requires=">=3.9",

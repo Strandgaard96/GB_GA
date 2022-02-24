@@ -18,7 +18,7 @@ from catalyst.make_structures import ConstrainedEmbedMultipleConfs, connect_cat_
 from catalyst.xtb_utils import xtb_optimize
 
 prereactant_dummy = sdf2mol(
-    "/home/julius/soft/GB-GA/catalyst/structures/prereactant_dummy.sdf"
+    "/home/julius/soft/GB-GA/catalysts/structures/prereactant_dummy.sdf"
 )
 frag_energies = np.sum([-19.734652802142, -32.543971411432])
 
@@ -135,7 +135,7 @@ def prereactant(
     cat_path = os.path.join(
         directory,
         os.path.join(
-            os.path.dirname(os.path.dirname(minE_pre_regioisomer_opt)), "catalyst"
+            os.path.dirname(os.path.dirname(minE_pre_regioisomer_opt)), "catalysts"
         ),
     )
     os.mkdir(cat_path)
@@ -178,7 +178,7 @@ def isolate_cat_from_xyz(xyz_file, cat_xyz, num_atoms_scarfold=28):
                 if i == 0:
                     old_num_atoms = int(line)
                     cat_file.write(
-                        f"{int(old_num_atoms-num_atoms_scarfold)}\n    catalyst\n"
+                        f"{int(old_num_atoms-num_atoms_scarfold)}\n    catalysts\n"
                     )
                 if i < num_atoms_scarfold + 2:
                     pass

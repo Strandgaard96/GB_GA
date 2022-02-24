@@ -6,12 +6,16 @@ from .auto import shell
 
 import os
 import random
+import numpy as np
 import shutil
 import string
 import subprocess
 import logging
 import json
+from pathlib import Path
+from datetime import datetime
 
+import concurrent.futures
 
 # %%
 def write_xtb_input_files(fragment, name, destination="."):
@@ -19,9 +23,13 @@ def write_xtb_input_files(fragment, name, destination="."):
     symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
     conformers = fragment.GetConformers()
     file_paths = []
-    for i, conf in enumerate(fragment.GetConformers()):
+    for i, conf in enumerate(conformers):
         conf_path = os.path.join(destination, f"conf{i:03d}")
-        os.mkdir(conf_path)
+
+        if os.path.exists(conf_path):
+            shutil.rmtree(conf_path)
+        os.makedirs(conf_path)
+
         file_name = f"{name}{i:03d}.xyz"
         file_path = os.path.join(conf_path, file_name)
         with open(file_path, "w") as _file:
@@ -32,65 +40,37 @@ def write_xtb_input_files(fragment, name, destination="."):
                 line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
                 _file.write(line)
         file_paths.append(file_path)
-    return file_paths
+    return file_paths, conf_path
 
 
-def check_xtb_input():
-    # Perform various checks. The exceptions here should be caught in driver script!
-    if isinstance(mol, Chem.rdchem.Mol):
-        # Check for implicit hydrogens
-        if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
-            raise Exception("Implicit Hydrogens")
-        # Check for embedding
-        conformers = mol.GetConformers()
-        if not conformers:
-            raise Exception("Mol is not embedded")
-        elif not conformers[-1].Is3D():
-            raise Exception("Conformer is not 3D")
-        true_charge = Chem.GetFormalCharge(mol)
-
-        # Write mol objects to xyz files for xtb input
-        xyz_files = write_xtb_input_files(mol, "xtbmol", destination=dest)
-    else:
-        raise Exception("Not mol object")
-
-
-def run_xtb(structure, type, method, charge, spin, numThreads=None, **kwargs):
-
-    # Get numbre of cores available.
-    # Careful with this when parallellizing
-    if not numThreads:
-        numThreads = os.cpu_count()
-
-    # Set environmental variables
+def run_xtb(args):
+    xyz_file, xtb_cmd, numThreads, conf_path = args
+    print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
+    cwd = os.path.dirname(xyz_file)
+    xyz_file = os.path.basename(xyz_file)
+    print(xyz_file)
+    cmd = f"{xtb_cmd} -- {xyz_file} "
     os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
-    os.environ["OMP_STACKSIZE"] = "4G"
-
-    # Default input string
-    cmd = f"xtb {structure} --{type} --{method} --chrg {charge} --uhf {spin}"
-
-    # Add extra xtb settings if provided
-    if kwargs:
-        for key, value in kwargs.items():
-            cmd += f" --{key} {value}"
-
-    # Run the shell command
-    print(f"Running xtb with input string {cmd}")
-    out, err = shell(
-        cmd,
+    os.environ["OMP_STACKSIZE"] = "2G"
+    print(f"run xtb command {cmd}")
+    popen = subprocess.Popen(
+        cmd.split(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
         shell=False,
+        cwd=cwd,
     )
-    with open("job.out", "w") as f:
-        f.write(out)
-    with open("err.out", "w") as f:
+    output, err = popen.communicate()
+    print(conf_path)
+    print(err, output)
+    with open(Path(conf_path) / "job.out", "w") as f:
+        f.write(output)
+    with open(Path(conf_path) / "err.out", "w") as f:
         f.write(err)
-    # print(out, file=open("job.out", "a"))
-
-    # Post processing
-    # TODO Insert post processing
-
-    return out, err
+    results = read_results(output, err)
+    return results
 
 
 def extract_energyxtb(logfile=None):
@@ -139,12 +119,14 @@ def create_intermediates(file=None, charge=0):
 
     bonds = []
     # Cut the bonds between the nitrogen and the carbon.
-    
+
     for tuple in indices:
         bonds.append(mol.GetBondBetweenAtoms(tuple[0], tuple[1]).GetIdx())
-    
+
     # Cut
-    frag = Chem.FragmentOnBonds(mol, bonds, addDummies=True, dummyLabels=[(1, 1),(1,1),(1,1)])
+    frag = Chem.FragmentOnBonds(
+        mol, bonds, addDummies=True, dummyLabels=[(1, 1), (1, 1), (1, 1)]
+    )
 
     # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
@@ -154,7 +136,6 @@ def create_intermediates(file=None, charge=0):
 
     # Initialize pattern
     patt = Chem.MolFromSmarts(smart)
-
 
     # Substructure match
     for idx, struct in enumerate(frags):
@@ -172,3 +153,102 @@ def create_intermediates(file=None, charge=0):
     with open(fragname, "w+") as f:
         f.write(Chem.MolToMolBlock(frags[idx]))
     return fragname
+
+
+def read_results(output, err):
+    if not "normal termination" in err:
+        raise Warning(err)
+    lines = output.splitlines()
+    energy = None
+    structure_block = False
+    atoms = []
+    coords = []
+    for l in lines:
+        if "final structure" in l:
+            structure_block = True
+        elif structure_block:
+            s = l.split()
+            if len(s) == 4:
+                atoms.append(s[0])
+                coords.append(list(map(float, s[1:])))
+            elif len(s) == 0:
+                structure_block = False
+        elif "TOTAL ENERGY" in l:
+            energy = float(l.split()[3])
+    return energy, {"atoms": atoms, "coords": coords}
+
+
+def xtb_optimize(
+    mol,
+    gbsa="methanol",
+    alpb=None,
+    opt_level="tight",
+    input=None,
+    name=None,
+    cleanup=False,
+    numThreads=1,
+):
+    # check mol input
+    assert isinstance(mol, Chem.rdchem.Mol)
+    if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
+        raise Exception("Implicit Hydrogens")
+    conformers = mol.GetConformers()
+    n_confs = len(conformers)
+    if not conformers:
+        raise Exception("Mol is not embedded")
+    elif not conformers[-1].Is3D():
+        raise Exception("Conformer is not 3D")
+
+    if not name:
+        name = "tmp_" + "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=4)
+        )
+
+    # set SCRATCH if environmental variable
+    try:
+        scr_dir = os.environ["SCRATCH"]
+    except:
+        scr_dir = os.getcwd()
+    print(f"SCRATCH DIR = {scr_dir}")
+
+    print("write input files")
+    charge = Chem.GetFormalCharge(mol)
+    xyz_files, conf_path = write_xtb_input_files(mol, "xtbmol", destination=name)
+
+    # xtb options
+    XTB_OPTIONS = {
+        "opt": opt_level,
+        "chrg": charge,
+        "gbsa": gbsa,
+        "alpb": alpb,
+        "input": input,
+    }
+
+    cmd = "xtb"
+    for key, value in XTB_OPTIONS.items():
+        if value:
+            cmd += f" --{key} {value}"
+
+    workers = np.min([numThreads, n_confs])
+    cpus_per_worker = numThreads // workers
+    args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
+
+    # For debug
+    # results = run_xtb(args[0])
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results = executor.map(run_xtb, args)
+
+    energies = []
+    geometries = []
+    for e, g in results:
+        energies.append(e)
+        geometries.append(g)
+
+    minidx = np.argmin(energies)
+
+    # Clean up
+    if cleanup:
+        shutil.rmtree(name)
+
+    return energies[minidx], geometries[minidx]

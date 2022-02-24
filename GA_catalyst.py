@@ -9,7 +9,9 @@ from tabulate import tabulate
 
 from typing import List
 
-sys.path.append(os.path.dirname(__file__))
+catalyst_dir = os.path.dirname(__file__)
+
+sys.path.append(catalyst_dir)
 
 import crossover as co
 import scoring_functions as sc
@@ -61,7 +63,7 @@ def reweigh_scores_by_number_of_rotatable_bonds_target(
 
 
 def print_results(population, fitness, generation):
-    print(f"\nGeneration {generation+1}", flush=True)
+    print(f"\nGeneration {generation + 1}", flush=True)
     print(
         tabulate(
             [
@@ -174,14 +176,7 @@ def GA(args):
             new_sa_scores,
             new_geometries,
         ):
-            ind.score = score    (
-        n_confs,
-        randomseed,
-        timing_logger,
-        warning_logger,
-        directory,
-        cpus_per_molecule,
-    ) = args_list
+            ind.score = score
             ind.energy = energy
             ind.sa_score = sa_score
             ind.structure = structure
@@ -205,7 +200,6 @@ def GA(args):
 
 
 if __name__ == "__main__":
-
     package_directory = Path(__file__).parent.resolve()
 
     co.average_size = 8.0  # 14 24.022840038202613

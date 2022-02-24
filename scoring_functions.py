@@ -73,7 +73,7 @@ def slurm_scoring(sc_function, population, scoring_args):
     executor.update_parameters(
         name=f"sc_g{population.molecules[0].idx[0]}",
         cpus_per_task=scoring_args["cpus_per_task"],
-        slurm_mem_per_cpu="1GB",
+        slurm_mem_per_cpu="2GB",
         timeout_min=30,
         slurm_partition="xeon16",
         slurm_array_parallelism=20,

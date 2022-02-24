@@ -22,7 +22,6 @@ NCPUS=$4
 MEM=4G
 
 mkdir -p $OUT
-cd $OUT
 
 cat > $SUBMIT <<!EOF
 #!/bin/sh
@@ -38,9 +37,12 @@ cat > $SUBMIT <<!EOF
 
 ulimit -s unlimited
 
-source activate /home/energy/magstr/miniconda3/envs/GA
+module use /home/energy/stly/modules/modules/all
+module load xtb/6.2.3
+source activate /home/energy/magstr/miniconda3/envs/mols_test
 
-python $SCRIPT
+#python $SCRIPT --run_dir Runs_benz2 --ligand_smi C1=CC=CC=C1 --cycle_dir Runs_cycle_benz2 --xtbout xtbout_benz2
+xtb ~/nitrogenase/with_ff_example.xyz --opt
 
 !EOF
 

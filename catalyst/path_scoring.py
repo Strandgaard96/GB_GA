@@ -79,7 +79,7 @@ def path_scoring(individual, args_list):
             gen_num=individual.idx[0],
             charge=charge,
             numThreads=cpus_per_molecule,
-            inp_file="/home/julius/soft/GB-GA/catalyst/path_template.inp",
+            inp_file="/home/julius/soft/GB-GA/catalysts/path_template.inp",
             directory=directory,
         )
         ts_energy = run_refinement(path_dir, charge)
@@ -139,7 +139,7 @@ def make_reactant(
             tries += 1
             # if tries == max_tries:
             #     if warning_logger:
-            #         warning_logger.warning(f'Embedding of {Chem.MolToSmiles(ts2d)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
+            #         warning_logger.warning(f'Embedding of {Chem.MolToSmiles(catalyst)} was not successful in {max_tries} tries with final forceconstant={force_constant}')
             #     raise Exception(f'Embedding was not successful in {max_tries} tries')
         # xTB optimite TS
         reactant3d_file, reactant3d_energy = xtb_optimize(
@@ -220,11 +220,11 @@ def isolate_cat(mol, scarfold):
 
 
 def calc_cat(reactant, ind_directory, cat_charge, numThreads):
-    # cat_path = os.path.join(ind_directory, 'catalyst')
+    # cat_path = os.path.join(ind_directory, 'catalysts')
     cat = isolate_cat(reactant, reactant_dummy)
     cat_opt_file, cat_energy = xtb_optimize(
         cat,
-        name="catalyst",
+        name="catalysts",
         method="gfn2",
         charge=cat_charge,
         scratchdir=ind_directory,
@@ -407,7 +407,7 @@ def xtb_path(
     gen_num,
     charge,
     numThreads,
-    inp_file="/home/julius/soft/GB-GA/catalyst/path_template.inp",
+    inp_file="/home/julius/soft/GB-GA/catalysts/path_template.inp",
     directory=".",
 ):
     ind_dir = os.path.join(directory, f"G{gen_num:02d}_I{ind_num:02d}")

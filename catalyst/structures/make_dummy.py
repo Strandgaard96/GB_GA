@@ -25,13 +25,13 @@ ts_dummy = AllChem.ReplaceCore(ts, cat)
 
 #%%
 draw3d(ts_dummy)
-writer = Chem.SDWriter("/home/julius/soft/GB-GA/catalyst/structures/ts_dummy.sdf")
+writer = Chem.SDWriter("/home/julius/soft/GB-GA/catalysts/structures/ts_dummy.sdf")
 writer.write(ts_dummy)
 
 # %% Make the Reactant Dummy
 from catalyst.make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfs
 
-reactant2 = sdf2mol("/home/julius/soft/GB-GA/catalyst/structures/reactant_dummy.sdf")
+reactant2 = sdf2mol("/home/julius/soft/GB-GA/catalysts/structures/reactant_dummy.sdf")
 reactant = Chem.GetMolFrags(reactant2, asMols=True)[0]
 
 emol = Chem.rdchem.EditableMol(reactant)
@@ -64,7 +64,7 @@ prereactant_dummy = AllChem.ReplaceCore(reactant3d_opt, cat)
 draw3d(prereactant_dummy)
 # %%
 writer = Chem.SDWriter(
-    "/home/julius/soft/GB-GA/catalyst/structures/prereactant_dummy.sdf"
+    "/home/julius/soft/GB-GA/catalysts/structures/prereactant_dummy.sdf"
 )
 writer.write(prereactant_dummy)
 # %%

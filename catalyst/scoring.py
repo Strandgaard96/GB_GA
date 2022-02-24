@@ -1,28 +1,39 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
+
 import os
-import sys
 import copy
 import numpy as np
-import logging
-from pathlib import Path
 import sys
-
-from .xtb_utils import xtb_optimize
-from my_utils.my_xtb_utils import run_xtb
-from my_utils.my_utils import cd
-from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
-
+from io import StringIO
 
 catalyst_dir = os.path.dirname(__file__)
-ts_file = "/home/magstr/Documents/GB_GA/catalyst/input_files/ts7_dummy.sdf"
-ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
+sys.path.append(catalyst_dir)
 
-hartree2kcalmol = 627.5094740631
+# from .xtb_utils import xtb_optimize
+from my_utils.my_xtb_utils import xtb_optimize
+from my_utils.my_utils import cd, connect_ligand, create_ligands
+from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
 
 frag_energies = np.sum(
     [-8.232710038092, -19.734652802142, -32.543971411432]
-)  # 34 atomsPath(output_dir)/
+)  # 34 atoms
+hartree2kcalmol = 627.5094740631
+
+CORE_ELECTRONIC_ENERGY = -32.698
+NH3_ENERGY = -4.4120
+
+ts_file = os.path.join(catalyst_dir, "input_files/ts7_dummy.sdf")
+int_file = os.path.join(catalyst_dir, "input_files/int5_dummy.sdf")
+
+ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
+
+# My own structs:
+file = "templates/core_dummy.sdf"
+core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
+
+file_NH3 = "templates/core_NH3_dummy.sdf"
+core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 
 
 def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."):
@@ -95,7 +106,200 @@ def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="
     return De, (ts3d_geom, cat3d_geom)
 
 
-def molSimplify_scoring(ligand, idx=(0, 0), ncpus=1, cleanup=False, output_dir="."):
+def embed_rdkit(
+    mol,
+    core,
+    numConfs=10,
+    coreConfId=-1,
+    randomseed=2342,
+    getForceField=AllChem.UFFGetMoleculeForceField,
+    numThreads=1,
+    force_constant=1e3,
+    pruneRmsThresh=1,
+):
+    match = mol.GetSubstructMatch(core)
+    if not match:
+        raise ValueError("molecule doesn't match the core")
+    sio = sys.stderr = StringIO()
+    # if not AllChem.UFFHasAllMoleculeParams(mol):
+    #    raise Exception(Chem.MolToSmiles(mol), sio.getvalue())
+
+    coordMap = {}
+    coreConf = core.GetConformer(coreConfId)
+    for i, idxI in enumerate(match):
+        corePtI = coreConf.GetAtomPosition(i)
+        coordMap[idxI] = corePtI
+
+    cids = AllChem.EmbedMultipleConfs(
+        mol=mol,
+        numConfs=numConfs,
+        coordMap=coordMap,
+        randomSeed=randomseed,
+        numThreads=numThreads,
+        pruneRmsThresh=pruneRmsThresh,
+        useRandomCoords=False,
+    )
+    Chem.SanitizeMol(mol)
+
+    cids = list(cids)
+    if len(cids) == 0:
+        print(coordMap, Chem.MolToSmiles(mol_bonded))
+        raise ValueError("Could not embed molecule.")
+
+    algMap = [(j, i) for i, j in enumerate(match)]
+
+    # rotate the embedded conformation onto the core:
+    for cid in cids:
+        rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
+        ff = AllChem.UFFGetMoleculeForceField(
+            mol, confId=cid, ignoreInterfragInteractions=False
+        )
+        for i, _ in enumerate(match):
+            ff.UFFAddPositionConstraint(i, 0, force_constant)
+        ff.Initialize()
+        n = 4
+        more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
+        while more and n:
+            more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
+            n -= 1
+        # realign
+        rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
+    return mol
+
+
+def embed_molS():
+    """
+    Take a ligand smiles from the GA and put it on the Mo core
+    Returns:
+
+    """
+
+
+def rdkit_embed_scoring(
+    ligand, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."
+):
     """Future function that will do the scoring through embedding with mol
     Simplify"""
-    return
+
+    # get new core and pass file to xtb_optimize
+    # logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
+
+    # The input ligand here should be a smiles.
+    catalysts = connect_ligand(core[0], ligand.rdkit_mol)
+
+    if len(catalysts) > 1:
+        print(
+            f"{Chem.MolToSmiles(Chem.RemoveHs(catalysts[0]))} contains more than one possible ligand"
+        )
+    catalyst = catalysts[0]
+
+    # Embed catalyst
+    catalyst_3d = embed_rdkit(
+        mol=catalyst,
+        core=core[0],
+        numConfs=n_confs,
+        pruneRmsThresh=0.1,
+        force_constant=1e12,
+    )
+
+    print("Done with embedding of catalyst")
+
+    with cd(output_dir):
+        catalyst_3d_energy, catalyst_3d_geom = xtb_optimize(
+            catalyst_3d,
+            gbsa="benzene",
+            opt_level="tight",
+            name=f"{idx[0]:03d}_{idx[1]:03d}_catalyst",
+            input=os.path.join("..", "templates/input_files/constr.inp"),
+            numThreads=ncpus,
+            cleanup=cleanup,
+        )
+        print("catalyst energy:", catalyst_3d_energy)
+
+    print("Start scoring of Mo_NH3 intermediate")
+
+    catalysts_NH3 = connect_ligand(core_NH3[0], ligand.rdkit_mol, NH3_flag=True)
+
+    if len(catalysts_NH3) > 1:
+        print(
+            f"{Chem.MolToSmiles(Chem.RemoveHs(catalysts_NH3[0]))} contains more than one possible ligand"
+        )
+    catalyst_NH3 = catalysts_NH3[0]
+
+    # Embed catalyst
+    Mo_NH3_3d = embed_rdkit(
+        mol=catalyst_NH3,
+        core=core_NH3[0],
+        numConfs=n_confs,
+        pruneRmsThresh=0.1,
+        force_constant=1e12,
+    )
+
+    print("Done with embedding of Mo_NH3")
+
+    with cd(output_dir):
+        Mo_NH3_3d_energy, Mo_NH3_3d_geom = xtb_optimize(
+            Mo_NH3_3d,
+            gbsa="benzene",
+            opt_level="tight",
+            name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
+            input=os.path.join("..", "templates/input_files/constr.inp"),
+            numThreads=ncpus,
+            cleanup=cleanup,
+        )
+        print("Mo_NH3 energy:", Mo_NH3_3d_energy)
+
+    # Scoring function based on the energies
+    # print(f"All energies: cat: {catalyst_3d_energy} ligand: {ligand_3d_energy}")
+    # ligand_3d_energy = 0
+
+    # De = (catalyst_3d_energy - CORE_ELECTRONIC_ENERGY - ligand_3d_energy) * hartree2kcalmol
+    De_new = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
+    return De_new, (catalyst_3d_geom, catalyst_3d_energy)
+
+
+def calc_reference_intermediate():
+
+    return Mo_ref_energy
+
+
+def runner_for_test():
+    # runner for putting proposed ligand on core.
+    file = "../templates/core_dummy.sdf"
+    core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
+
+    file_name = "../data/ZINC_first_1000.smi"
+    mol_list = []
+    with open(file_name, "r") as file:
+        for smiles in file:
+            mol_list.append(Chem.MolFromSmiles(smiles))
+    # mols = connect_ligand(core[0], mol_list[50])
+
+    ligands = create_ligands(mol_list[50])
+
+    # Put ligands on the core and do xtb.
+
+    # Get idx of atom that should attach
+
+    # Get path to ligand
+    # ligand =
+
+    # molSimplify_scoring(ligand, idx=(0, 0), ncpus=1, cleanup=False, output_dir=".")
+
+
+if __name__ == "__main__":
+    # runner_for_test()
+    file_name = "../data/ZINC_first_1000.smi"
+    mol_list = []
+    with open(file_name, "r") as file:
+        for smiles in file:
+            mol_list.append(Chem.MolFromSmiles(smiles))
+    rdkit_embed_scoring(
+        Chem.MolFromSmiles(
+            "CC(=O)Nc1c2n(c3ccccc13)C[C@](C)(C(=O)NC1CCCCC1)N(C1CCCCC1)C2=O"
+        ),
+        idx=(0, 0),
+        ncpus=6,
+        cleanup=False,
+        output_dir="test_scoring",
+    )

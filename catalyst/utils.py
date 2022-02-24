@@ -474,11 +474,11 @@ if __name__ == "__main__":
     from catalyst.path_scoring import path_scoring
     from catalyst.ts_scoring import ts_scoring
 
-    # slurm_score(ind1, '/home/julius/soft/GB-GA/catalyst/ts_scoring.py', 1, 101, 'a', 'b', '.', 1, '.')
+    # slurm_score(ind1, '/home/julius/soft/GB-GA/catalysts/ts_scoring.py', 1, 101, 'a', 'b', '.', 1, '.')
 
     pop.print()
     run_slurm_scores(
-        pop, "/home/julius/soft/GB-GA/catalyst/ts_scoring.py", [1, 1, "a", "b", "."], 1
+        pop, "/home/julius/soft/GB-GA/catalysts/ts_scoring.py", [1, 1, "a", "b", "."], 1
     )
     pop.print()
     # jobids = []
@@ -507,7 +507,7 @@ if __name__ == "__main__":
     )
 
     # %%
-    with open("/home/julius/soft/GB-GA/catalyst/gen02/G02_I05.pkl", "rb") as f:
+    with open("/home/julius/soft/GB-GA/catalysts/gen02/G02_I05.pkl", "rb") as f:
         out = pickle.load(f)
     # %%
     out = ts_scoring(ind1, [1, 1, "a", "b", ".", 1])

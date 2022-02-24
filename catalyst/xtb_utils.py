@@ -107,7 +107,6 @@ def xtb_optimize(
     conformers = mol.GetConformers()
     n_confs = len(conformers)
     if not conformers:
-    if not conformers:
         raise Exception("Mol is not embedded")
     elif not conformers[-1].Is3D():
         raise Exception("Conformer is not 3D")

@@ -49,8 +49,8 @@ def make_initial_population(population_size, file_name, rand=False):
 
 def calculate_normalized_fitness(population):
     scores = population.get("score")
-    min_score = np.min(scores)
-    shifted_scores = [score - min_score for score in scores]
+    min_score = np.nanmin(scores)
+    shifted_scores = [0 if np.isnan(score) else score - min_score for score in scores]
     sum_scores = sum(shifted_scores)
     if sum_scores == 0:
         print(

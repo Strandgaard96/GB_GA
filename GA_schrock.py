@@ -1,6 +1,6 @@
 """
 
-This is the driver script for running a GA algorithm on the Schrock catalyst
+This is the driver script for running a GA algorithm on the Schrock catalysts
 
 Example:
     How to run:
@@ -18,15 +18,15 @@ import os
 import copy
 from pathlib import Path
 import sys
-import logging
-
+import numpy as np
 
 # Homemade stuff from Julius mostly
 import crossover as co
 import scoring_functions as sc
 
-from catalyst import ts_scoring
+from catalyst import ts_scoring, rdkit_embed_scoring
 from catalyst.utils import Generation, mols_from_smi_file
+import logging
 from sa import reweigh_scores_by_sa, neutralize_molecules
 import GB_GA as ga
 
@@ -52,7 +52,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=2,
+        default=3,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -129,7 +129,7 @@ def get_scoring_args(args):
     scoring_args = {}
 
     scoring_args["n_confs"] = args.n_confs
-    scoring_args["cpus_per_task"] = 3
+    scoring_args["cpus_per_task"] = args.n_cpus
     scoring_args["cleanup"] = False
     scoring_args["output_dir"] = args.output_dir
     return scoring_args
@@ -147,6 +147,13 @@ def GA(args):
 
     # Create initial population and get initial score
     population = ga.make_initial_population(args["population_size"], args["file_name"])
+
+    # Test debug
+    # energies = [-20000,np.NaN,-12300]
+    # population.setprop("energy", energies)
+    # population.setprop("score", energies)
+    # population.sortby("score")
+    # ga.calculate_normalized_fitness(population)
 
     results = sc.slurm_scoring(
         args["scoring_function"], population, args["scoring_args"]
@@ -255,6 +262,7 @@ def GA(args):
         gen.save(directory=args["output_dir"], run_No=run_No)
         # Awesome print functionality by Julius that format some results as nice table in log file.
         gen.print()
+        run_No += 1
 
     return gen
 
@@ -266,7 +274,14 @@ def main():
     # Create output_dir
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Setup logging
+    # Variables for crossover module
+    co.average_size = 3.0
+    co.size_stdev = 2.0
+
+    # How many times to run the GA.
+    n_tries = args.n_tries
+
+    # Setup logger
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
@@ -277,20 +292,12 @@ def main():
             logging.StreamHandler(),
         ],
     )
-
-    # Variables for crossover module
-    co.average_size = 8.0
-    co.size_stdev = 4.0
-
-    # How many times to run the GA.
-    n_tries = args.n_tries
-
     # Log the argparse set values
     logging.info("Input args: %r", args)
 
     # Parse the set arguments and add scoring function to dict.
     args_dict = vars(args)
-    args_dict["scoring_function"] = ts_scoring
+    args_dict["scoring_function"] = rdkit_embed_scoring
     args_dict["scoring_args"] = get_scoring_args(args)
 
     # Create list of dicts for the distributed GAs

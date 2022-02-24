@@ -160,8 +160,8 @@ def collect_logfiles(dest=None):
     """
     for file in glob.glob("*.out"):
         shutil.move(file, dest)
-    os.remove('CLIinput.inp')
-    os.remove('new_core.xyz')
+    #os.remove('CLIinput.inp')
+    #os.remove('new_core.xyz')
     return
 
 
@@ -201,21 +201,19 @@ def main():
         # Move output structure to current dir
         shutil.copy(new_core[0], "./new_core.xyz")
         # Pass the output structure to cycle creation
-        create_cycleMS(
-            new_core="new_core.xyz",
-            smi_path=intermediate_smi_path,
-            run_dir=args.cycle_dir,
-        )
+        #create_cycleMS(
+        #    new_core="new_core.xyz",
+        #    smi_path=intermediate_smi_path,
+        #    run_dir=args.cycle_dir,
+        #)
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    dest = Path(args.cycle_dir) / timestr
+    dest = Path(args.xtbout)/(args.ligand_smi+timestr)
     dest.mkdir(parents=True, exist_ok=False)
-    if args.cleanup:
-        print("lol")
-        collect_logfiles(dest=dest)
-
     xtb_calc(cycle_dir=args.cycle_dir, param_path=intermediate_smi_path, dest=dest)
+    if args.cleanup:
+        collect_logfiles(dest=dest)
 
 
 if __name__ == "__main__":

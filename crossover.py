@@ -89,11 +89,21 @@ def ring_OK(mol):
     return not ring_allene and not macro_cycle and not double_bond_in_small_ring
 
 
-def amine_OK(mol):
+def tert_amine_OK(mol):
     """
     Checks if there is at least on tertiary amine
     """
     if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H0;D3;!+1]")):
+        return True
+    else:
+        return False
+
+
+def primary_secondary_amine_OK(mol):
+    """
+    Checks if there is at least one primary amine
+    """
+    if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H2,H1;!$(NC=O)]")):
         return True
     else:
         return False
@@ -199,7 +209,7 @@ def crossover_ring(parent_A, parent_B, filter):
         new_mols2 = []
         for m in new_mols:
             m = m[0]
-            if mol_OK(m, filter) and ring_OK(m) and amine_OK(m):
+            if mol_OK(m, filter) and ring_OK(m) and primary_secondary_amine_OK(m):
                 new_mols2.append(m)
 
         if len(new_mols2) > 0:
@@ -222,7 +232,7 @@ def crossover_non_ring(parent_A, parent_B, filter):
         new_mols = []
         for mol in new_mol_trial:
             mol = mol[0]
-            if mol_OK(mol, filter) and amine_OK(mol):
+            if mol_OK(mol, filter) and primary_secondary_amine_OK(mol):
                 new_mols.append(mol)
 
         if len(new_mols) > 0:

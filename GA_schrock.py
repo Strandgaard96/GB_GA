@@ -7,9 +7,6 @@ Example:
 
         $ python GA_schrock.py args
 
-Todo:
-    # Insert module todos:
-    *
 """
 
 import time
@@ -29,6 +26,7 @@ from catalyst.utils import Generation, mols_from_smi_file
 import logging
 from sa import reweigh_scores_by_sa, neutralize_molecules
 import GB_GA as ga
+from rdkit import Chem
 
 # Julius filter functionality.
 import filters
@@ -52,13 +50,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=3,
+        default=7,
         help="Sets the size of population pool",
     )
     parser.add_argument(
         "--mating_pool_size",
         type=int,
-        default=1,
+        default=6,
         help="Size of mating pool",
     )
     parser.add_argument(
@@ -76,7 +74,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--generations",
         type=int,
-        default=1,
+        default=2,
         help="How many times is the population optimized",
     )
     parser.add_argument(
@@ -106,7 +104,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cpus",
         type=int,
-        default=6,
+        default=1,
         help="Number of cores to distribute over",
     )
     parser.add_argument(
@@ -146,7 +144,7 @@ def GA(args):
     """
 
     # Create initial population and get initial score
-    population = ga.make_initial_population(args["population_size"], args["file_name"])
+    population = ga.make_initial_population(args["population_size"], args["file_name"],rand=False)
 
     # Test debug
     # energies = [-20000,np.NaN,-12300]
@@ -175,10 +173,10 @@ def GA(args):
 
     # Instantiate generation class for containing the generation results
     gen = Generation(generation_num=0, children=population, survivors=population)
-    run_No = 0
+
 
     # Save the generation as pickle file.
-    gen.save(directory=args["output_dir"], run_No=run_No)
+    gen.save(directory=args["output_dir"], run_No=0)
     gen.print()
 
     logging.info("Finished initial generation")
@@ -207,12 +205,20 @@ def GA(args):
         # Assign idx to molecules in population that contain the index in population, but also the generation each
         # molecule comes from
         new_population.assign_idx()
+
         # Sort population based on size
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
+        i = 0
+        for elem in population.molecules:
+            # Save frag to file
+            with open(str(generation_num)+str(i)+'ligand.mol', 'w+') as f:
+                f.write(Chem.MolToMolBlock(Chem.MolFromSmiles(elem.smiles)))
+            i+=1
+
         # Calculate new scores based on new population
         results = sc.slurm_scoring(
-            args["scoring_function"], population, args["scoring_args"]
+            args["scoring_function"], new_population, args["scoring_args"]
         )
 
         energies = [res[0] for res in results]
@@ -259,10 +265,9 @@ def GA(args):
         )
         # Save data from current generation
         logging.info("Saving current generation")
-        gen.save(directory=args["output_dir"], run_No=run_No)
+        gen.save(directory=args["output_dir"], run_No=generation_num)
         # Awesome print functionality by Julius that format some results as nice table in log file.
         gen.print()
-        run_No += 1
 
     return gen
 
@@ -275,8 +280,8 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Variables for crossover module
-    co.average_size = 3.0
-    co.size_stdev = 2.0
+    co.average_size = 8
+    co.size_stdev = 3
 
     # How many times to run the GA.
     n_tries = args.n_tries
@@ -289,7 +294,7 @@ def main():
             logging.FileHandler(
                 os.path.join(args.output_dir, "printlog.txt"), mode="w"
             ),
-            logging.StreamHandler(),
+            logging.StreamHandler(),# For debugging. Can be removed on remote
         ],
     )
     # Log the argparse set values

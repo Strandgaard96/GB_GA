@@ -33,14 +33,21 @@ def read_file(file_name):
     return mol_list
 
 
+
+from catalyst.make_structures import create_ligands
+
 def make_initial_population(population_size, file_name, rand=False):
     mol_list = read_file(file_name)
     initial_population = Population()
+
     for i in range(population_size):
         if rand:
-            initial_population.molecules.append(Individual(random.choice(mol_list)))
+            ligand = create_ligands(random.choice(mol_list))
+            initial_population.molecules.append(Individual(ligand))
         else:
-            initial_population.molecules.append(Individual(mol_list[i]))
+            ligand = create_ligands(mol_list[i])
+            initial_population.molecules.append(Individual(ligand))
+
     initial_population.generation_num = 0
     initial_population.assign_idx()
 
@@ -48,7 +55,11 @@ def make_initial_population(population_size, file_name, rand=False):
 
 
 def calculate_normalized_fitness(population):
+
+    # onvert to high and low scores.
     scores = population.get("score")
+    scores = [-s for s in scores]
+
     min_score = np.nanmin(scores)
     shifted_scores = [0 if np.isnan(score) else score - min_score for score in scores]
     sum_scores = sum(shifted_scores)

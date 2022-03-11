@@ -1,5 +1,6 @@
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from rdkit.Chem import Draw
 
 import os
 import copy
@@ -12,9 +13,9 @@ sys.path.append(catalyst_dir)
 
 # from .xtb_utils import xtb_optimize
 from my_utils.my_xtb_utils import xtb_optimize
-from my_utils.my_utils import cd, connect_ligand, create_ligands
-from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags
-
+from my_utils.my_utils import cd
+from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags, connect_ligand, create_ligands
+from .make_structures import create_primaryamine_ligand
 frag_energies = np.sum(
     [-8.232710038092, -19.734652802142, -32.543971411432]
 )  # 34 atoms
@@ -143,7 +144,7 @@ def embed_rdkit(
 
     cids = list(cids)
     if len(cids) == 0:
-        print(coordMap, Chem.MolToSmiles(mol_bonded))
+        print(coordMap, Chem.MolToSmiles(mol))
         raise ValueError("Could not embed molecule.")
 
     algMap = [(j, i) for i, j in enumerate(match)]
@@ -166,32 +167,19 @@ def embed_rdkit(
         rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
     return mol
 
-
-def embed_molS():
-    """
-    Take a ligand smiles from the GA and put it on the Mo core
-    Returns:
-
-    """
-
-
 def rdkit_embed_scoring(
     ligand, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."
 ):
-    """Future function that will do the scoring through embedding with mol
-    Simplify"""
+    """My driver scoring function."""
 
     # get new core and pass file to xtb_optimize
     # logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
 
-    # The input ligand here should be a smiles.
-    catalysts = connect_ligand(core[0], ligand.rdkit_mol)
 
-    if len(catalysts) > 1:
-        print(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(catalysts[0]))} contains more than one possible ligand"
-        )
-    catalyst = catalysts[0]
+    # TEst primary amine gen
+    ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
+
+    catalyst = connect_ligand(core[0], ligand_cut)
 
     # Embed catalyst
     catalyst_3d = embed_rdkit(
@@ -208,9 +196,9 @@ def rdkit_embed_scoring(
         catalyst_3d_energy, catalyst_3d_geom = xtb_optimize(
             catalyst_3d,
             gbsa="benzene",
-            opt_level="tight",
+            opt_level="loose",
             name=f"{idx[0]:03d}_{idx[1]:03d}_catalyst",
-            input=os.path.join("..", "templates/input_files/constr.inp"),
+            input=os.path.join("../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
             cleanup=cleanup,
         )
@@ -218,13 +206,7 @@ def rdkit_embed_scoring(
 
     print("Start scoring of Mo_NH3 intermediate")
 
-    catalysts_NH3 = connect_ligand(core_NH3[0], ligand.rdkit_mol, NH3_flag=True)
-
-    if len(catalysts_NH3) > 1:
-        print(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(catalysts_NH3[0]))} contains more than one possible ligand"
-        )
-    catalyst_NH3 = catalysts_NH3[0]
+    catalyst_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
 
     # Embed catalyst
     Mo_NH3_3d = embed_rdkit(
@@ -241,9 +223,9 @@ def rdkit_embed_scoring(
         Mo_NH3_3d_energy, Mo_NH3_3d_geom = xtb_optimize(
             Mo_NH3_3d,
             gbsa="benzene",
-            opt_level="tight",
+            opt_level="loose",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            input=os.path.join("..", "templates/input_files/constr.inp"),
+            input=os.path.join("../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
             cleanup=cleanup,
         )
@@ -256,11 +238,6 @@ def rdkit_embed_scoring(
     # De = (catalyst_3d_energy - CORE_ELECTRONIC_ENERGY - ligand_3d_energy) * hartree2kcalmol
     De_new = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
     return De_new, (catalyst_3d_geom, catalyst_3d_energy)
-
-
-def calc_reference_intermediate():
-
-    return Mo_ref_energy
 
 
 def runner_for_test():
@@ -294,10 +271,10 @@ if __name__ == "__main__":
     with open(file_name, "r") as file:
         for smiles in file:
             mol_list.append(Chem.MolFromSmiles(smiles))
+
+    lig = create_ligands(mol_list[1])
     rdkit_embed_scoring(
-        Chem.MolFromSmiles(
-            "CC(=O)Nc1c2n(c3ccccc13)C[C@](C)(C(=O)NC1CCCCC1)N(C1CCCCC1)C2=O"
-        ),
+        lig,
         idx=(0, 0),
         ncpus=6,
         cleanup=False,

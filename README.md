@@ -13,8 +13,8 @@ The main driver script is
     GA_schrock.py 
 
 
-The tets directory contains example scripts and test runs
+The molS directory contains example scripts and test runs for molSimplify
 
-    test/
+    molS_drivers/
 
 

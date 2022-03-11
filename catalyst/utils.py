@@ -243,17 +243,17 @@ class Population:
     def sortby(self, prop, reverse=True):
         if reverse:
             self.molecules.sort(
-                key=lambda x: (getattr(x, prop) is not None, getattr(x, prop)),
+                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
                 reverse=reverse,
             )
         else:
             self.molecules.sort(
-                key=lambda x: (getattr(x, prop) is None, getattr(x, prop)),
+                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
                 reverse=reverse,
             )
 
     def prune(self, population_size):
-        self.sortby("score", reverse=True)
+        self.sortby("score", reverse=False)
         self.molecules = self.molecules[:population_size]
         self.size = len(self.molecules)
 

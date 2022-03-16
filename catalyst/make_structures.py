@@ -293,7 +293,7 @@ def create_primaryamine_ligand(ligand):
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
     # Find frag that is NH2+dummy
-    smart = "[1*][N]"
+    smart = "[1*][N]([H])([H])"
     # Initialize pattern
     patt = Chem.MolFromSmarts(smart)
 

@@ -209,13 +209,6 @@ def GA(args):
         # Sort population based on size
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
-        i = 0
-        for elem in population.molecules:
-            # Save frag to file
-            with open(str(generation_num)+str(i)+'ligand.mol', 'w+') as f:
-                f.write(Chem.MolToMolBlock(Chem.MolFromSmiles(elem.smiles)))
-            i+=1
-
         # Calculate new scores based on new population
         results = sc.slurm_scoring(
             args["scoring_function"], new_population, args["scoring_args"]

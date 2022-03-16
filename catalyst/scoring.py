@@ -7,6 +7,7 @@ import copy
 import numpy as np
 import sys
 from io import StringIO
+import pickle
 
 catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
@@ -14,8 +15,8 @@ sys.path.append(catalyst_dir)
 # from .xtb_utils import xtb_optimize
 from my_utils.my_xtb_utils import xtb_optimize
 from my_utils.my_utils import cd
-from .make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags, connect_ligand, create_ligands
-from .make_structures import create_primaryamine_ligand
+from make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags, connect_ligand, create_ligands
+from make_structures import create_primaryamine_ligand
 frag_energies = np.sum(
     [-8.232710038092, -19.734652802142, -32.543971411432]
 )  # 34 atoms
@@ -30,10 +31,10 @@ int_file = os.path.join(catalyst_dir, "input_files/int5_dummy.sdf")
 ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
 
 # My own structs:
-file = "templates/core_dummy.sdf"
+file = "../templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 
-file_NH3 = "templates/core_NH3_dummy.sdf"
+file_NH3 = "../templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 
 
@@ -273,10 +274,9 @@ if __name__ == "__main__":
             mol_list.append(Chem.MolFromSmiles(smiles))
 
     lig = create_ligands(mol_list[1])
-    rdkit_embed_scoring(
-        lig,
-        idx=(0, 0),
-        ncpus=6,
-        cleanup=False,
-        output_dir="test_scoring",
-    )
+
+    with open('/home/magstr/generation_prim_amine/scoring_tmp/4772867_8_submitted.pkl', 'rb') as handle:
+        b = pickle.load(handle)
+
+
+    rdkit_embed_scoring(*b.args)

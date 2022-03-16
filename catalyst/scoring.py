@@ -6,6 +6,7 @@ import os
 import copy
 import numpy as np
 import sys
+import json
 from io import StringIO
 import pickle
 
@@ -15,8 +16,14 @@ sys.path.append(catalyst_dir)
 # from .xtb_utils import xtb_optimize
 from my_utils.my_xtb_utils import xtb_optimize
 from my_utils.my_utils import cd
-from make_structures import connect_cat_2d, ConstrainedEmbedMultipleConfsMultipleFrags, connect_ligand, create_ligands
-from make_structures import create_primaryamine_ligand
+from .make_structures import (
+    connect_cat_2d,
+    ConstrainedEmbedMultipleConfsMultipleFrags,
+    connect_ligand,
+    create_ligands,
+)
+from .make_structures import create_primaryamine_ligand
+
 frag_energies = np.sum(
     [-8.232710038092, -19.734652802142, -32.543971411432]
 )  # 34 atoms
@@ -31,11 +38,14 @@ int_file = os.path.join(catalyst_dir, "input_files/int5_dummy.sdf")
 ts_dummy = Chem.SDMolSupplier(ts_file, removeHs=False, sanitize=True)[0]
 
 # My own structs:
-file = "../templates/core_dummy.sdf"
+file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 
-file_NH3 = "../templates/core_NH3_dummy.sdf"
+file_NH3 = "templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
+
+with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
+    smi_dict = json.load(f)
 
 
 def ts_scoring(cat, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."):
@@ -168,6 +178,7 @@ def embed_rdkit(
         rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
     return mol
 
+
 def rdkit_embed_scoring(
     ligand, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."
 ):
@@ -176,14 +187,8 @@ def rdkit_embed_scoring(
     # get new core and pass file to xtb_optimize
     # logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
 
-
     # TEst primary amine gen
     ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
-
-    # For debug
-    #img = Draw.MolToImage(ligand_cut)
-    #img.show()
-
     catalyst = connect_ligand(core[0], ligand_cut)
 
     # Embed catalyst
@@ -197,25 +202,15 @@ def rdkit_embed_scoring(
 
     print("Done with embedding of catalyst")
 
-    catalyst_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
-
-    # Embed catalyst
-    Mo_NH3_3d = embed_rdkit(
-        mol=catalyst_NH3,
-        core=core_NH3[0],
-        numConfs=n_confs,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
-    )
-
-
     with cd(output_dir):
         catalyst_3d_energy, catalyst_3d_geom = xtb_optimize(
             catalyst_3d,
             gbsa="benzene",
+            charge=smi_dict["Mo"]["charge"],
+            spin=smi_dict["Mo"]["spin"],
             opt_level="loose",
             name=f"{idx[0]:03d}_{idx[1]:03d}_catalyst",
-            input=os.path.join("../..", "templates/input_files/constr.inp"),
+            input=os.path.join("../../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
             cleanup=cleanup,
         )
@@ -240,9 +235,11 @@ def rdkit_embed_scoring(
         Mo_NH3_3d_energy, Mo_NH3_3d_geom = xtb_optimize(
             Mo_NH3_3d,
             gbsa="benzene",
+            charge=smi_dict["Mo_NH3"]["charge"],
+            spin=smi_dict["Mo_NH3"]["spin"],
             opt_level="loose",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            input=os.path.join("../..", "templates/input_files/constr.inp"),
+            input=os.path.join("../../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
             cleanup=cleanup,
         )
@@ -293,7 +290,9 @@ if __name__ == "__main__":
 
     # Useful for debugging failed scoring. Load the pickle file
     # From the failed calc.
-    with open('/home/magstr/generation_prim_amine/scoring_tmp/4772867_8_submitted.pkl', 'rb') as handle:
+    with open(
+        "/home/magstr/generation_prim_amine/scoring_tmp/4772867_8_submitted.pkl", "rb"
+    ) as handle:
         b = pickle.load(handle)
 
-    rdkit_embed_scoring(*b.args)
+    rdkit_embed_scoring(lig)

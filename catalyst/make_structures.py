@@ -161,13 +161,14 @@ def connect_ligand(core, ligand, NH3_flag=False):
     # Sanitation ensures that it is a reasonable molecule.
     Chem.SanitizeMol(mol)
     # If this is not done, the ligand i placed in zero.
-    #This command removes the 3d coordinates of the core such that it is displayed well
+    # This command removes the 3d coordinates of the core such that it is displayed well
     mol.RemoveAllConformers()
 
     # Show final result for debug
     # img = Draw.MolsToImage(mols)
     # img.show()
     return mol
+
 
 def create_ligands(ligand):
     """
@@ -229,12 +230,11 @@ def create_ligands(ligand):
             struct for struct in frags if len(struct.GetSubstructMatches(patt)) == 1
         ]
 
-        NH2_mol = Chem.MolFromSmiles('[NH2]')
+        NH2_mol = Chem.MolFromSmiles("[NH2]")
 
         ligand = AllChem.ReplaceSubstructs(
             ligands[0], dummy, NH2_mol, replacementConnectionPoint=0
         )[0]
-
 
         lig = Chem.MolFromSmiles(Chem.MolToSmiles(ligand))
 
@@ -248,6 +248,7 @@ def create_ligands(ligand):
             f.write(Chem.MolToSmiles(Chem.RemoveHs(ligands[0])))
 
     return lig
+
 
 def create_primaryamine_ligand(ligand):
     """
@@ -280,16 +281,18 @@ def create_primaryamine_ligand(ligand):
     atom = ligand.GetAtomWithIdx(prim_amines[0][0])
     # Create list of tuples that contain the amine idx and idx of each of the three
     # neighbors.
-    indices = [(prim_amines[0][0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1][0]
+    indices = [
+        (prim_amines[0][0], x.GetIdx())
+        for x in atom.GetNeighbors()
+        if x.GetAtomicNum() != 1
+    ][0]
 
     # Get the bonds to the neighbors.
     bond = []
     bond.append(ligand.GetBondBetweenAtoms(indices[0], indices[1]).GetIdx())
 
     # Get the two fragments, the ligand and the NH2
-    frag = Chem.FragmentOnBonds(
-        ligand, bond, addDummies=True, dummyLabels=[(1, 1)]
-    )
+    frag = Chem.FragmentOnBonds(ligand, bond, addDummies=True, dummyLabels=[(1, 1)])
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
     # Find frag that is NH2+dummy
@@ -298,12 +301,9 @@ def create_primaryamine_ligand(ligand):
     patt = Chem.MolFromSmarts(smart)
 
     # Get the ligand that is not NH2
-    ligands = [
-        struct for struct in frags if len(struct.GetSubstructMatches(patt)) == 0
-    ]
+    ligands = [struct for struct in frags if len(struct.GetSubstructMatches(patt)) == 0]
 
     return ligands
-
 
 
 if __name__ == "__main__":

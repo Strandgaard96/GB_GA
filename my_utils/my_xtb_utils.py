@@ -180,6 +180,8 @@ def read_results(output, err):
 
 def xtb_optimize(
     mol,
+    charge=None,
+    spin=None,
     gbsa="methanol",
     alpb=None,
     opt_level="tight",
@@ -212,16 +214,15 @@ def xtb_optimize(
     print(f"SCRATCH DIR = {scr_dir}")
 
     print("write input files")
-    charge = 0
     xyz_files, conf_path = write_xtb_input_files(mol, "xtbmol", destination=name)
 
     # xtb options
     XTB_OPTIONS = {
         "opt": opt_level,
         "chrg": charge,
+        "uhf": spin,
         "gbsa": gbsa,
         "alpb": alpb,
-        "input": input,
     }
 
     cmd = "xtb"

@@ -116,7 +116,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="generation",
+        default="generation_debug",
         help="Directory to put various files",
     )
     return parser.parse_args(arg_list)
@@ -144,7 +144,9 @@ def GA(args):
     """
 
     # Create initial population and get initial score
-    population = ga.make_initial_population(args["population_size"], args["file_name"],rand=False)
+    population = ga.make_initial_population(
+        args["population_size"], args["file_name"], rand=False
+    )
 
     # Test debug
     # energies = [-20000,np.NaN,-12300]
@@ -173,7 +175,6 @@ def GA(args):
 
     # Instantiate generation class for containing the generation results
     gen = Generation(generation_num=0, children=population, survivors=population)
-
 
     # Save the generation as pickle file.
     gen.save(directory=args["output_dir"], run_No=0)
@@ -287,7 +288,7 @@ def main():
             logging.FileHandler(
                 os.path.join(args.output_dir, "printlog.txt"), mode="w"
             ),
-            logging.StreamHandler(),# For debugging. Can be removed on remote
+            logging.StreamHandler(),  # For debugging. Can be removed on remote
         ],
     )
     # Log the argparse set values

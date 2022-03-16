@@ -33,8 +33,8 @@ def read_file(file_name):
     return mol_list
 
 
-
 from catalyst.make_structures import create_ligands
+
 
 def make_initial_population(population_size, file_name, rand=False):
     mol_list = read_file(file_name)

@@ -180,6 +180,10 @@ def rdkit_embed_scoring(
     # TEst primary amine gen
     ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
 
+    # For debug
+    #img = Draw.MolToImage(ligand_cut)
+    #img.show()
+
     catalyst = connect_ligand(core[0], ligand_cut)
 
     # Embed catalyst
@@ -192,6 +196,18 @@ def rdkit_embed_scoring(
     )
 
     print("Done with embedding of catalyst")
+
+    catalyst_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
+
+    # Embed catalyst
+    Mo_NH3_3d = embed_rdkit(
+        mol=catalyst_NH3,
+        core=core_NH3[0],
+        numConfs=n_confs,
+        pruneRmsThresh=0.1,
+        force_constant=1e12,
+    )
+
 
     with cd(output_dir):
         catalyst_3d_energy, catalyst_3d_geom = xtb_optimize(
@@ -275,8 +291,9 @@ if __name__ == "__main__":
 
     lig = create_ligands(mol_list[1])
 
+    # Useful for debugging failed scoring. Load the pickle file
+    # From the failed calc.
     with open('/home/magstr/generation_prim_amine/scoring_tmp/4772867_8_submitted.pkl', 'rb') as handle:
         b = pickle.load(handle)
-
 
     rdkit_embed_scoring(*b.args)

@@ -304,7 +304,7 @@ def main():
     # Start the time
     t0 = time.time()
 
-    # For debugging GA to prevent multiprocessing cluttering the traceback
+    # Run the GA
     generations = GA(GA_args)
 
     # Final output handling and logging

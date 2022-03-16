@@ -212,7 +212,7 @@ def xtb_optimize(
     print(f"SCRATCH DIR = {scr_dir}")
 
     print("write input files")
-    charge = Chem.GetFormalCharge(mol)
+    charge = 0
     xyz_files, conf_path = write_xtb_input_files(mol, "xtbmol", destination=name)
 
     # xtb options

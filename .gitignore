@@ -109,3 +109,4 @@ venv.bak/
 
 # mkdocs documentation
 /site
+/catalyst/

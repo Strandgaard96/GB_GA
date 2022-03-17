@@ -344,3 +344,64 @@ if __name__ == "__main__":
         f.write(Chem.MolToMolBlock(ts3d))
 
     print("Done with example")
+
+
+def embed_rdkit(
+    mol,
+    core,
+    numConfs=10,
+    coreConfId=-1,
+    randomseed=2342,
+    getForceField=AllChem.UFFGetMoleculeForceField,
+    numThreads=1,
+    force_constant=1e3,
+    pruneRmsThresh=1,
+):
+    match = mol.GetSubstructMatch(core)
+    if not match:
+        raise ValueError("molecule doesn't match the core")
+    sio = sys.stderr = StringIO()
+    # if not AllChem.UFFHasAllMoleculeParams(mol):
+    #    raise Exception(Chem.MolToSmiles(mol), sio.getvalue())
+
+    coordMap = {}
+    coreConf = core.GetConformer(coreConfId)
+    for i, idxI in enumerate(match):
+        corePtI = coreConf.GetAtomPosition(i)
+        coordMap[idxI] = corePtI
+
+    cids = AllChem.EmbedMultipleConfs(
+        mol=mol,
+        numConfs=numConfs,
+        coordMap=coordMap,
+        randomSeed=randomseed,
+        numThreads=numThreads,
+        pruneRmsThresh=pruneRmsThresh,
+        useRandomCoords=False,
+    )
+    Chem.SanitizeMol(mol)
+
+    cids = list(cids)
+    if len(cids) == 0:
+        print(coordMap, Chem.MolToSmiles(mol))
+        raise ValueError("Could not embed molecule.")
+
+    algMap = [(j, i) for i, j in enumerate(match)]
+
+    # rotate the embedded conformation onto the core:
+    for cid in cids:
+        rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
+        ff = AllChem.UFFGetMoleculeForceField(
+            mol, confId=cid, ignoreInterfragInteractions=False
+        )
+        for i, _ in enumerate(match):
+            ff.UFFAddPositionConstraint(i, 0, force_constant)
+        ff.Initialize()
+        n = 4
+        more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
+        while more and n:
+            more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
+            n -= 1
+        # realign
+        rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
+    return mol

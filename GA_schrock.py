@@ -15,18 +15,16 @@ import os
 import copy
 from pathlib import Path
 import sys
-import numpy as np
 
 # Homemade stuff from Julius mostly
 import crossover as co
-import scoring_functions as sc
+from scoring import scoring_functions as sc
 
-from catalyst import ts_scoring, rdkit_embed_scoring
-from catalyst.utils import Generation, mols_from_smi_file
+from scoring.scoring import rdkit_embed_scoring
+from my_utils.my_utils import Generation
 import logging
 from sa import reweigh_scores_by_sa, neutralize_molecules
 import GB_GA as ga
-from rdkit import Chem
 
 # Julius filter functionality.
 import filters
@@ -50,13 +48,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=7,
+        default=6,
         help="Sets the size of population pool",
     )
     parser.add_argument(
         "--mating_pool_size",
         type=int,
-        default=6,
+        default=3,
         help="Size of mating pool",
     )
     parser.add_argument(
@@ -140,7 +138,7 @@ def GA(args):
         args(dict): Dictionary containint all relevant args for the functionscoring_a
 
     Returns:
-        gen: Generation class that contains the results of the final generation
+        gen: Generation class that contains the respickleults of the final generation
     """
 
     # Create initial population and get initial score
@@ -274,8 +272,8 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Variables for crossover module
-    co.average_size = 8
-    co.size_stdev = 3
+    co.average_size = 20
+    co.size_stdev = 5
 
     # How many times to run the GA.
     n_tries = args.n_tries

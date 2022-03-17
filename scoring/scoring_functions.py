@@ -26,7 +26,7 @@ import submitit
 import sascorer
 from pathlib import Path
 
-from catalyst.utils import Population
+from my_utils.my_utils import Population
 
 logP_values = np.loadtxt("data/logP_values.txt")
 SA_scores = np.loadtxt("data/SA_scores.txt")

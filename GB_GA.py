@@ -4,23 +4,16 @@ Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_bas
 """
 
 from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import Descriptors
-from rdkit.Chem import rdmolops
 
 # from rdkit import rdBase
 # rdBase.DisableLog('rdApp.error')
 
 import numpy as np
 import random
-import time
-import sys
 
 import crossover as co
 import mutate as mu
-import scoring_functions as sc
-from sa import reweigh_scores_by_sa, neutralize_molecules
-from catalyst.utils import Population, Individual
+from my_utils.my_utils import Individual, Population
 import copy
 
 
@@ -33,7 +26,7 @@ def read_file(file_name):
     return mol_list
 
 
-from catalyst.make_structures import create_ligands
+from scoring.make_structures import create_ligands
 
 
 def make_initial_population(population_size, file_name, rand=False):

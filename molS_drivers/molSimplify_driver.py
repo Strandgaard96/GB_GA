@@ -14,6 +14,8 @@ import sys, os
 from pathlib import Path
 import json, shutil, argparse, glob, time
 
+import my_utils.my_utils
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from my_utils.my_utils import cd
@@ -182,7 +184,7 @@ def collect_logfiles(dest=None):
     logfiles = dest.rglob("*xtbjob.out")
     for file in logfiles:
         folder = log_path / file.parents[0].name
-        folder.mkdir(exist_ok=True)
+        my_utils.my_utils.mkdir(exist_ok=True)
         shutil.copy(str(file), str(folder))
         os.rename(folder / "xtbjob.out", folder / "job.out")
     try:

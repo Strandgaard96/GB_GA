@@ -7,9 +7,9 @@ Example:
 
         $ python molSymplify_driver.py args
 
-Todo:
-    * Find way of getting attom idx for smicat
 """
+
+import pathlib
 import sys, os
 from pathlib import Path
 import json, shutil, argparse, glob, time
@@ -18,8 +18,10 @@ import my_utils.my_utils
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from rdkit import Chem
+from rdkit.Chem import Draw
 from my_utils.my_utils import cd
-from my_utils.my_xtb_utils import run_xtb
+from my_utils.my_xtb_utils import run_xtb, run_xtb_my
 from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
 
 
@@ -37,13 +39,13 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument(
         "--run_dir",
-        type=str,
+        type=pathlib.Path,
         default="Runs",
         help="Sets the output dir of the molSimplify commands",
     )
     parser.add_argument(
         "--cycle_dir",
-        type=str,
+        type=pathlib.Path,
         default="Runs/Runs_cycle",
         help="Sets the output dir of the cycle molSimplify commands",
     )
@@ -57,19 +59,25 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ligand_smi",
         type=str,
-        default="[1H]C(=O)[C@H](Oc1ccc(-c2ccc(C#N)cc2)cc1)c1ccccc1",
+        default="[1*]C(=O)[C@H](Oc1ccc(-c2ccc(C#N)cc2)cc1)c1ccccc1",
         help="Set the ligand to put on the core",
     )
     parser.add_argument(
         "--xtbout",
-        type=str,
+        type=pathlib.Path,
         default="xtbout",
         help="Directory to put xtb calculations",
+    )
+    parser.add_argument(
+        "--log_tmp",
+        type=pathlib.Path,
+        default="tmp_log",
+        help="Directory to logfiles",
     )
     return parser.parse_args(arg_list)
 
 
-def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
+def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
     """
     Creates all the intermediates for the cycle based on the proposed catalyst.
 
@@ -83,6 +91,9 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
     """
     with open(smi_path, "r", encoding="utf-8") as f:
         smi_dict = json.load(f)
+
+    # Create logfolder
+    (run_dir / log_tmp).mkdir(parents=True)
 
     for key, value in smi_dict.items():
 
@@ -108,14 +119,14 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None):
             intermediate_cmd,
             shell=False,
         )
-        with open(f"job_{key}.out", "w", encoding="utf-8") as f:
+        with open(run_dir / log_tmp / f"job_{key}.out", "w", encoding="utf-8") as f:
             f.write(out)
-        with open(f"err_{key}.out", "w", encoding="utf-8") as f:
+        with open(run_dir / log_tmp / f"err_{key}.out", "w", encoding="utf-8") as f:
             f.write(err)
 
     # Finaly create directory that contains the simple core
     # (for consistentxtb calcs)
-    bare_core_dir = Path(run_dir) / "intermediate_Mo" / "struct"
+    bare_core_dir = run_dir / "intermediate_Mo" / "struct"
     bare_core_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(new_core, bare_core_dir)
 
@@ -155,13 +166,14 @@ def xtb_calc(cycle_dir=None, param_path=None, dest="xtbout"):
             spin = parameters[intermediate_name]["spin"]
 
             # Run the xtb calculation on the cut molecule
-            run_xtb(
+            run_xtb_my(
                 structure=elem.name,
                 method="gfn2",
-                type="ohess",
+                type="opt",
                 charge=charge,
                 spin=spin,
                 gbsa="Benzene",
+                numThreads=1,
             )
             i = 1
             if i == 1:
@@ -175,9 +187,6 @@ def collect_logfiles(dest=None):
         dest:
     Returns:
     """
-    for file in glob.glob("*.out"):
-        shutil.move(file, dest)
-
     log_path = dest / "logfiles"
     os.mkdir(log_path)
 
@@ -196,6 +205,33 @@ def collect_logfiles(dest=None):
     return None
 
 
+def get_smicat(lig_smi=None):
+    """
+    Get the index of the atom that should connect to the Mo core
+    Args:
+        lig_smi (str):
+    Returns:
+        idx (int)
+    """
+    mol = Chem.MolFromSmiles(lig_smi)
+    dummy = Chem.MolFromSmiles("*")
+    # Get the dummy atom and then its atom object
+    dummy_idx = mol.GetSubstructMatch(Chem.MolFromSmiles("*"))
+    atom = mol.GetAtomWithIdx(dummy_idx[0])
+    # Get the  the dummy atom has.
+    connect_idx = [x.GetIdx() for x in atom.GetNeighbors()]
+
+    # Finaly replace the dummy with a hydrogen and print back to smiles
+    for a in mol.GetAtoms():
+        if a.GetSymbol() == "*":
+            a.SetAtomicNum(1)
+
+    new_lig_smi = Chem.MolToSmiles(mol)
+
+    # We add one to the idx as molS is 1-indexed
+    return connect_idx[0] + 1, new_lig_smi
+
+
 def create_custom_core(args):
     """
 
@@ -209,14 +245,15 @@ def create_custom_core(args):
     """
     lig_smi = args.ligand_smi
     core_file = Path("../templates/core_withHS.xyz")
+    # Flag for using replace feature
     replig = 1
     suffix = "core_custom"
-    run_dir = Path(args.run_dir)
-    smicat = "TODO"  # TODO get idx
+    run_dir = args.run_dir
+    smicat, lig_smi = get_smicat(lig_smi)
 
     core_cmd = (
         f"molsimplify -core {core_file} -lig {lig_smi} -replig {replig} -ligocc 3"
-        f" -ccatoms 24, 25, 26 -skipANN True -spin 1 -oxstate 3 -ffoption After"
+        f" -ccatoms 24, 25, 26 -skipANN True -spin 1 -oxstate 3"
         f" -coord 5 -keepHs no -smicat 2 -rundir {run_dir} -suff {suffix}"
     )
     print(f"String passed to shell: {core_cmd}")
@@ -241,13 +278,12 @@ def main():
     """
 
     args = get_arguments()
-    run_dir = Path(args.run_dir)
 
     # What ligand do i want to molS_drivers?
     create_custom_core(args)
 
     # Check for output structure
-    new_core = sorted(run_dir.glob("**/*.xyz"))
+    new_core = sorted(args.run_dir.glob("**/*.xyz"))
     intermediate_smi_path = Path("../data/intermediate_smiles.json")
 
     print(new_core)
@@ -256,15 +292,16 @@ def main():
         # Move output structure to current dir
         shutil.copy(new_core[0], "./new_core.xyz")
         # Pass the output structure to cycle creation
-        create_cycleMS(
-            new_core="new_core.xyz",
-            smi_path=intermediate_smi_path,
-            run_dir=args.cycle_dir,
-        )
+        # create_cycleMS(
+        #    new_core="new_core.xyz",
+        #    smi_path=intermediate_smi_path,
+        #    run_dir=args.cycle_dir,
+        #    log_tmp=args.log_tmp,
+        # )
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    dest = Path(args.xtbout) / (args.ligand_smi + timestr)
+    dest = args.xtbout / (args.ligand_smi + timestr)
     dest.mkdir(parents=True, exist_ok=False)
     xtb_calc(cycle_dir=args.cycle_dir, param_path=intermediate_smi_path, dest=dest)
 
@@ -278,11 +315,11 @@ def main():
 
 
 if __name__ == "__main__":
-    intermediate_smi_path = Path("../data/intermediate_smiles.json")
-    cycle_dir = "Runs/Runs_cycle"
-    create_cycleMS(
-        new_core="../templates/core_withHS.xyz",
-        smi_path=intermediate_smi_path,
-        run_dir=cycle_dir,
-    )
-    # main()
+    # intermediate_smi_path = Path("../data/intermediate_smiles.json")
+    # cycle_dir = "Runs/Runs_cycle"
+    # create_cycleMS(
+    #    new_core="../templates/core_withHS.xyz",
+    #    smi_path=intermediate_smi_path,
+    #    run_dir=cycle_dir,
+    # )
+    main()

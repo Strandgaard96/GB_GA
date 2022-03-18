@@ -17,6 +17,46 @@ from datetime import datetime
 
 import concurrent.futures
 
+
+def run_xtb_my(structure, type, method, charge, spin, numThreads=None, **kwargs):
+
+    # Get numbre of cores available.
+    # Careful with this when parallellizing
+    if not numThreads:
+        numThreads = os.cpu_count()
+
+    # Set environmental variables
+    os.environ["OMP_MAX_ACTIVE_LEVELS"] = 1
+    os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
+    os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
+    os.environ["OMP_STACKSIZE"] = "4G"
+
+    # Default input string
+    cmd = f"xtb {structure} --{type} --{method} --chrg {charge} --uhf {spin}"
+
+    # Add extra xtb settings if provided
+    if kwargs:
+        for key, value in kwargs.items():
+            cmd += f" --{key} {value}"
+
+    # Run the shell command
+    print(f"Running xtb with input string {cmd}")
+    out, err = shell(
+        cmd,
+        shell=False,
+    )
+    with open("job.out", "w") as f:
+        f.write(out)
+    with open("err.out", "w") as f:
+        f.write(err)
+    # print(out, file=open("job.out", "a"))
+
+    # Post processing
+    # TODO Insert post processing
+
+    return out, err
+
+
 # %%
 def write_xtb_input_files(fragment, name, destination="."):
     number_of_atoms = fragment.GetNumAtoms()

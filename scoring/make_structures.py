@@ -13,116 +13,6 @@ from my_utils import my_utils
 
 RDLogger.DisableLog("rdApp.*")
 
-# Julius files for testing
-# ts_file = os.path.join(".", "input_files/ts7_dummy.sdf")
-# ts_dummy = Chem.SDMolSupplier("input_files/ts7_dummy.sdf", removeHs=False, sanitize=True)[0]
-
-
-def connect_cat_2d(mol_with_dummy, cat):
-    """Replaces Dummy Atom [*] in Mol with Cat via tertiary Amine, return list of all possible regioisomers"""
-    dummy = Chem.MolFromSmiles("*")
-    mols = []
-    cat = Chem.AddHs(cat)
-    AllChem.AssignStereochemistry(cat)
-    tert_amines = cat.GetSubstructMatches(Chem.MolFromSmarts("[#7X3;H0;D3;!+1]"))
-    if len(tert_amines) == 0:
-        raise Exception(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(cat))} constains no tertiary amine."
-        )
-    for amine in tert_amines:
-        mol = AllChem.ReplaceSubstructs(
-            mol_with_dummy, dummy, cat, replacementConnectionPoint=amine[0]
-        )[0]
-        quart_amine = mol.GetSubstructMatch(Chem.MolFromSmarts("[#7X4;H0;D4;!+1]"))[0]
-        mol.GetAtomWithIdx(quart_amine).SetFormalCharge(1)
-        Chem.SanitizeMol(mol)
-        mol.RemoveAllConformers()
-        mols.append(mol)
-    return mols
-
-
-def frags2bonded(mol, atoms2join=((1, 11), (11, 29))):
-    make_bonded = Chem.EditableMol(mol)
-    for atoms in atoms2join:
-        i, j = atoms
-        make_bonded.AddBond(i, j)
-    mol_bonded = make_bonded.GetMol()
-    # Chem.SanitizeMol(mol_bonded)
-    return mol_bonded
-
-
-def bonded2frags(mol, atoms2frag=((1, 11), (11, 29))):
-    make_frags = Chem.EditableMol(mol)
-    for atoms in atoms2frag:
-        i, j = atoms
-        make_frags.RemoveBond(i, j)
-    mol_frags = make_frags.GetMol()
-    # Chem.SanitizeMol(mol_frags)
-    return mol_frags
-
-
-def ConstrainedEmbedMultipleConfsMultipleFrags(
-    mol,
-    core,
-    numConfs=10,
-    useTethers=True,
-    coreConfId=-1,
-    randomseed=2342,
-    getForceField=AllChem.UFFGetMoleculeForceField,
-    numThreads=1,
-    force_constant=1e3,
-    pruneRmsThresh=1,
-    atoms2join=((1, 11), (11, 29)),
-):
-    match = mol.GetSubstructMatch(core)
-    if not match:
-        raise ValueError("molecule doesn't match the core")
-    sio = sys.stderr = StringIO()
-    # if not AllChem.UFFHasAllMoleculeParams(mol):
-    #    raise Exception(Chem.MolToSmiles(mol), sio.getvalue())
-
-    coordMap = {}
-    coreConf = core.GetConformer(coreConfId)
-    for i, idxI in enumerate(match):
-        corePtI = coreConf.GetAtomPosition(i)
-        coordMap[idxI] = corePtI
-
-    cids = AllChem.EmbedMultipleConfs(
-        mol=mol,
-        numConfs=numConfs,
-        coordMap=coordMap,
-        randomSeed=randomseed,
-        numThreads=numThreads,
-        pruneRmsThresh=pruneRmsThresh,
-        useRandomCoords=False,
-    )
-    Chem.SanitizeMol(mol)
-
-    cids = list(cids)
-    if len(cids) == 0:
-        print(coordMap, Chem.MolToSmiles(mol_bonded))
-        raise ValueError("Could not embed molecule.")
-
-    algMap = [(j, i) for i, j in enumerate(match)]
-
-    # rotate the embedded conformation onto the core:
-    for cid in cids:
-        rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
-        ff = AllChem.UFFGetMoleculeForceField(
-            mol, confId=cid, ignoreInterfragInteractions=False
-        )
-        for i, _ in enumerate(match):
-            ff.UFFAddPositionConstraint(i, 0, force_constant)
-        ff.Initialize()
-        n = 4
-        more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-        while more and n:
-            more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-            n -= 1
-        # realign
-        rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
-    return mol
-
 
 def connect_ligand(core, ligand, NH3_flag=False):
     """
@@ -140,10 +30,18 @@ def connect_ligand(core, ligand, NH3_flag=False):
 
     # Now we need to get the indice of the atom the dummy is bound to and
     # remove the dummy atom while keeping the idx of the atom it was bound to
+
+    # Get the dummy atom and then its atom object
     dummy_idx = ligand.GetSubstructMatch(Chem.MolFromSmiles("*"))
-    neigh = ligand.GetAtomWithIdx(dummy_idx[0])
-    bond = [(dummy_idx[0], x.GetIdx()) for x in neigh.GetNeighbors()]
-    new_bond = ligand.GetBondBetweenAtoms(bond[0][0], bond[0][1]).GetIdx()
+    atom = ligand.GetAtomWithIdx(dummy_idx[0])
+
+    # Get the  the dummy atom has.
+    neighbor_pairs = [(dummy_idx[0], x.GetIdx()) for x in atom.GetNeighbors()]
+
+    # Get the bond between dummy and beighbor and fragment on bond
+    new_bond = ligand.GetBondBetweenAtoms(
+        neighbor_pairs[0][0], neighbor_pairs[0][1]
+    ).GetIdx()
     frag = Chem.FragmentOnBonds(ligand, [new_bond], addDummies=False)
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
@@ -153,13 +51,15 @@ def connect_ligand(core, ligand, NH3_flag=False):
         dummy,
         frags[0],
         replaceAll=True,
-        replacementConnectionPoint=bond[0][1],
+        replacementConnectionPoint=neighbor_pairs[0][1],
     )[0]
 
     if NH3_flag:
         mol.GetAtomWithIdx(23).SetFormalCharge(1)
+
     # Sanitation ensures that it is a reasonable molecule.
     Chem.SanitizeMol(mol)
+
     # If this is not done, the ligand i placed in zero.
     # This command removes the 3d coordinates of the core such that it is displayed well
     mol.RemoveAllConformers()

@@ -163,6 +163,10 @@ def GA(args):
     population.setprop("score", energies)
     population.sortby("score")
 
+    # Retain the split index
+    cut_idx = [0 for x in range(len(energies))]
+    population.setprop("cut_idx", cut_idx)
+
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
         neutralize_molecules(population)
@@ -208,6 +212,9 @@ def GA(args):
         # Sort population based on size
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
+        # TODO Modify population and create a primary amine
+        # somewhere that can bind
+
         # Calculate new scores based on new population
         results = sc.slurm_scoring(
             args["scoring_function"], new_population, args["scoring_args"]
@@ -219,6 +226,8 @@ def GA(args):
         new_population.setprop("energy", energies)
         new_population.setprop("score", energies)
         new_population.sortby("score")
+
+        # Retain the ligand split index.
 
         if args["sa_screening"]:
             neutralize_molecules(new_population)

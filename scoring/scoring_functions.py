@@ -23,7 +23,6 @@ import random
 import pickle
 import time
 import submitit
-import sascorer
 from pathlib import Path
 
 from my_utils.my_utils import Population

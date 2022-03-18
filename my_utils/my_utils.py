@@ -196,30 +196,16 @@ def hartree2kJmol(hartree):
 @dataclass
 class Individual:
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
-    # tert_amine_idx:
-    origin: tuple = field(default=(None, None), repr=False, compare=False)
-    smiles: str = field(init=False, compare=True, repr=True)
+    cut_idx: tuple = field(default=(None, None, None), repr=False, compare=False)
     idx: tuple = field(default=(None, None), repr=False, compare=False)
-    parentA_idx: tuple = field(default=None, repr=False, compare=False)
-    parentB_idx: tuple = field(default=None, repr=False, compare=False)
-    survival_idx: tuple = field(default=None, repr=False, compare=False)
+    smiles: str = field(init=False, compare=True, repr=True)
     score: float = field(default=None, repr=False, compare=False)
     energy: float = field(default=None, repr=False, compare=False)
     sa_score: float = field(default=None, repr=False, compare=False)
-    normalized_fitness: float = field(default=None, repr=False, compare=False)
-    neutral_rdkit_mol: Chem.rdchem.Mol = field(init=False, repr=False, compare=False)
-    mutated: bool = field(default=False, repr=False, compare=False)
-    warnings: List[str] = field(default_factory=list, repr=False, compare=False)
-    timing: float = field(default=None, repr=False, compare=False)
+    structure: tuple = field(default=None, compare=False, repr=False)
 
     def __post_init__(self):
         self.smiles = Chem.MolToSmiles(self.rdkit_mol)
-        num_parents = 0
-        if self.parentA_idx:
-            num_parents += 1
-        if self.parentB_idx:
-            num_parents += 1
-        self.num_parents = num_parents
 
     # def update(self, method='linear', from_min=-3, from_max=1, a=2, b=-2):
     #     if self.energy and self.sa_score:
@@ -255,8 +241,6 @@ class Population:
     def assign_idx(self):
         for i, molecule in enumerate(self.molecules):
             setattr(molecule, "idx", (self.generation_num, i))
-            if molecule.origin == (None, None):
-                setattr(molecule, "origin", (self.generation_num, i))
         self.size = len(self.molecules)
 
     # def update(self):

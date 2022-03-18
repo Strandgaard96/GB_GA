@@ -1,3 +1,5 @@
+import random
+
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
@@ -132,8 +134,9 @@ def create_ligands(ligand):
 
         NH2_mol = Chem.MolFromSmiles("[NH2]")
 
+        ligand = random.choice(ligands)
         ligand = AllChem.ReplaceSubstructs(
-            ligands[0], dummy, NH2_mol, replacementConnectionPoint=0
+            ligand, dummy, NH2_mol, replacementConnectionPoint=0
         )[0]
 
         lig = Chem.MolFromSmiles(Chem.MolToSmiles(ligand))
@@ -206,46 +209,6 @@ def create_primaryamine_ligand(ligand):
     return ligands
 
 
-if __name__ == "__main__":
-
-    # Driver code for testing and debugging constrained embedd.
-
-    file_name = "../data/ZINC_first_1000.smi"
-    with open(file_name, "r") as file:
-        data = file.readlines()
-        cat = Chem.MolFromSmiles(data[2])
-
-    # catalysts = connect_cat_2d(ts_dummy, cat)
-
-    # My own struct:
-    file = "../templates/core_dummy.sdf"
-    core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-
-    # Take the input ligand and split it based on a primary amine
-    ligands = create_ligands(cat)
-    catalysts = connect_ligand(core[0], ligands)
-
-    if len(catalysts) > 1:
-        print(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(cat))} contains more than one possible ligand"
-        )
-    catalyst = catalysts[0]
-
-    # Embed TS
-    ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(
-        mol=catalyst,
-        core=core[0],
-        numConfs=2,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
-    )
-
-    with open("test_embedd.mol", "w+") as f:
-        f.write(Chem.MolToMolBlock(ts3d))
-
-    print("Done with example")
-
-
 def embed_rdkit(
     mol,
     core,
@@ -305,3 +268,43 @@ def embed_rdkit(
         # realign
         rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
     return mol
+
+
+if __name__ == "__main__":
+
+    # Driver code for testing and debugging constrained embedd.
+
+    file_name = "../data/ZINC_first_1000.smi"
+    with open(file_name, "r") as file:
+        data = file.readlines()
+        cat = Chem.MolFromSmiles(data[2])
+
+    # catalysts = connect_cat_2d(ts_dummy, cat)
+
+    # My own struct:
+    file = "../templates/core_dummy.sdf"
+    core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
+
+    # Take the input ligand and split it based on a primary amine
+    ligands = create_ligands(cat)
+    catalysts = connect_ligand(core[0], ligands)
+
+    if len(catalysts) > 1:
+        print(
+            f"{Chem.MolToSmiles(Chem.RemoveHs(cat))} contains more than one possible ligand"
+        )
+    catalyst = catalysts[0]
+
+    # Embed TS
+    ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(
+        mol=catalyst,
+        core=core[0],
+        numConfs=2,
+        pruneRmsThresh=0.1,
+        force_constant=1e12,
+    )
+
+    with open("test_embedd.mol", "w+") as f:
+        f.write(Chem.MolToMolBlock(ts3d))
+
+    print("Done with example")

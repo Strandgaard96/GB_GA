@@ -38,11 +38,9 @@ def rdkit_embed_scoring(
 ):
     """My driver scoring function."""
 
-    # get new core and pass file to xtb_optimize
-    # logger.debug('Running xtb with catalyst_dir %s',catalyst_dir)
-
-    # TEst primary amine gen
+    # Create ligand based on a primary amine
     ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
+
     catalyst = connect_ligand(core[0], ligand_cut)
 
     # Embed catalyst
@@ -144,9 +142,9 @@ if __name__ == "__main__":
 
     # Useful for debugging failed scoring. Load the pickle file
     # From the failed calc.
-    with open(
-        "/home/magstr/generation_prim_amine/scoring_tmp/4772867_8_submitted.pkl", "rb"
-    ) as handle:
-        b = pickle.load(handle)
+    # with open(
+    #    "/home/magstr/generation_prim_amine/scoring_tmp/4772867_8_submitted.pkl", "rb"
+    # ) as handle:
+    #    b = pickle.load(handle)
 
     rdkit_embed_scoring(lig)

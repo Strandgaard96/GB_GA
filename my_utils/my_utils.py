@@ -18,6 +18,7 @@ import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import Draw
 from tabulate import tabulate
+from scoring.make_structures import create_prim_amine
 
 
 class DotDict(UserDict):
@@ -243,9 +244,12 @@ class Population:
             setattr(molecule, "idx", (self.generation_num, i))
         self.size = len(self.molecules)
 
-    # def update(self):
-    #     for molecule in self.molecules:
-    #         molecule.update()
+    def modify_population(self):
+        for mol in self.molecules:
+            output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
+            mol.rdkit_mol = output_ligand
+            mol.cut_idx = cut_idx
+            mol.smiles = Chem.MolToSmiles(output_ligand)
 
     def get(self, prop):
         properties = []

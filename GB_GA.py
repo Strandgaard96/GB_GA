@@ -26,7 +26,7 @@ def read_file(file_name):
     return mol_list
 
 
-from scoring.make_structures import create_ligands
+from scoring.make_structures import create_ligands, create_prim_amine
 
 
 def make_initial_population(population_size, file_name, rand=False):
@@ -40,6 +40,23 @@ def make_initial_population(population_size, file_name, rand=False):
         else:
             ligand = create_ligands(mol_list[i])
             initial_population.molecules.append(Individual(ligand))
+
+    initial_population.generation_num = 0
+    initial_population.assign_idx()
+
+    return initial_population
+
+def make_initial_population_res(population_size, file_name, rand=False):
+    mol_list = read_file(file_name)
+    initial_population = Population()
+
+    for i in range(population_size):
+        if rand:
+            ligand, cut_idx = create_prim_amine(random.choice(mol_list))
+            initial_population.molecules.append(Individual(ligand,cut_idx=cut_idx))
+        else:
+            ligand, cut_idx = create_prim_amine(mol_list[i])
+            initial_population.molecules.append(Individual(ligand,cut_idx=cut_idx))
 
     initial_population.generation_num = 0
     initial_population.assign_idx()
@@ -77,7 +94,7 @@ def make_mating_pool(population, mating_pool_size):
     return mating_pool  # list of Individuals
 
 
-def reproduce(mating_pool, population_size, mutation_rate, filter):  # + filter
+def reproduce_old(mating_pool, population_size, mutation_rate, filter):  # + filter
     """Creates a new population based on the mating_pool"""
     new_population = []
     while len(new_population) < population_size:
@@ -97,6 +114,29 @@ def reproduce(mating_pool, population_size, mutation_rate, filter):  # + filter
                     )
                 )
 
+    return Population(molecules=new_population)
+
+def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
+    new_population = []
+    counter = 0
+    while len(new_population) < population_size:
+        if random.random() > mutation_rate:
+            parent_A = copy.deepcopy(random.choice(mating_pool))
+            parent_B = copy.deepcopy(random.choice(mating_pool))
+            new_child = co.crossover(
+                parent_A.rdkit_mol, parent_B.rdkit_mol, molecule_filter
+            )
+            if new_child != None:
+                new_child = Individual(rdkit_mol=new_child)
+                new_population.append(new_child)
+        else:
+            parent = copy.deepcopy(random.choice(mating_pool))
+            mutated_child, mutated = mu.mutate(parent.rdkit_mol, 1, molecule_filter)
+            if mutated_child != None:
+                mutated_child = Individual(
+                    rdkit_mol=mutated_child,
+                )
+                new_population.append(mutated_child)
     return Population(molecules=new_population)
 
 

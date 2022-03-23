@@ -16,6 +16,7 @@ from .make_structures import (
     create_ligands,
     create_primaryamine_ligand,
     embed_rdkit,
+    create_dummy_ligand,
 )
 
 hartree2kcalmol = 627.5094740631
@@ -39,8 +40,8 @@ def rdkit_embed_scoring(
     """My driver scoring function."""
 
     # Create ligand based on a primary amine
-    ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
-
+    #ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
+    ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
 
     # Embed catalyst

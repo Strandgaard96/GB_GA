@@ -142,7 +142,7 @@ def GA(args):
     """
 
     # Create initial population and get initial score
-    population = ga.make_initial_population(
+    population = ga.make_initial_population_res(
         args["population_size"], args["file_name"], rand=False
     )
 
@@ -201,8 +201,11 @@ def GA(args):
             mating_pool,
             args["population_size"],
             args["mutation_rate"],
-            filter=molecule_filter,
+            molecule_filter=molecule_filter,
         )
+        # TODO Modify population and create a primary amine
+        new_population.modify_population()
+
         # Assign which generation the population is form.
         new_population.generation_num = generation_num
         # Assign idx to molecules in population that contain the index in population, but also the generation each
@@ -212,8 +215,6 @@ def GA(args):
         # Sort population based on size
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
-        # TODO Modify population and create a primary amine
-        # somewhere that can bind
 
         # Calculate new scores based on new population
         results = sc.slurm_scoring(

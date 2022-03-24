@@ -40,7 +40,7 @@ def rdkit_embed_scoring(
     """My driver scoring function."""
 
     # Create ligand based on a primary amine
-    #ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
+    # ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
 

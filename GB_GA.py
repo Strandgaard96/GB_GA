@@ -46,6 +46,7 @@ def make_initial_population(population_size, file_name, rand=False):
 
     return initial_population
 
+
 def make_initial_population_res(population_size, file_name, rand=False):
     mol_list = read_file(file_name)
     initial_population = Population()
@@ -53,10 +54,10 @@ def make_initial_population_res(population_size, file_name, rand=False):
     for i in range(population_size):
         if rand:
             ligand, cut_idx = create_prim_amine(random.choice(mol_list))
-            initial_population.molecules.append(Individual(ligand,cut_idx=cut_idx))
+            initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
         else:
             ligand, cut_idx = create_prim_amine(mol_list[i])
-            initial_population.molecules.append(Individual(ligand,cut_idx=cut_idx))
+            initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
 
     initial_population.generation_num = 0
     initial_population.assign_idx()
@@ -115,6 +116,7 @@ def reproduce_old(mating_pool, population_size, mutation_rate, filter):  # + fil
                 )
 
     return Population(molecules=new_population)
+
 
 def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
     new_population = []

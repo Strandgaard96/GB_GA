@@ -143,7 +143,7 @@ def GA(args):
 
     # Create initial population and get initial score
     population = ga.make_initial_population_res(
-        args["population_size"], args["file_name"], rand=False
+        args["population_size"], args["file_name"], rand=True
     )
 
     # Test debug
@@ -214,7 +214,6 @@ def GA(args):
 
         # Sort population based on size
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
-
 
         # Calculate new scores based on new population
         results = sc.slurm_scoring(

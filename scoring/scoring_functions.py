@@ -3,29 +3,17 @@ Written by Jan H. Jensen 2018
 """
 
 from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import Descriptors
-from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
-from rdkit.Chem import rdFMCS
-
 from rdkit import rdBase
+from rdkit.Chem import rdFMCS
 
 rdBase.DisableLog("rdApp.error")
 
 import numpy as np
-import sys
-from multiprocessing import Pool
-import subprocess
 import os
 import shutil
-import string
-import random
-import pickle
 import time
 import submitit
 from pathlib import Path
-
-from my_utils.my_utils import Population
 
 logP_values = np.loadtxt("data/logP_values.txt")
 SA_scores = np.loadtxt("data/SA_scores.txt")
@@ -36,24 +24,6 @@ logP_mean = np.mean(logP_values)
 logP_std = np.std(logP_values)
 cycle_mean = np.mean(cycle_scores)
 cycle_std = np.std(cycle_scores)
-
-
-def wait_for_jobs_to_finish(job_ids):
-    """
-    This script checks with slurm if a specific set of jobids is finished with a
-    frequency of 1 minute.
-    Stops when the jobs are done.
-    """
-    while True:
-        job_info1 = os.popen("squeue -p mko").readlines()[1:]
-        job_info2 = os.popen("squeue -a -u julius").readlines()[1:]
-        current_jobs1 = {int(job.split()[0]) for job in job_info1}
-        current_jobs2 = {int(job.split()[0]) for job in job_info2}
-        current_jobs = current_jobs1 | current_jobs2
-        if current_jobs.isdisjoint(job_ids):
-            break
-        else:
-            time.sleep(20)
 
 
 def slurm_scoring(sc_function, population, scoring_args):
@@ -100,7 +70,9 @@ def slurm_scoring(sc_function, population, scoring_args):
 
     results = [
         catch(job.result, handle=lambda e: (np.nan, None)) for job in jobs
-    ]  # catch submitit exceptions and return same output as scoring function (np.nan, None) for (energy, geometry)
+    ]
+    # catch submitit exceptions and return same output as scoring function
+    # (np.nan, None) for (energy, geometry)
     if scoring_args["cleanup"]:
         shutil.rmtree("scoring_tmp")
     return results
@@ -112,18 +84,3 @@ def catch(func, *args, handle=lambda e: e, **kwargs):
     except Exception as e:
         print(e)
         return handle(e)
-
-    target = args[0]
-    try:
-        mcs = rdFMCS.FindMCS(
-            [mol, target],
-            bondCompare=rdFMCS.BondCompare.CompareOrderExact,
-            ringMatchesRingOnly=True,
-            completeRingsOnly=True,
-        )
-        score = mcs.numAtoms / target.GetNumAtoms()
-        return score
-
-    except:
-        print("Failed ", Chem.MolToSmiles(mol))
-        return None

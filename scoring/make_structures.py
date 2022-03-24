@@ -1,13 +1,12 @@
 import random
+import sys
+import os
+
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
 from io import StringIO
-
-import sys
-import os
-
 
 from rdkit import RDLogger
 
@@ -208,9 +207,19 @@ def create_primaryamine_ligand(ligand):
 
     return ligands
 
+
 def create_prim_amine(input_ligand):
+    '''
+    A function that takes a ligand and splits one a nitrogen bond, and then gives
+    a ligand out that has an NH2 and a cut_idx that specifies where to cut before
+    putting on the Mo core
+    Args:
+        input_ligand (mol):
 
-
+    Returns:
+        output_ligand (mol):
+        prim_amine_index[0] tuple(int):
+    '''
     dummy = Chem.MolFromSmiles("*")
 
     input_ligand = Chem.AddHs(input_ligand)
@@ -223,27 +232,33 @@ def create_prim_amine(input_ligand):
     atom = input_ligand.GetAtomWithIdx(match[0])
     # Create list of tuples that contain the amine idx and idx of each of the three
     # neighbors.
-    indices = [(match[0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1]
+    indices = [
+        (match[0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
+    ]
 
     bond = []
-    #Randomly select one of the bonds that are not to hydrogen
+    # Randomly select one of the bonds that are not to hydrogen
     atoms = random.choice(indices)
     bond.append(input_ligand.GetBondBetweenAtoms(*atoms).GetIdx())
 
     # Get the fragments from breaking the amine bonds. If the fragments connected to the tertiary
     # amine, are connected, you only carve out the N and get three dummy locations
     frag = Chem.FragmentOnBonds(
-        input_ligand, bond, addDummies=True, dummyLabels=[(1, 1)])
+        input_ligand, bond, addDummies=True, dummyLabels=[(1, 1)]
+    )
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
-    if len(frags) ==1:
+    if len(frags) == 1:
         ligand = [frags[0]]
     else:
-        ligand = [struct for struct in frags if len(struct.GetSubstructMatches(Chem.MolFromSmarts("[1*][N]"))) == 0]
+        ligand = [
+            struct
+            for struct in frags
+            if len(struct.GetSubstructMatches(Chem.MolFromSmarts("[1*][N]"))) == 0
+        ]
 
     if not ligand:
         raise Exception(f"Primary amine splitting went wrong.")
-
 
     NH2_mol = Chem.MolFromSmiles("[NH2]")
     lig = AllChem.ReplaceSubstructs(
@@ -255,7 +270,9 @@ def create_prim_amine(input_ligand):
     # Get idx where to cut
     prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
     if len(prim_amine_index) > 1:
-        print(f"There are     several primary amines to cut at with idxs: {prim_amine_index}")
+        print(
+            f"There are several primary amines to cut at with idxs: {prim_amine_index}"
+        )
 
     return output_ligand, prim_amine_index[0]
 
@@ -287,13 +304,11 @@ def create_dummy_ligand(ligand, cut_idx=None):
         )
 
     # Get the neigbouring bonds to the amine
-    atom = ligand.GetAtomWithIdx(amines[0][0])
+    atom = ligand.GetAtomWithIdx(cut_idx[0])
     # Create list of tuples that contain the amine idx and idx of each of the three
     # neighbors.
     indices = [
-        (amines[0][0], x.GetIdx())
-        for x in atom.GetNeighbors()
-        if x.GetAtomicNum() != 1
+        (amines[0][0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
     ][0]
 
     # Get the bonds to the neighbors.

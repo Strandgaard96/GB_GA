@@ -17,6 +17,7 @@ from rdkit import Chem
 
 catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
+sys.path.append('..')
 
 from my_utils.my_xtb_utils import xtb_optimize
 from my_utils.my_utils import cd
@@ -134,13 +135,12 @@ def rdkit_embed_scoring(
         )
         print("Mo_NH3 energy:", Mo_NH3_3d_energy)
 
-    # Scoring function based on the energies
-    # print(f"All energies: cat: {catalyst_3d_energy} ligand: {ligand_3d_energy}")
-    # ligand_3d_energy = 0
-
-    # De = (catalyst_3d_energy - CORE_ELECTRONIC_ENERGY - ligand_3d_energy) * hartree2kcalmol
-    De_new = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
-    return De_new, (catalyst_3d_geom, catalyst_3d_energy)
+    if None in (catalyst_3d_energy, Mo_NH3_3d_energy):
+        print(f"The xtb calculation failed for one of the intermediates")
+        return None,(catalyst_3d_energy,0)
+    else:
+        De = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
+        return De, (catalyst_3d_geom, catalyst_3d_energy)
 
 
 if __name__ == "__main__":

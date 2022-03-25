@@ -164,10 +164,6 @@ def GA(args):
     population.setprop("score", energies)
     population.sortby("score")
 
-    # Retain the split index
-    cut_idx = [0 for x in range(len(energies))]
-    population.setprop("cut_idx", cut_idx)
-
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
         neutralize_molecules(population)

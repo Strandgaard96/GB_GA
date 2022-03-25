@@ -53,12 +53,23 @@ def make_initial_population_res(population_size, file_name, rand=False):
 
     for i in range(population_size):
         if rand:
-            ligand, cut_idx = create_prim_amine(random.choice(mol_list))
-            initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
+            # Check for primary amine
+            mol = random.choice(mol_list)
+            match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
+            if len(match) == 0:
+                ligand, cut_idx = create_prim_amine(random.choice(mol_list))
+                initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
+            else:
+                initial_population.molecules.append(Individual(mol, cut_idx=random.choice(match)))
         else:
-            ligand, cut_idx = create_prim_amine(mol_list[i])
-            initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
-
+            mol = mol_list[i]
+            # Check for primary amine first
+            match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
+            if len(match) == 0:
+                ligand, cut_idx = create_prim_amine(random.choice(mol_list))
+                initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
+            else:
+                initial_population.molecules.append(Individual(mol, cut_idx=random.choice(match)))
     initial_population.generation_num = 0
     initial_population.assign_idx()
 

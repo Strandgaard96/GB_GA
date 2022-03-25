@@ -6,6 +6,7 @@ Todo:
     *
 """
 import pickle
+import random
 import shutil
 from collections import UserDict
 import os, sys
@@ -246,10 +247,19 @@ class Population:
 
     def modify_population(self):
         for mol in self.molecules:
-            output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
-            mol.rdkit_mol = output_ligand
-            mol.cut_idx = cut_idx
-            mol.smiles = Chem.MolToSmiles(output_ligand)
+
+            # Check for primary amine
+            match = mol.rdkit_mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
+
+            # Create primary amine if it doesnt have once. Otherwise, pas the cut idx
+            if not match:
+                output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
+                mol.rdkit_mol = output_ligand
+                mol.cut_idx = cut_idx
+                mol.smiles = Chem.MolToSmiles(output_ligand)
+            else:
+                cut_idx = random.choice(match)
+                mol.cut_idx = cut_idx
 
     def get(self, prop):
         properties = []

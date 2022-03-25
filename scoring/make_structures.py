@@ -218,7 +218,6 @@ def create_primaryamine_ligand(ligand):
     return ligands
 
 
-# TODO: Not necesarry to cut anything if a primary amine already exists
 def create_prim_amine(input_ligand):
     """
     A function that takes a ligand and splits on a nitrogen bond, and then gives
@@ -237,8 +236,13 @@ def create_prim_amine(input_ligand):
 
     # Add explicit hydrogens to the molecule
     input_ligand = Chem.AddHs(input_ligand)
-    # Match all amines
-    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2,H1,H0;!+1]"))
+
+    # Match Secondary or Tertiary amines
+    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0;!+1]"))
+    if len(matches) == 0:
+        raise Exception(
+            f"{Chem.MolToSmiles(Chem.RemoveHs(ligand))} constains no amines to split on"
+        )
 
     # Randomly select one of the amines.
     match = random.choice(matches)
@@ -266,7 +270,7 @@ def create_prim_amine(input_ligand):
     )
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
-    # Select the fragments that are not the amine the ligand what cut from.
+    # Select the fragments that are not the amine the ligand was cut from.
     # If there is only one fragment, it can break so i added the temporary
     # If statement
     # TODO: handle this better
@@ -295,7 +299,7 @@ def create_prim_amine(input_ligand):
     output_ligand = Chem.MolFromSmiles(Chem.MolToSmiles(lig))
 
     # Get idx where to cut and we just return of of them.
-    prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
+    prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
     if len(prim_amine_index) > 1:
         print(
             f"There are several primary amines to cut at with idxs: {prim_amine_index}"
@@ -323,19 +327,12 @@ def create_dummy_ligand(ligand, cut_idx=None):
     ligand = Chem.AddHs(ligand)
     AllChem.AssignStereochemistry(ligand)
 
-    # Look for amines to split on. TODO: Not necesarry
-    amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
-    if len(amines) == 0:
-        raise Exception(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(ligand))} constains no primary amine"
-        )
-
     # Get the neigbouring bonds to the amine given by cut_idx
     atom = ligand.GetAtomWithIdx(cut_idx[0])
 
     # Create list of tuples that contain the amine idx and idx of neighbor.
     indices = [
-        (amines[0][0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
+        (cut_idx[0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
     ][0]
 
     # Get the bonds to the neighbors.
@@ -397,11 +394,13 @@ def embed_rdkit(
         corePtI = coreConf.GetAtomPosition(i)
         coordMap[idxI] = corePtI
 
+    # The random seed might be irrelevant here as randomcoords are false
     cids = AllChem.EmbedMultipleConfs(
         mol=mol,
         numConfs=numConfs,
         coordMap=coordMap,
-        randomSeed=randomseed,
+        maxAttempts=1000,
+        randomSeed=2,
         numThreads=numThreads,
         pruneRmsThresh=pruneRmsThresh,
         useRandomCoords=False,
@@ -410,8 +409,21 @@ def embed_rdkit(
 
     cids = list(cids)
     if len(cids) == 0:
-        print(coordMap, Chem.MolToSmiles(mol))
-        raise ValueError("Could not embed molecule.")
+        # Retry with a different random seed
+        cids = AllChem.EmbedMultipleConfs(
+            mol=mol,
+            numConfs=numConfs,
+            coordMap=coordMap,
+            maxAttempts=1000,
+            randomSeed=random.randint(0,2048),
+            numThreads=numThreads,
+            pruneRmsThresh=pruneRmsThresh,
+            useRandomCoords=False,
+        )
+        Chem.SanitizeMol(mol)
+        if len(cids) == 0:
+            print(coordMap, Chem.MolToSmiles(mol))
+        raise ValueError("Could not embed molecule with different seed")
 
     # Rotate embedded conformations onto the core
     algMap = [(j, i) for i, j in enumerate(match)]

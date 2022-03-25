@@ -4,7 +4,7 @@
 usage example: 
 
 ```
-python GA_logP.py ZINC_first_1000.smi
+python GA_schrock.py
 ```
 This branch contains my modified code for the Schrock catalyst.
 

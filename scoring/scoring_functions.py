@@ -31,9 +31,9 @@ def slurm_scoring(sc_function, population, scoring_args):
     Args:
         sc_function (function): Scoring function which takes molecules and id (int,int) as input
         population (List): List of rdkit Molecules
-        ids (List of Tuples of Int): Index of each molecule (Generation, Individual)
+        scoring_args (dict):
     Returns:
-        List: List of results from scoring function
+        results (List): List of results from scoring function
     """
     executor = submitit.AutoExecutor(
         folder=Path(scoring_args["output_dir"]) / "scoring_tmp",
@@ -68,9 +68,7 @@ def slurm_scoring(sc_function, population, scoring_args):
         output_dir_list,
     )
 
-    results = [
-        catch(job.result, handle=lambda e: (np.nan, None)) for job in jobs
-    ]
+    results = [catch(job.result, handle=lambda e: (np.nan, None)) for job in jobs]
     # catch submitit exceptions and return same output as scoring function
     # (np.nan, None) for (energy, geometry)
     if scoring_args["cleanup"]:

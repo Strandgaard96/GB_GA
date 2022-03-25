@@ -1,14 +1,23 @@
-from rdkit import Chem
+# -*- coding: utf-8 -*-
+""" Scoring module
 
+Module handling the driver for scoring ligand candidates.
+Contains various global variables that should be available to the scoring
+function at all times
+
+Todo:
+    *
+"""
 import os
 import sys
 import json
 import pickle
 
+from rdkit import Chem
+
 catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 
-# from .xtb_utils import xtb_optimize
 from my_utils.my_xtb_utils import xtb_optimize
 from my_utils.my_utils import cd
 from .make_structures import (
@@ -22,22 +31,49 @@ from .make_structures import (
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698
 NH3_ENERGY = -4.4120
+"""int: Module level constants
+hartree2kcalmol: Handles conversion from hartree to kcal/mol
+CORE_ELECTRONIC_ENERGY: The electronic energy of the Mo core with cut
+ligands
+NH3_ENERGY: Electronic energy of pure NH3, 
+used for scoring the NH3 dissacossiation reaction
+"""
 
-# My own structs:
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-
+"""Mol: 
+mol object of the Mo core with dummy atoms instead of ligands
+"""
 file_NH3 = "templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
-
+"""Mol: 
+mol object of the Mo core with NH3 in axial position and
+dummy atoms instead of ligands
+"""
 with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
+"""dict: 
+Dictionary that contains the smiles string for each N-related intermediate
+and the charge and spin for the specific intermediate
+"""
 
 
 def rdkit_embed_scoring(
     ligand, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."
 ):
-    """My driver scoring function."""
+    """
+
+    Args:
+        ligand:
+        idx:
+        ncpus:
+        n_confs:
+        cleanup:
+        output_dir:
+
+    Returns:
+
+    """
 
     # Create ligand based on a primary amine
     # ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
@@ -105,30 +141,6 @@ def rdkit_embed_scoring(
     # De = (catalyst_3d_energy - CORE_ELECTRONIC_ENERGY - ligand_3d_energy) * hartree2kcalmol
     De_new = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
     return De_new, (catalyst_3d_geom, catalyst_3d_energy)
-
-
-def runner_for_test():
-    # runner for putting proposed ligand on core.
-    file = "../templates/core_dummy.sdf"
-    core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-
-    file_name = "../data/ZINC_first_1000.smi"
-    mol_list = []
-    with open(file_name, "r") as file:
-        for smiles in file:
-            mol_list.append(Chem.MolFromSmiles(smiles))
-    # mols = connect_ligand(core[0], mol_list[50])
-
-    ligands = create_ligands(mol_list[50])
-
-    # Put ligands on the core and do xtb.
-
-    # Get idx of atom that should attach
-
-    # Get path to ligand
-    # ligand =
-
-    # molSimplify_scoring(ligand, idx=(0, 0), ncpus=1, cleanup=False, output_dir=".")
 
 
 if __name__ == "__main__":

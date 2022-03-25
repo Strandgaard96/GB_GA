@@ -36,7 +36,8 @@ def get_arguments(arg_list=None):
     """
 
     Args:
-        arg_list: Automatically obtained from the commandline if provided. Otherwise default arguments are used
+        arg_list: Automatically obtained from the commandline if provided.
+        Otherwise default arguments are used
 
     Returns:
         parser.parse_args(arg_list)(Namespace): Dictionary like class that contain the arguments
@@ -208,8 +209,8 @@ def GA(args):
 
         # Assign which generation the population is form.
         new_population.generation_num = generation_num
-        # Assign idx to molecules in population that contain the index in population, but also the generation each
-        # molecule comes from
+        # Assign idx to molecules in population that contain the index in population,
+        # but also the generation each molecule comes from
         new_population.assign_idx()
 
         # Sort population based on size

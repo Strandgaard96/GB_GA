@@ -299,7 +299,9 @@ def create_prim_amine(input_ligand):
     output_ligand = Chem.MolFromSmiles(Chem.MolToSmiles(lig))
 
     # Get idx where to cut and we just return of of them.
-    prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
+    prim_amine_index = output_ligand.GetSubstructMatches(
+        Chem.MolFromSmarts("[NX3;H2;!+1]")
+    )
     if len(prim_amine_index) > 1:
         print(
             f"There are several primary amines to cut at with idxs: {prim_amine_index}"
@@ -415,7 +417,7 @@ def embed_rdkit(
             numConfs=numConfs,
             coordMap=coordMap,
             maxAttempts=1000,
-            randomSeed=random.randint(0,2048),
+            randomSeed=random.randint(0, 2048),
             numThreads=numThreads,
             pruneRmsThresh=pruneRmsThresh,
             useRandomCoords=False,

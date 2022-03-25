@@ -17,7 +17,7 @@ from rdkit import Chem
 
 catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
-sys.path.append('..')
+sys.path.append("..")
 
 from my_utils.my_xtb_utils import xtb_optimize
 from my_utils.my_utils import cd
@@ -98,7 +98,7 @@ def rdkit_embed_scoring(
             gbsa="benzene",
             charge=smi_dict["Mo"]["charge"],
             spin=smi_dict["Mo"]["spin"],
-            opt_level="loose",
+            opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_catalyst",
             input=os.path.join("../../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
@@ -127,7 +127,7 @@ def rdkit_embed_scoring(
             gbsa="benzene",
             charge=smi_dict["Mo_NH3"]["charge"],
             spin=smi_dict["Mo_NH3"]["spin"],
-            opt_level="loose",
+            opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
             input=os.path.join("../../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
@@ -135,12 +135,11 @@ def rdkit_embed_scoring(
         )
         print("Mo_NH3 energy:", Mo_NH3_3d_energy)
 
-    if None in (catalyst_3d_energy, Mo_NH3_3d_energy):
-        print(f"The xtb calculation failed for one of the intermediates")
-        return None,(catalyst_3d_energy,0)
-    else:
-        De = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
-        return De, (catalyst_3d_geom, catalyst_3d_energy)
+    # Handle the error and return if xtb did not converge
+    if None in (catalyst_3d_energy,Mo_NH3_3d_energy):
+        raise Exception(f"XTB calculation did not converge")
+    De = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
+    return De, (catalyst_3d_geom, catalyst_3d_energy)
 
 
 if __name__ == "__main__":

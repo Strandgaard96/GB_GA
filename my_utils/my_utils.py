@@ -249,7 +249,9 @@ class Population:
         for mol in self.molecules:
 
             # Check for primary amine
-            match = mol.rdkit_mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
+            match = mol.rdkit_mol.GetSubstructMatches(
+                Chem.MolFromSmarts("[NX3;H2;!+1]")
+            )
 
             # Create primary amine if it doesnt have once. Otherwise, pas the cut idx
             if not match:

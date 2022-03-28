@@ -19,7 +19,7 @@ import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import Draw
 from tabulate import tabulate
-
+from scoring.make_structures import create_prim_amine
 
 class DotDict(UserDict):
     """dot.notation access to dictionary attributes

@@ -200,7 +200,7 @@ def GA(args):
             args["mutation_rate"],
             molecule_filter=molecule_filter,
         )
-        # TODO Modify population and create a primary amine
+
         new_population.modify_population()
 
         # Assign which generation the population is form.

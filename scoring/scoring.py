@@ -20,14 +20,17 @@ sys.path.append(catalyst_dir)
 sys.path.append("..")
 
 from my_utils.my_xtb_utils import xtb_optimize
+from make_structures import create_prim_amine
 from my_utils.my_utils import cd
-from .make_structures import (
+from make_structures import (
     connect_ligand,
     create_ligands,
     create_primaryamine_ligand,
     embed_rdkit,
     create_dummy_ligand,
+    connectMols,
 )
+from my_utils.my_utils import Individual, Population
 
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698
@@ -40,18 +43,18 @@ NH3_ENERGY: Electronic energy of pure NH3,
 used for scoring the NH3 dissacossiation reaction
 """
 
-file = "templates/core_dummy.sdf"
+file = "../templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
 """
-file_NH3 = "templates/core_NH3_dummy.sdf"
+file_NH3 = "../templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
-with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
+with open("../data/intermediate_smiles.json", "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
 """dict: 
 Dictionary that contains the smiles string for each N-related intermediate
@@ -77,7 +80,6 @@ def rdkit_embed_scoring(
     """
 
     # Create ligand based on a primary amine
-    # ligand_cut = create_primaryamine_ligand(ligand.rdkit_mol)[0]
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
 
@@ -89,8 +91,6 @@ def rdkit_embed_scoring(
         pruneRmsThresh=0.1,
         force_constant=1e12,
     )
-
-    print("Done with embedding of catalyst")
 
     with cd(output_dir):
         catalyst_3d_energy, catalyst_3d_geom = xtb_optimize(
@@ -106,19 +106,19 @@ def rdkit_embed_scoring(
         )
         print("catalyst energy:", catalyst_3d_energy)
 
-    print("Start scoring of Mo_NH3 intermediate")
+    # Now we want to put the NH3 on the already embedded structure
+    catalyst_NH3 = connectMols(catalyst_3d)
 
-    catalyst_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
+    # Need to add the expicit hydrogens from the NH3 to the graph.
+    catalyst_NH3 = Chem.AddHs(catalyst_NH3)
 
-    # Embed catalyst
     Mo_NH3_3d = embed_rdkit(
         mol=catalyst_NH3,
-        core=core_NH3[0],
+        core=catalyst_3d,
         numConfs=n_confs,
         pruneRmsThresh=0.1,
         force_constant=1e12,
     )
-
     print("Done with embedding of Mo_NH3")
 
     with cd(output_dir):
@@ -136,7 +136,7 @@ def rdkit_embed_scoring(
         print("Mo_NH3 energy:", Mo_NH3_3d_energy)
 
     # Handle the error and return if xtb did not converge
-    if None in (catalyst_3d_energy,Mo_NH3_3d_energy):
+    if None in (catalyst_3d_energy, Mo_NH3_3d_energy):
         raise Exception(f"XTB calculation did not converge")
     De = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
     return De, (catalyst_3d_geom, catalyst_3d_energy)
@@ -150,8 +150,9 @@ if __name__ == "__main__":
         for smiles in file:
             mol_list.append(Chem.MolFromSmiles(smiles))
 
-    lig = create_ligands(mol_list[1])
+    lig, cut_idx = create_prim_amine(mol_list[1])
 
+    ind = Individual(lig, cut_idx=cut_idx)
     # Useful for debugging failed scoring. Load the pickle file
     # From the failed calc.
     # with open(
@@ -159,4 +160,4 @@ if __name__ == "__main__":
     # ) as handle:
     #    b = pickle.load(handle)
 
-    rdkit_embed_scoring(lig)
+    rdkit_embed_scoring(ind, n_confs=1)

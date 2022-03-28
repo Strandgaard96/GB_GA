@@ -81,6 +81,32 @@ def connect_ligand(core, ligand, NH3_flag=False):
     return mol
 
 
+def connectMols(core, NH3_flag=True):
+
+    query = Chem.MolFromSmarts("[NX3;H3]")
+    mol = Chem.MolFromSmiles("[NH3]")
+    if NH3_flag:
+        mol.GetAtomWithIdx(0).SetFormalCharge(1)
+
+    combined = Chem.CombineMols(core, mol)
+    emol = Chem.EditableMol(combined)
+
+    # Get the idx of the Mo and NH3
+    NH3_match = combined.GetSubstructMatch(query)
+    atom = combined.GetAtomWithIdx(NH3_match[0])
+    NH3_idx = atom.GetIdx()
+
+    for atom in combined.GetAtoms():
+        if atom.GetAtomicNum() == 42:
+            Mo_idx = atom.GetIdx()
+            break
+
+    emol.AddBond(Mo_idx, NH3_idx, order=Chem.rdchem.BondType.SINGLE)
+    mol = emol.GetMol()
+
+    return mol
+
+
 def create_ligands(ligand):
     """
     Takes mol object and splits into fragments that can bind to a tertiary

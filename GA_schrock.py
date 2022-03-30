@@ -147,13 +147,6 @@ def GA(args):
         args["population_size"], args["file_name"], rand=True
     )
 
-    # Test debug
-    # energies = [-20000,np.NaN,-12300]
-    # population.setprop("energy", energies)
-    # population.setprop("score", energies)
-    # population.sortby("score")
-    # ga.calculate_normalized_fitness(population)
-
     results = sc.slurm_scoring(
         args["scoring_function"], population, args["scoring_args"]
     )
@@ -201,6 +194,7 @@ def GA(args):
             molecule_filter=molecule_filter,
         )
 
+        # Ensures that new molecules have a primary amine attachment point.
         new_population.modify_population()
 
         # Assign which generation the population is form.
@@ -223,8 +217,6 @@ def GA(args):
         new_population.setprop("energy", energies)
         new_population.setprop("score", energies)
         new_population.sortby("score")
-
-        # Retain the ligand split index.
 
         if args["sa_screening"]:
             neutralize_molecules(new_population)
@@ -264,6 +256,7 @@ def GA(args):
         # Save data from current generation
         logging.info("Saving current generation")
         gen.save(directory=args["output_dir"], run_No=generation_num)
+
         # Awesome print functionality by Julius that format some results as nice table in log file.
         gen.print()
 
@@ -318,7 +311,7 @@ def main():
     logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 
     # Addded this to return to the commandline if running this driver
-    # On the frontend.
+    # on the frontend.
     sys.exit(0)
 
 

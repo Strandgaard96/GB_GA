@@ -26,7 +26,7 @@ def run_xtb_my(structure, type, method, charge, spin, numThreads=None, **kwargs)
         numThreads = os.cpu_count()
 
     # Set environmental variables
-    os.environ["OMP_MAX_ACTIVE_LEVELS"] = 1
+    os.environ["OMP_MAX_ACTIVE_LEVELS"] = "1"
     os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
     os.environ["OMP_STACKSIZE"] = "4G"
@@ -262,13 +262,11 @@ def xtb_optimize(
         "chrg": charge,
         "uhf": spin,
         "gbsa": gbsa,
-        "alpb": alpb,
     }
 
     cmd = "xtb"
     for key, value in XTB_OPTIONS.items():
-        if value:
-            cmd += f" --{key} {value}"
+        cmd += f" --{key} {value}"
 
     workers = np.min([numThreads, n_confs])
     cpus_per_worker = numThreads // workers
@@ -276,7 +274,6 @@ def xtb_optimize(
 
     # For debug
     # results = run_xtb(args[0])
-
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(run_xtb, args)
 
@@ -293,3 +290,95 @@ def xtb_optimize(
         shutil.rmtree(name)
 
     return energies[minidx], geometries[minidx]
+
+
+def xtb_optimize_schrock(
+    files,
+    parameters=None,
+    gbsa="benzene",
+    alpb=None,
+    opt_level="tight",
+    input=None,
+    name=None,
+    cleanup=False,
+    numThreads=1,
+):
+
+    if not name:
+        name = "tmp_" + "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=4)
+        )
+    # set SCRATCH if environmental variable
+    try:
+        scr_dir = os.environ["SCRATCH"]
+    except:
+        scr_dir = os.getcwd()
+    print(f"SCRATCH DIR = {scr_dir}")
+
+    cmd = []
+    xtb_string = "xtb"
+    for elem in files:
+        intermediate_name = elem.parent.name
+        # Get intermediate parameters from the dict
+        charge = parameters[intermediate_name]["charge"]
+        spin = parameters[intermediate_name]["spin"]
+
+        # xtb options
+        XTB_OPTIONS = {
+            "opt": opt_level,
+            "chrg": charge,
+            "uhf": spin,
+            "gbsa": gbsa,
+        }
+
+        for key, value in XTB_OPTIONS.items():
+            xtb_string += f" --{key} {value}"
+        cmd.append(xtb_string)
+        xtb_string = "xtb"
+
+    n_structs = len(files)
+
+    workers = np.min([numThreads, n_structs])
+    cpus_per_worker = numThreads // n_structs
+    args = [
+        (str(xyz_file), cmd[i], 1, xyz_file.parent) for i, xyz_file in enumerate(files)
+    ]
+
+    # with Pool() as pool:
+    #    output = pool.map(run_xtb, args)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=numThreads) as executor:
+        results = executor.map(run_xtb, args)
+
+    print("donzo")
+    energies = []
+    geometries = []
+    for e, g in results:
+        energies.append(e)
+        geometries.append(g)
+
+    minidx = np.argmin(energies)
+
+    # Clean up
+    if cleanup:
+        shutil.rmtree(name)
+
+    return energies, geometries
+
+
+if __name__ == "__main__":
+    # Debugging
+    struct = ".xyz"
+    paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
+
+    xtb_optimize_schrock(
+        files=paths,
+        parameters=parameters,
+        gbsa="benzene",
+        alpb=None,
+        opt_level="tight",
+        input=None,
+        name=None,
+        cleanup=False,
+        numThreads=1,
+    )

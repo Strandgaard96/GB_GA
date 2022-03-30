@@ -17,14 +17,15 @@ from rdkit import Chem
 
 catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.append("..")
 
 from my_utils.my_xtb_utils import xtb_optimize
-from make_structures import create_prim_amine
 from my_utils.my_utils import cd
 from make_structures import (
     connect_ligand,
     create_ligands,
+    create_prim_amine,
     create_primaryamine_ligand,
     embed_rdkit,
     create_dummy_ligand,
@@ -43,18 +44,18 @@ NH3_ENERGY: Electronic energy of pure NH3,
 used for scoring the NH3 dissacossiation reaction
 """
 
-file = "templates/core_dummy.sdf"
+file = "../templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
 """
-file_NH3 = "templates/core_NH3_dummy.sdf"
+file_NH3 = "../templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
-with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
+with open("../data/intermediate_smiles.json", "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
 """dict: 
 Dictionary that contains the smiles string for each N-related intermediate
@@ -139,6 +140,7 @@ def rdkit_embed_scoring(
     if None in (catalyst_3d_energy, Mo_NH3_3d_energy):
         raise Exception(f"XTB calculation did not converge")
     De = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
+    print(f"diff energy: {(catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy}")
     return De, (catalyst_3d_geom, catalyst_3d_energy)
 
 
@@ -160,4 +162,4 @@ if __name__ == "__main__":
     # ) as handle:
     #    b = pickle.load(handle)
 
-    rdkit_embed_scoring(ind, n_confs=1)
+    rdkit_embed_scoring(ind, n_confs=1, ncpus=6)

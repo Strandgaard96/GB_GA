@@ -21,6 +21,7 @@ from rdkit.Chem import Draw
 from tabulate import tabulate
 from scoring.make_structures import create_prim_amine
 
+
 class DotDict(UserDict):
     """dot.notation access to dictionary attributes
     Currently not in use as it clashed with Multiprocessing-Pool pickling"""
@@ -407,47 +408,6 @@ class GA_run:
     def get_ind(self, idx):
         return self.generations[idx[0]].survivors.molecules[idx[1]]
 
-    def get_parent_tuple(self, individual):
-        if not individual.parentA_idx and not individual.parentB_idx:
-            return None
-        if individual.parentA_idx:
-            parentA = self.get_ind(individual.parentA_idx)
-        if individual.parentB_idx:
-            parentB = self.get_ind(individual.parentB_idx)
-        return tuple((individual.idx, parentA.idx, parentB.idx))
-
-    def get_survivor(self, individual):
-        if not individual.survival_idx:
-            return None
-        else:
-            return tuple((individual.idx, individual.survival_idx))
-
-    def get_origin(self, individual):
-        if individual.survival_idx:
-            return self.get_survivor(individual)
-        elif individual.parentA_idx:
-            return self.get_parent_tuple(individual)
-
-    def traceback(self, idx, max_its=100):
-        trace = []
-        checked = []
-        youngest = self.get_ind(idx)
-        trace.append(self.get_origin(youngest))
-        counter = 0
-        for node in trace:
-            if not node:
-                break
-            iD = node[0]
-            if iD in checked:
-                continue  # with next node
-            trace.append(self.get_origin(self.get_ind(node[1])))
-            if len(node) == 3:
-                trace.append(self.get_origin(self.get_ind(node[2])))
-            counter += 1
-            if counter > max_its:
-                break
-        return [x for x in trace if x is not None]
-
     def print(self, population="survivors"):
         for generation in self.generations:
             generation.print(population)
@@ -455,18 +415,7 @@ class GA_run:
     def ga2pd(
         self,
         population="survivors",
-        columns=[
-            "normalized_fitness",
-            "score",
-            "energy",
-            "sa_score",
-            "rdkit_mol",
-            "origin",
-            "parentA_idx",
-            "parentB_idx",
-            "mutated",
-            "warnings",
-        ],
+        columns=["score", "energy", "sa_score", "rdkit_mol"],
     ):
         df = pd.concat(
             [

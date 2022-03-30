@@ -12,17 +12,26 @@ Example:
 import pathlib
 import sys, os
 from pathlib import Path
-import json, shutil, argparse, glob, time
+import json, shutil, argparse, glob, time, pickle
+from multiprocessing import Pool
 
 import my_utils.my_utils
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.append("..")
 
 from rdkit import Chem
 from rdkit.Chem import Draw
 from my_utils.my_utils import cd
-from my_utils.my_xtb_utils import run_xtb, run_xtb_my
+from my_utils.my_xtb_utils import run_xtb, run_xtb_my, xtb_optimize_schrock
 from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
+from scoring.make_structures import create_dummy_ligand, connect_ligand, embed_rdkit
+
+file = "../templates/core_dummy.sdf"
+core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
+"""Mol: 
+mol object of the Mo core with dummy atoms instead of ligands
+"""
 
 
 def get_arguments(arg_list=None):
@@ -50,6 +59,12 @@ def get_arguments(arg_list=None):
         help="Sets the output dir of the cycle molSimplify commands",
     )
     parser.add_argument(
+        "--gen_path",
+        type=pathlib.Path,
+        default="/home/magstr/Documents/generation_data/prod_test/GA20.pkl",
+        help="A generation pickle to load candidates from",
+    )
+    parser.add_argument(
         "--cleanup",
         dest="cleanup",
         action="store_true",
@@ -59,7 +74,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ligand_smi",
         type=str,
-        default="[1*]C(=O)[C@H](Oc1ccc(-c2ccc(C#N)cc2)cc1)c1ccccc1",
+        default="NCC1=C(CN)C(Br)[SH2]C1Br",
         help="Set the ligand to put on the core",
     )
     parser.add_argument(
@@ -74,7 +89,22 @@ def get_arguments(arg_list=None):
         default="tmp_log",
         help="Directory to logfiles",
     )
+    parser.add_argument(
+        "--cut_idx",
+        type=int,
+        default=9,
+        help="What primary amine to cut on",
+    )
     return parser.parse_args(arg_list)
+
+
+def mol_with_atom_index(mol):
+    atoms = mol.GetNumAtoms()
+    for idx in range(atoms):
+        mol.GetAtomWithIdx(idx).SetProp(
+            "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
+        )
+    return mol
 
 
 def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
@@ -133,7 +163,7 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
     return
 
 
-def xtb_calc(cycle_dir=None, param_path=None, dest="xtbout"):
+def xtb_calc_serial(cycle_dir=None, param_path=None, dest="xtbout"):
     """
 
     Args:
@@ -213,12 +243,13 @@ def get_smicat(lig_smi=None):
     Returns:
         idx (int)
     """
-    mol = Chem.MolFromSmiles(lig_smi)
+    mol = lig_smi
     dummy = Chem.MolFromSmiles("*")
     # Get the dummy atom and then its atom object
     dummy_idx = mol.GetSubstructMatch(Chem.MolFromSmiles("*"))
     atom = mol.GetAtomWithIdx(dummy_idx[0])
-    # Get the  the dummy atom has.
+
+    # Get the neighbor the dummy atom has.
     connect_idx = [x.GetIdx() for x in atom.GetNeighbors()]
 
     # Finaly replace the dummy with a hydrogen and print back to smiles
@@ -229,7 +260,46 @@ def get_smicat(lig_smi=None):
     new_lig_smi = Chem.MolToSmiles(mol)
 
     # We add one to the idx as molS is 1-indexed
-    return connect_idx[0] + 1, new_lig_smi
+    return connect_idx[0], new_lig_smi
+
+
+def create_custom_core_rdkit(args):
+    """
+
+    Create a custom core based on a proposed ligand.
+
+    Args:
+        args (Namespace): args from driver
+
+    Returns:
+
+    """
+
+    # Gen individual path
+    gen_path = args.gen_path
+
+    with open(gen_path, "rb") as f:
+        gen = pickle.load(f)
+    ligand = gen.survivors.molecules[0]
+
+    ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
+    catalyst = connect_ligand(core[0], ligand_cut)
+
+    # Embed catalyst
+    catalyst_3d = embed_rdkit(
+        mol=catalyst,
+        core=core[0],
+        numConfs=1,
+        pruneRmsThresh=0.1,
+        force_constant=1e12,
+    )
+
+    # Save mol
+    newcore_path = "new_core.xyz"
+    with open(newcore_path, "w+") as f:
+        f.write(Chem.MolToXYZBlock(catalyst_3d))
+
+    return newcore_path
 
 
 def create_custom_core(args):
@@ -249,12 +319,11 @@ def create_custom_core(args):
     replig = 1
     suffix = "core_custom"
     run_dir = args.run_dir
-    smicat, lig_smi = get_smicat(lig_smi)
 
     core_cmd = (
         f"molsimplify -core {core_file} -lig {lig_smi} -replig {replig} -ligocc 3"
         f" -ccatoms 24, 25, 26 -skipANN True -spin 1 -oxstate 3"
-        f" -coord 5 -keepHs no -smicat 2 -rundir {run_dir} -suff {suffix}"
+        f" -coord 5 -keepHs no -smicat {smicat} -rundir {run_dir} -suff {suffix}"
     )
     print(f"String passed to shell: {core_cmd}")
     out, err = shell(
@@ -279,36 +348,48 @@ def main():
 
     args = get_arguments()
 
-    # What ligand do i want to molS_drivers?
-    create_custom_core(args)
+    # Put the ligand on core with rdkit
+    create_custom_core_rdkit(args)
 
     # Check for output structure
-    new_core = sorted(args.run_dir.glob("**/*.xyz"))
     intermediate_smi_path = Path("../data/intermediate_smiles.json")
 
-    print(new_core)
-
+    new_core = False
     if new_core:
-        # Move output structure to current dir
-        shutil.copy(new_core[0], "./new_core.xyz")
         # Pass the output structure to cycle creation
-        # create_cycleMS(
-        #    new_core="new_core.xyz",
-        #    smi_path=intermediate_smi_path,
-        #    run_dir=args.cycle_dir,
-        #    log_tmp=args.log_tmp,
-        # )
+        create_cycleMS(
+            new_core="new_core.xyz",
+            smi_path=intermediate_smi_path,
+            run_dir=args.cycle_dir,
+            log_tmp=args.log_tmp,
+        )
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
     dest = args.xtbout / (args.ligand_smi + timestr)
     dest.mkdir(parents=True, exist_ok=False)
-    xtb_calc(cycle_dir=args.cycle_dir, param_path=intermediate_smi_path, dest=dest)
 
-    # for debug
-    # os.mkdir(str(dest / "Mo"))
-    # with open(dest / "Mo" / "xtbjob.out", "w") as f:
-    #    f.write("test")
+    # Get spin and charge dict
+    with open(intermediate_smi_path) as f:
+        parameters = json.load(f)
+
+    # Start xtb calc
+    # xtb_calc_serial(cycle_dir=args.cycle_dir, param_path=intermediate_smi_path, dest=dest)
+    struct = ".xyz"
+    paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
+
+    energies, geometries = xtb_optimize_schrock(
+        files=paths[0:1],
+        parameters=parameters,
+        gbsa="benzene",
+        alpb=None,
+        opt_level="tight",
+        input=None,
+        name=None,
+        cleanup=False,
+        numThreads=6,
+    )
+    print("I made it, yuhu")
 
     if args.cleanup:
         collect_logfiles(dest=dest)

@@ -20,7 +20,7 @@ sys.path.append(catalyst_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.append("..")
 
-from my_utils.my_xtb_utils import xtb_optimize
+from my_utils.my_xtb_utils import xtb_optimize, xtb_pre_optimize
 from my_utils.my_utils import cd
 from make_structures import (
     connect_ligand,
@@ -94,7 +94,13 @@ def rdkit_embed_scoring(
     )
 
     with cd(output_dir):
-        catalyst_3d_energy, catalyst_3d_geom = xtb_optimize(
+
+        # Pre force field optimization
+
+        # TODO Constrained gfn2 opt maybe
+
+        # Regular full optimization
+        catalyst_3d_energy, catalyst_3d_geom = xtb_pre_optimize(
             catalyst_3d,
             gbsa="benzene",
             charge=smi_dict["Mo"]["charge"],
@@ -123,7 +129,7 @@ def rdkit_embed_scoring(
     print("Done with embedding of Mo_NH3")
 
     with cd(output_dir):
-        Mo_NH3_3d_energy, Mo_NH3_3d_geom = xtb_optimize(
+        Mo_NH3_3d_energy, Mo_NH3_3d_geom = xtb_pre_optimize(
             Mo_NH3_3d,
             gbsa="benzene",
             charge=smi_dict["Mo_NH3"]["charge"],
@@ -162,4 +168,4 @@ if __name__ == "__main__":
     # ) as handle:
     #    b = pickle.load(handle)
 
-    rdkit_embed_scoring(ind, n_confs=1, ncpus=6)
+    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)

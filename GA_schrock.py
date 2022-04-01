@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=6,
+        default=4,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -67,7 +67,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=1,
+        default=2,
         help="How many conformers to generate",
     )
     parser.add_argument(
@@ -103,7 +103,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cpus",
         type=int,
-        default=1,
+        default=2,
         help="Number of cores to distribute over",
     )
     parser.add_argument(
@@ -239,10 +239,6 @@ def GA(args):
 
         # Population now contains survivors after sanitation.
         population.generation_num = generation_num
-
-        # Re-assign idx to molecules in population that contain the index in population,
-        # but also the generation each molecule comes from
-        population.assign_idx()
 
         # Normalize new scores
         ga.calculate_normalized_fitness(population)

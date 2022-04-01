@@ -90,7 +90,7 @@ def run_xtb(args):
     xyz_file = os.path.basename(xyz_file)
     print(xyz_file)
     cmd = f"{xtb_cmd} -- {xyz_file} "
-    os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
+    os.environ["OMP_NUM_THREADS"] = f"{numThreads}"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
     os.environ["OMP_STACKSIZE"] = "2G"
     print(f"run xtb command {cmd}")
@@ -105,9 +105,9 @@ def run_xtb(args):
     output, err = popen.communicate()
     print(conf_path)
     print(err, output)
-    with open(Path(conf_path) / "job.out", "w") as f:
+    with open(Path(conf_path) / f"{xyz_file}job.out", "w") as f:
         f.write(output)
-    with open(Path(conf_path) / "err.out", "w") as f:
+    with open(Path(conf_path) / f"{xyz_file}err.out", "w") as f:
         f.write(err)
     results = read_results(output, err)
     return results
@@ -218,11 +218,12 @@ def read_results(output, err):
     return energy, {"atoms": atoms, "coords": coords}
 
 
-def xtb_optimize(
+def xtb_pre_optimize(
     mol,
+    method="ff",
     charge=None,
     spin=None,
-    gbsa="methanol",
+    gbsa="benzene",
     alpb=None,
     opt_level="tight",
     input=None,
@@ -264,11 +265,94 @@ def xtb_optimize(
         "gbsa": gbsa,
     }
 
+    cmd = f"xtb -gfn{method}"
+    for key, value in XTB_OPTIONS.items():
+        cmd += f" --{key} {value}"
+
+    workers = numThreads
+    cpus_per_worker = numThreads // n_confs
+    print(workers,cpus_per_worker)
+    args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results = executor.map(run_xtb, args)
+
+    preoptimize = True
+    if preoptimize:
+        cmd = cmd.replace("gfnff", "gfn 2")
+        xyz_files = [Path(xyz_file).parent / "xtbopt.xyz" for xyz_file in xyz_files]
+        args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            results2 = executor.map(run_xtb, args)
+
+    energies = []
+    geometries = []
+    for e, g in results2:
+        energies.append(e)
+        geometries.append(g)
+
+    minidx = np.argmin(energies)
+
+    # Clean up
+    if cleanup:
+        shutil.rmtree(name)
+
+    return energies[minidx], geometries[minidx]
+
+
+def xtb_optimize(
+    mol,
+    method=" 2",
+    charge=None,
+    spin=None,
+    gbsa="methanol",
+    alpb=None,
+    opt_level="tight",
+    input=None,
+    name=None,
+    cleanup=False,
+    numThreads=1,
+):
+    # check mol input
+    assert isinstance(mol, Chem.rdchem.Mol)
+    if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
+        raise Exception("Implicit Hydrogens")
+    conformers = mol.GetConformers()
+    n_confs = len(conformers)
+    if not conformers:
+        raise Exception("Mol is not embedded")
+    elif not conformers[-1].Is3D():
+        raise Exception("Conformer is not 3D")
+
+    if not name:
+        name = "tmp_" + "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=4)
+        )
+
+    # set SCRATCH if environmental variable
+    try:
+        scr_dir = os.environ["SCRATCH"]
+    except:
+        scr_dir = os.getcwd()
+    print(f"SCRATCH DIR = {scr_dir}")
+
+    print("write input files")
+    xyz_files, conf_path = write_xtb_input_files(mol, "xtbmol", destination=name)
+
+    # xtb options
+    XTB_OPTIONS = {
+        "gfn": method,
+        "opt": opt_level,
+        "chrg": charge,
+        "uhf": spin,
+        "gbsa": gbsa,
+    }
+
     cmd = "xtb"
     for key, value in XTB_OPTIONS.items():
         cmd += f" --{key} {value}"
 
-    workers = np.min([numThreads, n_confs])
+    workers = numThreads
     cpus_per_worker = numThreads // workers
     args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
 
@@ -364,6 +448,25 @@ def xtb_optimize_schrock(
         shutil.rmtree(name)
 
     return energies, geometries
+
+
+def make_input_constrain_file(molecule, core, path):
+    # Locate atoms to contrain
+    match = (
+        np.array(molecule.GetSubstructMatch(core)) + 1
+    )  # indexing starts with 0 for RDKit but 1 for xTB
+    match = sorted(match)
+    assert len(match) == core.GetNumAtoms(), "ERROR! Complete match not found."
+
+    # Write the xcontrol file
+    with open(os.path.join(path, "xcontrol"), "w") as f:
+        f.write("$constrain\n")
+        f.write(" force constant=0.5\n")
+        f.write(f' atoms: {",".join(map(str, match))}\n')
+        f.write("$end\n")
+        f.close()
+
+    return
 
 
 if __name__ == "__main__":

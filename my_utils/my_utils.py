@@ -215,7 +215,7 @@ class Individual:
 
     def list_of_props(self):
         return [
-            self.idx[1],
+            self.idx,
             self.normalized_fitness,
             self.score,
             self.energy,

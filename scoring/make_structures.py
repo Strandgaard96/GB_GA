@@ -22,6 +22,37 @@ RDLogger.DisableLog("rdApp.*")
 from my_utils import my_utils
 
 
+def getAttachmentVector(mol):
+    """Search for the position of the attachment point and extract the atom index of the attachment point and the connected atom (only single neighbour supported)
+    Function from https://pschmidtke.github.io/blog/rdkit/3d-editor/2021/01/23/grafting-fragments.html
+    mol: rdkit molecule with a dummy atom
+    return: atom indices
+    """
+    rindex = -1
+    rindexNeighbor = -1
+    for atom in mol.GetAtoms():
+        if atom.GetAtomicNum() == 0:
+            rindex = atom.GetIdx()
+            neighbours = atom.GetNeighbors()
+            if len(neighbours) == 1:
+                rindexNeighbor = neighbours[0].GetIdx()
+            else:
+                print("two attachment points not supported yet")
+                return None
+
+    return rindex, rindexNeighbor
+
+
+def replaceAtom(mol, indexAtom, indexNeighbor, atom_type="Br"):
+    """Replace an atom with another type"""
+
+    emol = Chem.EditableMol(mol)
+    emol.ReplaceAtom(indexAtom, Chem.Atom(atom_type))
+    emol.RemoveBond(indexAtom, indexNeighbor)
+    emol.AddBond(indexAtom, indexNeighbor, order=Chem.rdchem.BondType.SINGLE)
+    return emol.GetMol()
+
+
 def connect_ligand(core, ligand, NH3_flag=False):
     """
     Function that takes two mol objects at creates a core with ligand.
@@ -431,7 +462,7 @@ def embed_rdkit(
         randomSeed=2,
         numThreads=numThreads,
         pruneRmsThresh=pruneRmsThresh,
-        useRandomCoords=False,
+        useRandomCoords=True,
     )
     Chem.SanitizeMol(mol)
 
@@ -446,7 +477,7 @@ def embed_rdkit(
             randomSeed=random.randint(0, 2048),
             numThreads=numThreads,
             pruneRmsThresh=pruneRmsThresh,
-            useRandomCoords=False,
+            useRandomCoords=True,
         )
         Chem.SanitizeMol(mol)
         if len(cids) == 0:

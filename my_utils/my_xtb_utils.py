@@ -17,6 +17,12 @@ from datetime import datetime
 
 import concurrent.futures
 
+file = "../templates/core_dummy.sdf"
+core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
+"""Mol: 
+mol object of the Mo core with dummy atoms instead of ligands
+"""
+
 
 def run_xtb_my(structure, type, method, charge, spin, numThreads=None, **kwargs):
 
@@ -63,8 +69,10 @@ def write_xtb_input_files(fragment, name, destination="."):
     symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
     conformers = fragment.GetConformers()
     file_paths = []
+    conf_paths = []
     for i, conf in enumerate(conformers):
         conf_path = os.path.join(destination, f"conf{i:03d}")
+        conf_paths.append(conf_path)
 
         if os.path.exists(conf_path):
             shutil.rmtree(conf_path)
@@ -80,19 +88,20 @@ def write_xtb_input_files(fragment, name, destination="."):
                 line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
                 _file.write(line)
         file_paths.append(file_path)
-    return file_paths, conf_path
+    return file_paths, conf_paths
 
 
 def run_xtb(args):
     xyz_file, xtb_cmd, numThreads, conf_path = args
     print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
+
     cwd = os.path.dirname(xyz_file)
     xyz_file = os.path.basename(xyz_file)
-    print(xyz_file)
     cmd = f"{xtb_cmd} -- {xyz_file} "
     os.environ["OMP_NUM_THREADS"] = f"{numThreads}"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
     os.environ["OMP_STACKSIZE"] = "2G"
+
     print(f"run xtb command {cmd}")
     popen = subprocess.Popen(
         cmd.split(),
@@ -103,11 +112,9 @@ def run_xtb(args):
         cwd=cwd,
     )
     output, err = popen.communicate()
-    print(conf_path)
-    print(err, output)
-    with open(Path(conf_path) / f"{xyz_file}job.out", "w") as f:
+    with open(Path(conf_path) / f"{xyz_file[:-4]}job.out", "w") as f:
         f.write(output)
-    with open(Path(conf_path) / f"{xyz_file}err.out", "w") as f:
+    with open(Path(conf_path) / f"{xyz_file[:-4]}err.out", "w") as f:
         f.write(err)
     results = read_results(output, err)
     return results
@@ -226,9 +233,9 @@ def xtb_pre_optimize(
     gbsa="benzene",
     alpb=None,
     opt_level="tight",
-    input=None,
     name=None,
     cleanup=False,
+    preoptimize=True,
     numThreads=1,
 ):
     # check mol input
@@ -255,7 +262,10 @@ def xtb_pre_optimize(
     print(f"SCRATCH DIR = {scr_dir}")
 
     print("write input files")
-    xyz_files, conf_path = write_xtb_input_files(mol, "xtbmol", destination=name)
+    xyz_files, conf_paths = write_xtb_input_files(mol, "xtbmol", destination=name)
+
+    # Make input constrain file
+    make_input_constrain_file(mol, core=core[0], path=conf_paths)
 
     # xtb options
     XTB_OPTIONS = {
@@ -263,27 +273,42 @@ def xtb_pre_optimize(
         "chrg": charge,
         "uhf": spin,
         "gbsa": gbsa,
+        "input": "./xcontrol.inp",
     }
 
-    cmd = f"xtb -gfn{method}"
+    cmd = f"xtb --gfn{method}"
     for key, value in XTB_OPTIONS.items():
         cmd += f" --{key} {value}"
 
     workers = numThreads
     cpus_per_worker = numThreads // n_confs
-    print(workers,cpus_per_worker)
-    args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
+    print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
+    args = [
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i])
+        for i, xyz_file in enumerate(xyz_files)
+    ]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(run_xtb, args)
 
-    preoptimize = True
     if preoptimize:
         cmd = cmd.replace("gfnff", "gfn 2")
         xyz_files = [Path(xyz_file).parent / "xtbopt.xyz" for xyz_file in xyz_files]
-        args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
+        args = [
+            (xyz_file, cmd, cpus_per_worker, conf_paths[i])
+            for i, xyz_file in enumerate(xyz_files)
+        ]
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             results2 = executor.map(run_xtb, args)
+
+    # Perform final relaxation
+    cmd = cmd.replace("--input ./xcontrol.inp","")
+    args = [
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i])
+        for i, xyz_file in enumerate(xyz_files)
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results2 = executor.map(run_xtb, args)
 
     energies = []
     geometries = []
@@ -291,13 +316,14 @@ def xtb_pre_optimize(
         energies.append(e)
         geometries.append(g)
 
-    minidx = np.argmin(energies)
+    arr = np.array(energies, dtype=np.float)
+    minidx = np.nanargmin(arr)
 
     # Clean up
     if cleanup:
         shutil.rmtree(name)
 
-    return energies[minidx], geometries[minidx]
+    return energies[minidx], geometries[minidx], minidx
 
 
 def xtb_optimize(
@@ -413,6 +439,7 @@ def xtb_optimize_schrock(
             "chrg": charge,
             "uhf": spin,
             "gbsa": gbsa,
+            "input": input,
         }
 
         for key, value in XTB_OPTIONS.items():
@@ -458,14 +485,13 @@ def make_input_constrain_file(molecule, core, path):
     match = sorted(match)
     assert len(match) == core.GetNumAtoms(), "ERROR! Complete match not found."
 
-    # Write the xcontrol file
-    with open(os.path.join(path, "xcontrol"), "w") as f:
-        f.write("$constrain\n")
-        f.write(" force constant=0.5\n")
-        f.write(f' atoms: {",".join(map(str, match))}\n')
-        f.write("$end\n")
-        f.close()
-
+    for elem in path:
+        # Write the xcontrol file
+        with open(os.path.join(elem, "xcontrol.inp"), "w") as f:
+            f.write("$constrain\n")
+            f.write(" force constant=0.5\n")
+            f.write(f' atoms: {",".join(map(str, match))}\n')
+            f.write("$end\n")
     return
 
 

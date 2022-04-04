@@ -35,7 +35,7 @@ from my_utils.my_utils import Individual, Population
 
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698
-NH3_ENERGY = -4.4120
+NH3_ENERGY = -4.4260
 """int: Module level constants
 hartree2kcalmol: Handles conversion from hartree to kcal/mol
 CORE_ELECTRONIC_ENERGY: The electronic energy of the Mo core with cut
@@ -95,19 +95,14 @@ def rdkit_embed_scoring(
 
     with cd(output_dir):
 
-        # Pre force field optimization
-
-        # TODO Constrained gfn2 opt maybe
-
-        # Regular full optimization
-        catalyst_3d_energy, catalyst_3d_geom = xtb_pre_optimize(
+        # Optimization
+        catalyst_3d_energy, catalyst_3d_geom, minidx = xtb_pre_optimize(
             catalyst_3d,
             gbsa="benzene",
             charge=smi_dict["Mo"]["charge"],
             spin=smi_dict["Mo"]["spin"],
             opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_catalyst",
-            input=os.path.join("../../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
             cleanup=cleanup,
         )
@@ -122,21 +117,21 @@ def rdkit_embed_scoring(
     Mo_NH3_3d = embed_rdkit(
         mol=catalyst_NH3,
         core=catalyst_3d,
-        numConfs=n_confs,
+        coreConfId=int(minidx),
+        numConfs=1,
         pruneRmsThresh=0.1,
         force_constant=1e12,
     )
     print("Done with embedding of Mo_NH3")
 
     with cd(output_dir):
-        Mo_NH3_3d_energy, Mo_NH3_3d_geom = xtb_pre_optimize(
+        Mo_NH3_3d_energy, Mo_NH3_3d_geom, minidx = xtb_pre_optimize(
             Mo_NH3_3d,
             gbsa="benzene",
             charge=smi_dict["Mo_NH3"]["charge"],
             spin=smi_dict["Mo_NH3"]["spin"],
             opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            input=os.path.join("../../..", "templates/input_files/constr.inp"),
             numThreads=ncpus,
             cleanup=cleanup,
         )

@@ -34,46 +34,6 @@ mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
 
-
-def run_xtb_my(structure, type, method, charge, spin, numThreads=None, **kwargs):
-
-    # Get numbre of cores available.
-    # Careful with this when parallellizing
-    if not numThreads:
-        numThreads = os.cpu_count()
-
-    # Set environmental variables
-    os.environ["OMP_MAX_ACTIVE_LEVELS"] = "1"
-    os.environ["OMP_NUM_THREADS"] = f"{numThreads},1"
-    os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
-    os.environ["OMP_STACKSIZE"] = "4G"
-
-    # Default input string
-    cmd = f"xtb {structure} --{type} --{method} --chrg {charge} --uhf {spin}"
-
-    # Add extra xtb settings if provided
-    if kwargs:
-        for key, value in kwargs.items():
-            cmd += f" --{key} {value}"
-
-    # Run the shell command
-    print(f"Running xtb with input string {cmd}")
-    out, err = shell(
-        cmd,
-        shell=False,
-    )
-    with open("job.out", "w") as f:
-        f.write(out)
-    with open("err.out", "w") as f:
-        f.write(err)
-    # print(out, file=open("job.out", "a"))
-
-    # Post processing
-    # TODO Insert post processing
-
-    return out, err
-
-
 # %%
 def write_xtb_input_files(fragment, name, destination="."):
     number_of_atoms = fragment.GetNumAtoms()
@@ -305,6 +265,10 @@ def xtb_pre_optimize(
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results = executor.map(run_xtb, args)
 
+    # Store the log file
+    for elem in conf_paths:
+        shutil.copy(os.path.join(conf_paths, 'xtbopt.log'), os.path.join(conf_paths, 'ffopt.log'))
+
     if preoptimize:
         cmd = cmd.replace("gfnff", "gfn 2")
         xyz_files = [Path(xyz_file).parent / "xtbopt.xyz" for xyz_file in xyz_files]
@@ -314,6 +278,10 @@ def xtb_pre_optimize(
         ]
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             results2 = executor.map(run_xtb, args)
+
+    # Store the log file
+    for elem in conf_paths:
+        shutil.copy(os.path.join(conf_paths, 'xtbopt.log'), os.path.join(conf_paths, 'constrained_opt.log'))
 
     # Perform final relaxation
     cmd = cmd.replace("--input ./xcontrol.inp","")

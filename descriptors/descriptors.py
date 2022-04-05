@@ -1,7 +1,7 @@
 from rdkit import Chem
 from rdkit.Chem.rdMolDescriptors import CalcNumRotatableBonds
 
-from modifiers import gaussian_modifier, gaussian_modifier_clipped
+from gaussians import gaussian_modifier, gaussian_modifier_clipped
 
 
 def number_of_rotatable_bonds(mol: Chem.Mol) -> int:

@@ -18,7 +18,6 @@ from rdkit import Chem
 catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append("..")
 
 from my_utils.my_xtb_utils import xtb_optimize, xtb_pre_optimize
 from my_utils.my_utils import cd
@@ -44,18 +43,18 @@ NH3_ENERGY: Electronic energy of pure NH3,
 used for scoring the NH3 dissacossiation reaction
 """
 
-file = "../templates/core_dummy.sdf"
+file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
 """
-file_NH3 = "../templates/core_NH3_dummy.sdf"
+file_NH3 = "templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
-with open("../data/intermediate_smiles.json", "r", encoding="utf-8") as f:
+with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
 """dict: 
 Dictionary that contains the smiles string for each N-related intermediate
@@ -132,7 +131,7 @@ def rdkit_embed_scoring(
             spin=smi_dict["Mo_NH3"]["spin"],
             opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            numThreads=ncpus,
+            numThreads=1,
             cleanup=cleanup,
         )
         print("Mo_NH3 energy:", Mo_NH3_3d_energy)

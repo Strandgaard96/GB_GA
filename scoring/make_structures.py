@@ -156,7 +156,6 @@ def create_ligands(ligand):
 
     # Create explicit hydrogens and sterechemistry i dont know what does.
     ligand = Chem.AddHs(ligand)
-    AllChem.AssignStereochemistry(ligand)
 
     # Look for teriary amines in the input ligand.
     tert_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H0;D3;!+1]"))
@@ -237,7 +236,6 @@ def create_primaryamine_ligand(ligand):
 
     # Create explicit hydrogens and sterechemistry i dont know what does.
     ligand = Chem.AddHs(ligand)
-    AllChem.AssignStereochemistry(ligand)
 
     # Look for primary amines in the input ligand.
     prim_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;D3;!+1]"))
@@ -384,7 +382,6 @@ def create_dummy_ligand(ligand, cut_idx=None):
 
     # Create explicit hydrogens and sterechemistry i dont know what does.
     ligand = Chem.AddHs(ligand)
-    AllChem.AssignStereochemistry(ligand)
 
     # Get the neigbouring bonds to the amine given by cut_idx
     atom = ligand.GetAtomWithIdx(cut_idx[0])

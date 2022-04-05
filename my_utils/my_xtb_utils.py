@@ -17,10 +17,21 @@ from datetime import datetime
 
 import concurrent.futures
 
-file = "../templates/core_dummy.sdf"
+file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
+"""
+file = "templates/core_dummy.sdf"
+core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
+"""Mol: 
+mol object of the Mo core with dummy atoms instead of ligands
+"""
+file_NH3 = "templates/core_NH3_dummy.sdf"
+core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
+"""Mol: 
+mol object of the Mo core with NH3 in axial position and
+dummy atoms instead of ligands
 """
 
 
@@ -265,7 +276,10 @@ def xtb_pre_optimize(
     xyz_files, conf_paths = write_xtb_input_files(mol, "xtbmol", destination=name)
 
     # Make input constrain file
-    make_input_constrain_file(mol, core=core[0], path=conf_paths)
+    if any("NH3" in s for s in conf_paths):
+        make_input_constrain_file(mol, core=core_NH3[0], path=conf_paths)
+    else:
+        make_input_constrain_file(mol, core=core[0], path=conf_paths)
 
     # xtb options
     XTB_OPTIONS = {
@@ -489,7 +503,6 @@ def make_input_constrain_file(molecule, core, path):
         # Write the xcontrol file
         with open(os.path.join(elem, "xcontrol.inp"), "w") as f:
             f.write("$constrain\n")
-            f.write(" force constant=0.5\n")
             f.write(f' atoms: {",".join(map(str, match))}\n')
             f.write("$end\n")
     return

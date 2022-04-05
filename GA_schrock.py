@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=4,
+        default=3,
         help="Sets the size of population pool",
     )
     parser.add_argument(

@@ -198,10 +198,11 @@ def hartree2kJmol(hartree):
 @dataclass
 class Individual:
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
-    cut_idx: tuple = field(default=(None, None, None), repr=False, compare=False)
+    cut_idx: int = field(default=None, repr=False, compare=False)
     idx: tuple = field(default=(None, None), repr=False, compare=False)
     smiles: str = field(init=False, compare=True, repr=True)
     score: float = field(default=None, repr=False, compare=False)
+    normalized_fitness: float = field(default=None, repr=False, compare=False)
     energy: float = field(default=None, repr=False, compare=False)
     sa_score: float = field(default=None, repr=False, compare=False)
     structure: tuple = field(default=None, compare=False, repr=False)
@@ -257,11 +258,11 @@ class Population:
             if not match:
                 output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
                 mol.rdkit_mol = output_ligand
-                mol.cut_idx = cut_idx
+                mol.cut_idx = cut_idx[0][0]
                 mol.smiles = Chem.MolToSmiles(output_ligand)
             else:
                 cut_idx = random.choice(match)
-                mol.cut_idx = cut_idx
+                mol.cut_idx = cut_idx[0]
 
     def get(self, prop):
         properties = []

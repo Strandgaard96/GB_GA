@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=3,
+        default=6,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -67,7 +67,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=2,
+        default=1,
         help="How many conformers to generate",
     )
     parser.add_argument(
@@ -103,7 +103,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cpus",
         type=int,
-        default=2,
+        default=1,
         help="Number of cores to distribute over",
     )
     parser.add_argument(

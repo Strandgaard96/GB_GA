@@ -59,14 +59,18 @@ def make_initial_population_res(population_size, file_name, rand=False):
             if len(match) == 0:
                 print(f"There are no primary amines to cut so creating new")
                 ligand, cut_idx = create_prim_amine(random.choice(mol_list))
-                initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
+                # If we cannot split, simply add methyl as ligand
+                if not cut_idx:
+                    ligand = Chem.MolFromSmiles('CN')
+                    cut_idx = 1
+                initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0]))
             else:
                 initial_population.molecules.append(
-                    Individual(mol, cut_idx=random.choice(match))
+                    Individual(mol, cut_idx=random.choice(match)[0])
                 )
         else:
             mol = mol_list[i]
-            # Check for primary amine first
+            # Check for primary amine firstlio
             match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
             if len(match) == 0:
                 ligand, cut_idx = create_prim_amine(random.choice(mol_list))

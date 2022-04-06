@@ -16,10 +16,23 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
 from rdkit import RDLogger
+from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
+
+IPythonConsole.drawOptions.addAtomIndices = True
 
 RDLogger.DisableLog("rdApp.*")
 
 from my_utils import my_utils
+
+
+def mol_with_atom_index(mol):
+    atoms = mol.GetNumAtoms()
+    for idx in range(atoms):
+        mol.GetAtomWithIdx(idx).SetProp(
+            "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
+        )
+    Chem.Draw.MolToImage(mol, size=(400, 400)).show()
+    return mol
 
 
 def getAttachmentVector(mol):
@@ -296,24 +309,40 @@ def create_prim_amine(input_ligand):
     matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0;!+1]"))
     if len(matches) == 0:
         raise Exception(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(ligand))} constains no amines to split on"
+            f"{Chem.MolToSmiles(Chem.RemoveHs(input_ligand))} constains no amines to split on"
         )
 
+    # TODO perhaps randomly scramble the matches list
+
     # Randomly select one of the amines.
-    match = random.choice(matches)
+    for match in matches:
 
-    # Get the neigbouring bonds to the selected amine
-    atom = input_ligand.GetAtomWithIdx(match[0])
+        # Get the neigbouring bonds to the selected amine
+        atom = input_ligand.GetAtomWithIdx(match[0])
 
-    # Create list of tuples that contain the amine idx and idx of each of the three
-    # neighbors that are not hydrogne.
-    indices = [
-        (match[0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
-    ]
+        # Create list of tuples that contain the amine idx and idx of each of the three
+        # neighbors that are not hydrogne.
+        indices = [
+            (match[0], x.GetIdx())
+            for x in atom.GetNeighbors()
+            if (
+                (x.GetAtomicNum() != 1)
+                and not input_ligand.GetBondBetweenAtoms(
+                    match[0], x.GetIdx()
+                ).IsInRing()
+            )
+        ]
 
-    bond = []
-    # Randomly select one of the bonds that are not to hydrogen
-    atoms = random.choice(indices)
+        bond = []
+        if indices:
+            break
+
+    # TODO Add try statement here if indices is empty
+    try:
+        atoms = random.choice(indices)
+    except IndexError as e:
+        print("Oh no, found no valid cut points")
+        return input_ligand, None
     bond.append(input_ligand.GetBondBetweenAtoms(*atoms).GetIdx())
 
     # Get the fragments from breaking the amine bonds.
@@ -342,7 +371,7 @@ def create_prim_amine(input_ligand):
     # the whole driver. This statement ensures that something is returned at least
     # If the list is empty.
     if not ligand:
-        return input_ligand, 0
+        return input_ligand, None
 
     # Put primary amine on the dummy location for the ligand just created.
     # Currently only the first ligand is selected.
@@ -360,9 +389,19 @@ def create_prim_amine(input_ligand):
     if len(prim_amine_index) > 1:
         print(
             f"There are several primary amines to cut at with idxs: {prim_amine_index}"
+            f"changing one to hydrogen"
         )
-
-    return output_ligand, random.choice(prim_amine_index)
+        # Replace dummy with hydrogen in the frag:
+        output_ligand = AllChem.ReplaceSubstructs(
+            output_ligand,
+            Chem.MolFromSmarts("[NX3;H2;!+1]"),
+            Chem.MolFromSmiles("[H]"),
+            replacementConnectionPoint=0,
+        )[0]
+        prim_amine_index = output_ligand.GetSubstructMatches(
+            Chem.MolFromSmarts("[NX3;H2;!+1]")
+        )
+    return output_ligand, prim_amine_index
 
 
 def create_dummy_ligand(ligand, cut_idx=None):
@@ -384,11 +423,11 @@ def create_dummy_ligand(ligand, cut_idx=None):
     ligand = Chem.AddHs(ligand)
 
     # Get the neigbouring bonds to the amine given by cut_idx
-    atom = ligand.GetAtomWithIdx(cut_idx[0])
+    atom = ligand.GetAtomWithIdx(cut_idx)
 
     # Create list of tuples that contain the amine idx and idx of neighbor.
     indices = [
-        (cut_idx[0], x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
+        (cut_idx, x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
     ][0]
 
     # Get the bonds to the neighbors.

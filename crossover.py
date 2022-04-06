@@ -137,7 +137,7 @@ def mol_issane(mol: Chem.Mol, filter) -> bool:
     return True
 
 
-def mol_OK(mol, molecule_filter):
+def mol_OK_old(mol, molecule_filter):
     if not size_stdev or not average_size:
         print("size parameters are not defined")
     try:
@@ -153,11 +153,40 @@ def mol_OK(mol, molecule_filter):
         target_nrb = 2 * np.random.randn() + 5
         if target_nrb < 5:
             target_nrb = 5
-        if (
-            mol.GetNumAtoms() > 5
-            and mol.GetNumAtoms() < target_size
-            and CalcNumRotatableBonds(mol) < target_nrb
-        ):
+        print(CalcNumRotatableBonds(mol))
+        if mol.GetNumAtoms() > 5 and mol.GetNumAtoms() < target_size:
+            return True
+        else:
+            return False
+    except:
+        return False
+
+
+def mol_OK(mol, filter):
+    """Returns of molecule on input is OK according to various criteria
+    Criteria currently tested are:
+      * check if RDKit can understand the smiles string
+      * check if the size is OK
+      * check if the molecule is sane
+    :param mol string: SMILES string
+    :param filter string: the name of the filter to use
+    """
+    try:
+        # check RDKit understands a molecule
+        Chem.SanitizeMol(mol)
+        test_mol = Chem.MolFromSmiles(Chem.MolToSmiles(mol))
+        if test_mol is None:
+            return False
+
+        # check molecule is sane
+        if not mol_issane(mol, filter):
+            return False
+
+        # check molecule size
+        target_size = (
+            size_stdev * np.random.randn() + average_size
+        )  # parameters set in GA_mol
+        if mol.GetNumAtoms() > 5 and mol.GetNumAtoms() < target_size:
             return True
         else:
             return False

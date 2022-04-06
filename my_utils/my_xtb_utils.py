@@ -82,7 +82,9 @@ def run_xtb(args):
         shell=False,
         cwd=cwd,
     )
+
     output, err = popen.communicate()
+
     with open(Path(conf_path) / f"{xyz_file[:-4]}job.out", "w") as f:
         f.write(output)
     with open(Path(conf_path) / f"{xyz_file[:-4]}err.out", "w") as f:
@@ -267,7 +269,7 @@ def xtb_pre_optimize(
 
     # Store the log file
     for elem in conf_paths:
-        shutil.copy(os.path.join(conf_paths, 'xtbopt.log'), os.path.join(conf_paths, 'ffopt.log'))
+        shutil.copy(os.path.join(elem, "xtbopt.log"), os.path.join(elem, "ffopt.log"))
 
     if preoptimize:
         cmd = cmd.replace("gfnff", "gfn 2")
@@ -281,10 +283,12 @@ def xtb_pre_optimize(
 
     # Store the log file
     for elem in conf_paths:
-        shutil.copy(os.path.join(conf_paths, 'xtbopt.log'), os.path.join(conf_paths, 'constrained_opt.log'))
+        shutil.copy(
+            os.path.join(elem, "xtbopt.log"), os.path.join(elem, "constrained_opt.log")
+        )
 
     # Perform final relaxation
-    cmd = cmd.replace("--input ./xcontrol.inp","")
+    cmd = cmd.replace("--input ./xcontrol.inp", "")
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i])
         for i, xyz_file in enumerate(xyz_files)

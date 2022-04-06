@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def gaussian_modifier(score: float, target: float, sigma: float) -> float:
     """Modifies a score to a fitness to a target using a gaussian distribution
     If the score matches the target value, the function evaluates to 1.

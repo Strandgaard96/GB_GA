@@ -61,9 +61,11 @@ def make_initial_population_res(population_size, file_name, rand=False):
                 ligand, cut_idx = create_prim_amine(random.choice(mol_list))
                 # If we cannot split, simply add methyl as ligand
                 if not cut_idx:
-                    ligand = Chem.MolFromSmiles('CN')
+                    ligand = Chem.MolFromSmiles("CN")
                     cut_idx = 1
-                initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0]))
+                initial_population.molecules.append(
+                    Individual(ligand, cut_idx=cut_idx[0][0])
+                )
             else:
                 initial_population.molecules.append(
                     Individual(mol, cut_idx=random.choice(match)[0])

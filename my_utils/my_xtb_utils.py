@@ -34,6 +34,17 @@ mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
 
+
+def mol_with_atom_index(mol):
+    atoms = mol.GetNumAtoms()
+    for idx in range(atoms):
+        mol.GetAtomWithIdx(idx).SetProp(
+            "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
+        )
+    Chem.Draw.MolToImage(mol, size=(400, 400)).show()
+    return mol
+
+
 # %%
 def write_xtb_input_files(fragment, name, destination="."):
     number_of_atoms = fragment.GetNumAtoms()
@@ -73,7 +84,6 @@ def run_xtb(args):
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
     os.environ["OMP_STACKSIZE"] = "2G"
 
-    print(f"run xtb command {cmd}")
     popen = subprocess.Popen(
         cmd.split(),
         stdout=subprocess.PIPE,
@@ -287,8 +297,14 @@ def xtb_pre_optimize(
             os.path.join(elem, "xtbopt.log"), os.path.join(elem, "constrained_opt.log")
         )
 
+    # Modify constrain file to only constrain only NH3 for last opt
+    if any("NH3" in s for s in conf_paths):
+        NH3_match = Chem.MolFromSmarts("[NH3]")
+        NH3_match = Chem.AddHs(NH3_match)
+        make_input_constrain_file(mol, core=NH3_match, path=conf_paths)
+
     # Perform final relaxation
-    cmd = cmd.replace("--input ./xcontrol.inp", "")
+    # cmd = cmd.replace("--input ./xcontrol.inp", "")
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i])
         for i, xyz_file in enumerate(xyz_files)
@@ -447,7 +463,6 @@ def xtb_optimize_schrock(
     with concurrent.futures.ThreadPoolExecutor(max_workers=numThreads) as executor:
         results = executor.map(run_xtb, args)
 
-    print("donzo")
     energies = []
     geometries = []
     for e, g in results:
@@ -461,6 +476,16 @@ def xtb_optimize_schrock(
         shutil.rmtree(name)
 
     return energies, geometries
+
+
+def mol_with_atom_index(mol):
+    atoms = mol.GetNumAtoms()
+    for idx in range(atoms):
+        mol.GetAtomWithIdx(idx).SetProp(
+            "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
+        )
+    Chem.Draw.MolToImage(mol, size=(400, 400)).show()
+    return mol
 
 
 def make_input_constrain_file(molecule, core, path):

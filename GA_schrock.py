@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=6,
+        default=3,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -195,6 +195,7 @@ def GA(args):
         )
 
         # Ensures that new molecules have a primary amine attachment point.
+        logging.info("Creating attachment points for new population")
         new_population.modify_population()
 
         # Assign which generation the population is form.
@@ -207,6 +208,7 @@ def GA(args):
         population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
+        logging.info("Getting scores for new population")
         results = sc.slurm_scoring(
             args["scoring_function"], new_population, args["scoring_args"]
         )
@@ -222,15 +224,10 @@ def GA(args):
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
 
-        # Select best Individuals from old and new population
-        potential_survivors = copy.deepcopy(population.molecules)
-        for mol in potential_survivors:
-            mol.survival_idx = mol.idx
-
         # Here the total population of new and old are sorted according to score, and the
         # Remaining population is the ones with the highest scores
-        # Note that there is a namechange here. new_population is turned to population which is effectively
-        # the new population.
+        # Note that there is a namechange here. new_population is merged with population
+        # which is effectively the new population.
         population = ga.sanitize(
             potential_survivors + new_population.molecules,
             args["population_size"],
@@ -253,7 +250,6 @@ def GA(args):
         logging.info("Saving current generation")
         gen.save(directory=args["output_dir"], run_No=generation_num)
 
-        # Awesome print functionality by Julius that format some results as nice table in log file.
         gen.print()
 
     return gen

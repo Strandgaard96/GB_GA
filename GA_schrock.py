@@ -224,6 +224,11 @@ def GA(args):
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
 
+        # Select best Individuals from old and new population
+        potential_survivors = copy.deepcopy(population.molecules)
+        for mol in potential_survivors:
+            mol.survival_idx = mol.idx
+
         # Here the total population of new and old are sorted according to score, and the
         # Remaining population is the ones with the highest scores
         # Note that there is a namechange here. new_population is merged with population

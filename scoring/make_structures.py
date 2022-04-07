@@ -520,6 +520,7 @@ def embed_rdkit(
             print(coordMap, Chem.MolToSmiles(mol))
         raise ValueError("Could not embed molecule with different seed")
 
+    # TODO is this step necessarry for me?
     # Rotate embedded conformations onto the core
     algMap = [(j, i) for i, j in enumerate(match)]
     for cid in cids:

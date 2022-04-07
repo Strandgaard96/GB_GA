@@ -29,6 +29,7 @@ from make_structures import (
     embed_rdkit,
     create_dummy_ligand,
     connectMols,
+    remove_NH3
 )
 from my_utils.my_utils import Individual, Population
 
@@ -81,12 +82,12 @@ def rdkit_embed_scoring(
 
     # Create ligand based on a primary amine
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
-    catalyst = connect_ligand(core[0], ligand_cut)
+    catalyst_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
 
     # Embed catalyst
-    catalyst_3d = embed_rdkit(
-        mol=catalyst,
-        core=core[0],
+    catalyst_NH3_3d = embed_rdkit(
+        mol=catalyst_NH3,
+        core=core_NH3[0],
         numConfs=n_confs,
         pruneRmsThresh=0.1,
         force_constant=1e12,
@@ -95,53 +96,42 @@ def rdkit_embed_scoring(
     with cd(output_dir):
 
         # Optimization
-        catalyst_3d_energy, catalyst_3d_geom, minidx = xtb_pre_optimize(
-            catalyst_3d,
-            gbsa="benzene",
-            charge=smi_dict["Mo"]["charge"],
-            spin=smi_dict["Mo"]["spin"],
-            opt_level="tight",
-            name=f"{idx[0]:03d}_{idx[1]:03d}_catalyst",
-            numThreads=ncpus,
-            cleanup=cleanup,
-        )
-        print("catalyst energy:", catalyst_3d_energy)
-
-    # Now we want to put the NH3 on the already embedded structure
-    catalyst_NH3 = connectMols(catalyst_3d)
-
-    # Need to add the expicit hydrogens from the NH3 to the graph.
-    catalyst_NH3 = Chem.AddHs(catalyst_NH3)
-
-    Mo_NH3_3d = embed_rdkit(
-        mol=catalyst_NH3,
-        core=catalyst_3d,
-        coreConfId=int(minidx),
-        numConfs=1,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
-    )
-    print("Done with embedding of Mo_NH3")
-
-    with cd(output_dir):
-        Mo_NH3_3d_energy, Mo_NH3_3d_geom, minidx = xtb_pre_optimize(
-            Mo_NH3_3d,
+        catalyst_NH3_energy, catalyst_NH3_3d_geom, minidx = xtb_pre_optimize(
+            catalyst_NH3_3d,
             gbsa="benzene",
             charge=smi_dict["Mo_NH3"]["charge"],
             spin=smi_dict["Mo_NH3"]["spin"],
             opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
+            numThreads=ncpus,
+            cleanup=cleanup,
+        )
+        print("catalyst energy:", catalyst_NH3_energy)
+
+    # Now we want to remove the NH3 on the already embedded structure
+    catalyst = remove_NH3(catalyst_NH3_3d)
+
+    catalyst = Chem.AddHs(catalyst)
+
+    with cd(output_dir):
+        Mo_3d_energy, Mo_3d_geom, minidx = xtb_pre_optimize(
+            catalyst,
+            gbsa="benzene",
+            charge=smi_dict["Mo"]["charge"],
+            spin=smi_dict["Mo"]["spin"],
+            opt_level="tight",
+            name=f"{idx[0]:03d}_{idx[1]:03d}_catalyst",
             numThreads=1,
             cleanup=cleanup,
         )
-        print("Mo_NH3 energy:", Mo_NH3_3d_energy)
+        print("Mo energy:", Mo_3d_energy)
 
     # Handle the error and return if xtb did not converge
-    if None in (catalyst_3d_energy, Mo_NH3_3d_energy):
+    if None in (catalyst_NH3_energy, Mo_3d_energy):
         raise Exception(f"XTB calculation did not converge")
-    De = ((catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy) * hartree2kcalmol
-    print(f"diff energy: {(catalyst_3d_energy + NH3_ENERGY) - Mo_NH3_3d_energy}")
-    return De, (catalyst_3d_geom, catalyst_3d_energy)
+    De = ((Mo_3d_energy + NH3_ENERGY) - catalyst_NH3_energy) * hartree2kcalmol
+    print(f"diff energy: {(Mo_3d_energy + NH3_ENERGY) - catalyst_NH3_energy}")
+    return De, (Mo_3d_energy, Mo_3d_geom)
 
 
 if __name__ == "__main__":

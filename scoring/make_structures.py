@@ -34,6 +34,15 @@ def mol_with_atom_index(mol):
     Chem.Draw.MolToImage(mol, size=(400, 400)).show()
     return mol
 
+def remove_NH3(mol):
+
+    # Substructure match the NH3
+    NH3_match = Chem.MolFromSmarts("[NH3]")
+    NH3_match = Chem.AddHs(NH3_match)
+    removed_mol = Chem.DeleteSubstructs(mol, NH3_match)
+
+    return removed_mol
+
 
 def getAttachmentVector(mol):
     """Search for the position of the attachment point and extract the atom index of the attachment point and the connected atom (only single neighbour supported)
@@ -498,7 +507,7 @@ def embed_rdkit(
         randomSeed=2,
         numThreads=numThreads,
         pruneRmsThresh=pruneRmsThresh,
-        useRandomCoords=True,
+        useRandomCoords=False,
     )
     Chem.SanitizeMol(mol)
 
@@ -518,7 +527,7 @@ def embed_rdkit(
         Chem.SanitizeMol(mol)
         if len(cids) == 0:
             print(coordMap, Chem.MolToSmiles(mol))
-        raise ValueError("Could not embed molecule with different seed")
+        raise ValueError("Could not embed molecule")
 
     # TODO is this step necessarry for me?
     # Rotate embedded conformations onto the core

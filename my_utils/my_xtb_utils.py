@@ -312,11 +312,11 @@ def xtb_pre_optimize(
         for i, xyz_file in enumerate(xyz_files)
     ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        results2 = executor.map(run_xtb, args)
+        results3 = executor.map(run_xtb, args)
 
     energies = []
     geometries = []
-    for e, g in results2:
+    for e, g in results3:
         energies.append(e)
         geometries.append(g)
 
@@ -501,7 +501,7 @@ def make_input_constrain_file(molecule, core, path):
     for elem in path:
         # Write the xcontrol file
         with open(os.path.join(elem, "xcontrol.inp"), "w") as f:
-            f.write("$constrain\n")
+            f.write("$fix\n")
             f.write(f' atoms: {",".join(map(str, match))}\n')
             f.write("$end\n")
     return

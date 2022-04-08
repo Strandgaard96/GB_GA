@@ -352,7 +352,7 @@ def create_prim_amine(input_ligand):
         atoms = random.choice(indices)
     except IndexError as e:
         print("Oh no, found no valid cut points")
-        return input_ligand, None
+        return input_ligand, [[0]]
     bond.append(input_ligand.GetBondBetweenAtoms(*atoms).GetIdx())
 
     # Get the fragments from breaking the amine bonds.
@@ -524,6 +524,7 @@ def embed_rdkit(
             numThreads=numThreads,
             pruneRmsThresh=pruneRmsThresh,
             useRandomCoords=True,
+            ignoreSmoothingFailures=True
         )
         Chem.SanitizeMol(mol)
         if len(cids) == 0:

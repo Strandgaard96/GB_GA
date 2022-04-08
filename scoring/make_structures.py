@@ -528,7 +528,7 @@ def embed_rdkit(
         Chem.SanitizeMol(mol)
         if len(cids) == 0:
             print(coordMap, Chem.MolToSmiles(mol))
-        raise ValueError("Could not embed molecule")
+            raise ValueError("Could not embed molecule")
 
     # TODO is this step necessarry for me?
     # Rotate embedded conformations onto the core

@@ -140,6 +140,10 @@ def rdkit_embed_scoring(
 
 if __name__ == "__main__":
 
+    import sys
+
+
+    sys.path.insert(0, '~/Documents/GB_GA')
     # runner_for_test()
     file_name = "../data/ZINC_first_1000.smi"
     mol_list = []

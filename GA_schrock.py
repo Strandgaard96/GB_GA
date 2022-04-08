@@ -174,6 +174,8 @@ def GA(args):
     # Save the generation as pickle file.
     gen.save(directory=args["output_dir"], run_No=0)
     gen.print()
+    with open(f'GA0.out', 'w') as f:
+        f.write(gen.print(pass_text=True))
 
     logging.info("Finished initial generation")
 
@@ -259,6 +261,10 @@ def GA(args):
         gen.save(directory=args["output_dir"], run_No=generation_num)
 
         gen.print()
+
+
+        with open(f'GA{generation_num}.out','w') as f:
+            f.write(gen.print(pass_text=True))
 
     return gen
 

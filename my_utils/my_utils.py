@@ -353,7 +353,7 @@ class Generation:
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
-    def print(self, population="survivors"):
+    def print(self, population="survivors", pass_text=None):
         if population == "survivors":
             population = self.survivors
         elif population == "children":
@@ -377,6 +377,19 @@ class Generation:
                 ],
             )
         )
+        if pass_text:
+            txt = tabulate(
+                table,
+                headers=[
+                    "idx",
+                    "normalized_fitness",
+                    "score",
+                    "energy",
+                    "sa_score",
+                    "smiles",
+                ],
+            )
+            return txt
 
     def gen2pd(
         self,

@@ -29,7 +29,7 @@ from make_structures import (
     embed_rdkit,
     create_dummy_ligand,
     connectMols,
-    remove_NH3
+    remove_NH3,
 )
 from my_utils.my_utils import Individual, Population
 
@@ -109,6 +109,11 @@ def rdkit_embed_scoring(
         print("catalyst energy:", catalyst_NH3_energy)
 
     # Now we want to remove the NH3 on the already embedded structure
+    discard_conf = [x for x in range(len(catalyst_NH3_3d.GetConformers())) if x!= minidx]
+
+    for elem in discard_conf:
+        catalyst_NH3_3d.RemoveConformer(elem)
+
     catalyst = remove_NH3(catalyst_NH3_3d)
     catalyst = Chem.AddHs(catalyst)
 

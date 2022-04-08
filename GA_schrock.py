@@ -103,7 +103,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cpus",
         type=int,
-        default=1,
+        default=4,
         help="Number of cores to distribute over",
     )
     parser.add_argument(

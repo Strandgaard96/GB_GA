@@ -260,7 +260,7 @@ class Population:
                     output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
                 except Exception as e:
                     print("Could not create primary amine, setting methyl as ligand")
-                    output_ligand = Chem.MolFromSmiles('[CH4]')
+                    output_ligand = Chem.MolFromSmiles("[CH4]")
                     cut_idx = [[0]]
                 mol.rdkit_mol = output_ligand
                 mol.cut_idx = cut_idx[0][0]

@@ -269,10 +269,10 @@ def xtb_pre_optimize(
         cmd += f" --{key} {value}"
 
     workers = numThreads
-    cpus_per_worker = numThreads // n_confs
+    cpus_per_worker = 1
     print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
     args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i], 'ff')
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], "ff")
         for i, xyz_file in enumerate(xyz_files)
     ]
 
@@ -287,7 +287,7 @@ def xtb_pre_optimize(
         cmd = cmd.replace("gfnff", "gfn 2")
         xyz_files = [Path(xyz_file).parent / "xtbopt.xyz" for xyz_file in xyz_files]
         args = [
-            (xyz_file, cmd, cpus_per_worker, conf_paths[i], 'const_gfn2')
+            (xyz_file, cmd, cpus_per_worker, conf_paths[i], "const_gfn2")
             for i, xyz_file in enumerate(xyz_files)
         ]
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -308,7 +308,7 @@ def xtb_pre_optimize(
     # Perform final relaxation
     # cmd = cmd.replace("--input ./xcontrol.inp", "")
     args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i], 'gfn2')
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
         for i, xyz_file in enumerate(xyz_files)
     ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -326,7 +326,6 @@ def xtb_pre_optimize(
     # Clean up
     if cleanup:
         shutil.rmtree(name)
-
 
     return energies[minidx], geometries[minidx], minidx.item()
 

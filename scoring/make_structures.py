@@ -20,7 +20,7 @@ from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
 
 IPythonConsole.drawOptions.addAtomIndices = True
 
-#RDLogger.DisableLog("rdApp.*")
+# RDLogger.DisableLog("rdApp.*")
 
 from my_utils import my_utils
 
@@ -33,6 +33,7 @@ def mol_with_atom_index(mol):
         )
     Chem.Draw.MolToImage(mol, size=(600, 600)).show()
     return mol
+
 
 def remove_NH3(mol):
 
@@ -488,7 +489,7 @@ def embed_rdkit(
     if not match:
         raise ValueError("molecule doesn't match the core")
     sio = sys.stderr = StringIO()
-    #if not AllChem.UFFHasAllMoleculeParams(mol):
+    # if not AllChem.UFFHasAllMoleculeParams(mol):
     #    raise Exception(Chem.MolToSmiles(mol), sio.getvalue())
 
     # Get the coordinates for the core, which constrains the embedding

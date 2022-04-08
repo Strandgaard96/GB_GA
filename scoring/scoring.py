@@ -110,7 +110,6 @@ def rdkit_embed_scoring(
 
     # Now we want to remove the NH3 on the already embedded structure
     catalyst = remove_NH3(catalyst_NH3_3d)
-
     catalyst = Chem.AddHs(catalyst)
 
     with cd(output_dir):
@@ -131,10 +130,11 @@ def rdkit_embed_scoring(
         raise Exception(f"XTB calculation did not converge")
     De = ((Mo_3d_energy + NH3_ENERGY) - catalyst_NH3_energy) * hartree2kcalmol
     print(f"diff energy: {(Mo_3d_energy + NH3_ENERGY) - catalyst_NH3_energy}")
-    return De, (Mo_3d_energy, Mo_3d_geom)
+    return De, Mo_3d_geom, minidx
 
 
 if __name__ == "__main__":
+
     # runner_for_test()
     file_name = "../data/ZINC_first_1000.smi"
     mol_list = []
@@ -154,4 +154,4 @@ if __name__ == "__main__":
     # ) as handle:
     #    b = pickle.load(handle)
 
-    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)
+    rdkit_embed_scoring(ind, n_confs=4, ncpus=2)

@@ -12,10 +12,12 @@ import string
 import subprocess
 import logging
 import json
+import sys
 from pathlib import Path
 from datetime import datetime
 
 import concurrent.futures
+
 
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
@@ -74,7 +76,7 @@ def write_xtb_input_files(fragment, name, destination="."):
 
 
 def run_xtb(args):
-    xyz_file, xtb_cmd, numThreads, conf_path = args
+    xyz_file, xtb_cmd, numThreads, conf_path, logname = args
     print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
 
     cwd = os.path.dirname(xyz_file)
@@ -95,9 +97,9 @@ def run_xtb(args):
 
     output, err = popen.communicate()
 
-    with open(Path(conf_path) / f"{xyz_file[:-4]}job.out", "w") as f:
+    with open(Path(conf_path) / f"{logname}job.out", "w") as f:
         f.write(output)
-    with open(Path(conf_path) / f"{xyz_file[:-4]}err.out", "w") as f:
+    with open(Path(conf_path) / f"{logname}err.out", "w") as f:
         f.write(err)
     results = read_results(output, err)
     return results
@@ -270,7 +272,7 @@ def xtb_pre_optimize(
     cpus_per_worker = numThreads // n_confs
     print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
     args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i])
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], 'ff')
         for i, xyz_file in enumerate(xyz_files)
     ]
 
@@ -285,7 +287,7 @@ def xtb_pre_optimize(
         cmd = cmd.replace("gfnff", "gfn 2")
         xyz_files = [Path(xyz_file).parent / "xtbopt.xyz" for xyz_file in xyz_files]
         args = [
-            (xyz_file, cmd, cpus_per_worker, conf_paths[i])
+            (xyz_file, cmd, cpus_per_worker, conf_paths[i], 'const_gfn2')
             for i, xyz_file in enumerate(xyz_files)
         ]
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -306,7 +308,7 @@ def xtb_pre_optimize(
     # Perform final relaxation
     # cmd = cmd.replace("--input ./xcontrol.inp", "")
     args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i])
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], 'gfn2')
         for i, xyz_file in enumerate(xyz_files)
     ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -325,7 +327,8 @@ def xtb_pre_optimize(
     if cleanup:
         shutil.rmtree(name)
 
-    return energies[minidx], geometries[minidx], minidx
+
+    return energies[minidx], geometries[minidx], minidx.item()
 
 
 def xtb_optimize(

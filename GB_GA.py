@@ -62,7 +62,7 @@ def make_initial_population_res(population_size, file_name, rand=False):
                 # If we cannot split, simply add methyl as ligand
                 if not cut_idx:
                     ligand = Chem.MolFromSmiles("CN")
-                    cut_idx = 1
+                    cut_idx = [[0]]
                 initial_population.molecules.append(
                     Individual(ligand, cut_idx=cut_idx[0][0])
                 )

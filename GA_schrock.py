@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=3,
+        default=4,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -152,9 +152,12 @@ def GA(args):
     )
     energies = [res[0] for res in results]
     geometries = [res[1] for res in results]
+    min_conf = [res[2] for res in results]
 
     population.setprop("energy", energies)
     population.setprop("score", energies)
+    population.setprop("min_conf", min_conf)
+
     population.sortby("score")
 
     # Functionality to check synthetic accessibility
@@ -230,7 +233,7 @@ def GA(args):
             mol.survival_idx = mol.idx
 
         # Here the total population of new and old are sorted according to score, and the
-        # Remaining population is the ones with the highest scores
+        # Remaining population is the ones with thte highest scores
         # Note that there is a namechange here. new_population is merged with population
         # which is effectively the new population.
         population = ga.sanitize(

@@ -1,7 +1,7 @@
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import AllChem, rdmolops
 
-# from xyz2mol.xyz2mol import read_xyz_file, xyz2mol
+from .xyz2mol import read_xyz_file, xyz2mol, xyz2AC
 from .auto import shell
 
 import os
@@ -19,13 +19,8 @@ from datetime import datetime
 import concurrent.futures
 
 
-file = "templates/core_dummy.sdf"
-core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-"""Mol: 
-mol object of the Mo core with dummy atoms instead of ligands
-"""
-file = "templates/core_dummy.sdf"
-core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
+file = "templates/core_noHS.mol"
+core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
 """
@@ -251,9 +246,9 @@ def xtb_pre_optimize(
 
     # Make input constrain file
     if any("NH3" in s for s in conf_paths):
-        make_input_constrain_file(mol, core=core_NH3[0], path=conf_paths)
+        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True)
     else:
-        make_input_constrain_file(mol, core=core[0], path=conf_paths)
+        make_input_constrain_file(mol, core=core, path=conf_paths)
 
     # xtb options
     XTB_OPTIONS = {
@@ -299,11 +294,9 @@ def xtb_pre_optimize(
             os.path.join(elem, "xtbopt.log"), os.path.join(elem, "constrained_opt.log")
         )
 
-    # Modify constrain file to only constrain only NH3 for last opt
+    # Modify constrain file for last opt
     if any("NH3" in s for s in conf_paths):
-        NH3_match = Chem.MolFromSmarts("[NH3]")
-        NH3_match = Chem.AddHs(NH3_match)
-        make_input_constrain_file(mol, core=NH3_match, path=conf_paths)
+        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True)
 
     # Perform final relaxation
     # cmd = cmd.replace("--input ./xcontrol.inp", "")
@@ -327,8 +320,43 @@ def xtb_pre_optimize(
     if cleanup:
         shutil.rmtree(name)
 
-
     # TODO CONNECTIVITY CHECKS AND GAS RIPPING OF CHECKS
+    file = conf_paths[minidx] + "/xtbopt.xyz"
+    file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
+
+    # Alter xyz file
+    with open(file, "r") as file_input:
+        with open(file_noMo, "w") as output:
+            lines = file_input.readlines()
+            new_str = str(int(lines[0]) - 1) + "\n"
+            lines[0] = new_str
+            for i, line in enumerate(lines):
+                if "Mo" in line:
+                    lines.pop(i)
+                    pass
+            output.writelines(lines)
+
+    atoms, _, coordinates = read_xyz_file(file_noMo)
+    opt_mol = xyz2mol(atoms, coordinates, -3)[0]
+
+    # Check pre and after adjacency matrix
+    before_ac = rdmolops.GetAdjacencyMatrix(mol)
+    after_ac = rdmolops.GetAdjacencyMatrix(opt_mol)
+
+    # Remove the Mo row:
+    idx = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]"))[0]
+    intermediate = np.delete(before_ac,idx,axis=0)
+    before_ac = np.delete(intermediate, idx, axis=1)
+
+    # Check if any atoms have 0 bonds, then handle
+    if not np.all(before_ac == after_ac):
+        print(
+            f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
+        )
+        energies = 9999
+        geometries = None
+        minidx = None
+        return energies, geometries, minidx
 
     return energies[minidx], geometries[minidx], minidx.item()
 
@@ -493,13 +521,19 @@ def mol_with_atom_index(mol):
     return mol
 
 
-def make_input_constrain_file(molecule, core, path):
+def make_input_constrain_file(molecule, core, path, NH3=False):
     # Locate atoms to contrain
     match = (
         np.array(molecule.GetSubstructMatch(core)) + 1
     )  # indexing starts with 0 for RDKit but 1 for xTB
     match = sorted(match)
     assert len(match) == core.GetNumAtoms(), "ERROR! Complete match not found."
+
+    if NH3:
+        NH3_match = Chem.MolFromSmarts("[NH3]")
+        NH3_match = Chem.AddHs(NH3_match)
+        NH3_sub_match = np.array(molecule.GetSubstructMatch(NH3_match)) + 1
+        match.extend(NH3_sub_match)
 
     for elem in path:
         # Write the xcontrol file

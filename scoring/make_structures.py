@@ -22,7 +22,7 @@ IPythonConsole.drawOptions.addAtomIndices = True
 
 # RDLogger.DisableLog("rdApp.*")
 
-from my_utils import my_utils
+# from my_utils import my_utils
 
 
 def mol_with_atom_index(mol):
@@ -347,7 +347,6 @@ def create_prim_amine(input_ligand):
         if indices:
             break
 
-    # TODO Add try statement here if indices is empty
     try:
         atoms = random.choice(indices)
     except IndexError as e:
@@ -524,7 +523,7 @@ def embed_rdkit(
             numThreads=numThreads,
             pruneRmsThresh=pruneRmsThresh,
             useRandomCoords=True,
-            ignoreSmoothingFailures=True
+            ignoreSmoothingFailures=True,
         )
         Chem.SanitizeMol(mol)
         if len(cids) == 0:
@@ -553,6 +552,25 @@ def embed_rdkit(
 
 
 if __name__ == "__main__":
+
+    mol = Chem.MolFromMolFile(
+        "/home/magstr/Documents/nitrogenase/schrock/diagrams_schrock/dft/cycle_restart/Mo/ams.results/traj.mol",
+        sanitize=False,
+        removeHs=False,
+    )
+
+    mol.UpdatePropertyCache()
+    # My own struct:
+    file = "../templates/core_dummy.sdf"
+    core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)[0]
+
+    trial_3d = embed_rdkit(
+        mol,
+        core,
+        numConfs=2,
+        pruneRmsThresh=0.1,
+        force_constant=1e12,
+    )
 
     # Driver code for testing and debugging constrained embedd.
 

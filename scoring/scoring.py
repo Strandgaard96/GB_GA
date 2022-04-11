@@ -108,8 +108,15 @@ def rdkit_embed_scoring(
         )
         print("catalyst energy:", catalyst_NH3_energy)
 
+    # Chec for connectivity issues
+    # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
+    if catalyst_NH3_energy == 9999:
+        return 9999, None, None
+
     # Now we want to remove the NH3 on the already embedded structure
-    discard_conf = [x for x in range(len(catalyst_NH3_3d.GetConformers())) if x!= minidx]
+    discard_conf = [
+        x for x in range(len(catalyst_NH3_3d.GetConformers())) if x != minidx
+    ]
 
     for elem in discard_conf:
         catalyst_NH3_3d.RemoveConformer(elem)
@@ -130,10 +137,6 @@ def rdkit_embed_scoring(
         )
         print("Mo energy:", Mo_3d_energy)
 
-    # TODO CECK CONNECTIVITY
-
-
-
     # Handle the error and return if xtb did not converge
     if None in (catalyst_NH3_energy, Mo_3d_energy):
         raise Exception(f"None of the XTB calculations converged")
@@ -144,10 +147,6 @@ def rdkit_embed_scoring(
 
 if __name__ == "__main__":
 
-    import sys
-
-
-    sys.path.insert(0, '~/Documents/GB_GA')
     # runner_for_test()
     file_name = "../data/ZINC_first_1000.smi"
     mol_list = []

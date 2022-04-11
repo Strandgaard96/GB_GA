@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=30,
+        default=4,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -174,7 +174,7 @@ def GA(args):
     # Save the generation as pickle file.
     gen.save(directory=args["output_dir"], run_No=0)
     gen.print()
-    with open(args["output_dir"]+f'/GA0.out', 'w') as f:
+    with open(args["output_dir"] + f"/GA0.out", "w") as f:
         f.write(gen.print(pass_text=True))
 
     logging.info("Finished initial generation")
@@ -262,8 +262,7 @@ def GA(args):
 
         gen.print()
 
-
-        with open(args["output_dir"]+f'/GA{generation_num}.out','w') as f:
+        with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
             f.write(gen.print(pass_text=True))
 
     return gen

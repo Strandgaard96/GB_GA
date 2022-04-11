@@ -322,7 +322,7 @@ def create_prim_amine(input_ligand):
             f"{Chem.MolToSmiles(Chem.RemoveHs(input_ligand))} constains no amines to split on"
         )
 
-    # TODO perhaps randomly scramble the matches list
+    # TODO perhaps randomly scramble the matches list and maybe prefer tertiary amine split
 
     # Randomly select one of the amines.
     for match in matches:
@@ -381,7 +381,7 @@ def create_prim_amine(input_ligand):
     # the whole driver. This statement ensures that something is returned at least
     # If the list is empty.
     if not ligand:
-        return input_ligand, None
+        return input_ligand, [[0]]
 
     # Put primary amine on the dummy location for the ligand just created.
     # Currently only the first ligand is selected.
@@ -405,7 +405,7 @@ def create_prim_amine(input_ligand):
         output_ligand = AllChem.ReplaceSubstructs(
             output_ligand,
             Chem.MolFromSmarts("[NX3;H2;!+1]"),
-            Chem.MolFromSmiles("[H]"),
+            Chem.MolFromSmarts("[H]"),
             replacementConnectionPoint=0,
         )[0]
         prim_amine_index = output_ligand.GetSubstructMatches(

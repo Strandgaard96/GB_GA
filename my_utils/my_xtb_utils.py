@@ -189,7 +189,7 @@ def create_intermediates(file=None, charge=0):
 
 def read_results(output, err):
     if not "normal termination" in err:
-        raise Warning(err)
+        return 9999, {"atoms": None, "coords": None}
     lines = output.splitlines()
     energy = None
     structure_block = False
@@ -326,6 +326,9 @@ def xtb_pre_optimize(
     # Clean up
     if cleanup:
         shutil.rmtree(name)
+
+
+    # TODO CONNECTIVITY CHECKS AND GAS RIPPING OF CHECKS
 
     return energies[minidx], geometries[minidx], minidx.item()
 

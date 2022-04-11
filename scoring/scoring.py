@@ -130,9 +130,13 @@ def rdkit_embed_scoring(
         )
         print("Mo energy:", Mo_3d_energy)
 
+    # TODO CECK CONNECTIVITY
+
+
+
     # Handle the error and return if xtb did not converge
     if None in (catalyst_NH3_energy, Mo_3d_energy):
-        raise Exception(f"XTB calculation did not converge")
+        raise Exception(f"None of the XTB calculations converged")
     De = ((Mo_3d_energy + NH3_ENERGY) - catalyst_NH3_energy) * hartree2kcalmol
     print(f"diff energy: {(Mo_3d_energy + NH3_ENERGY) - catalyst_NH3_energy}")
     return De, Mo_3d_geom, minidx

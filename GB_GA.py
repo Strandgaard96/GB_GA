@@ -83,7 +83,7 @@ def make_initial_population_res(population_size, file_name, rand=False):
                 )
     initial_population.generation_num = 0
     initial_population.assign_idx()
-
+    print('done')
     return initial_population
 
 

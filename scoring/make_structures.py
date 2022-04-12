@@ -45,6 +45,14 @@ def remove_NH3(mol):
     return removed_mol
 
 
+def remove_dummy(mol):
+
+    dum_match = Chem.MolFromSmiles("*")
+    removed_mol = Chem.DeleteSubstructs(mol, dum_match)
+
+    return removed_mol
+
+
 def getAttachmentVector(mol):
     """Search for the position of the attachment point and extract the atom index of the attachment point and the connected atom (only single neighbour supported)
     Function from https://pschmidtke.github.io/blog/rdkit/3d-editor/2021/01/23/grafting-fragments.html
@@ -93,20 +101,10 @@ def connect_ligand(core, ligand, NH3_flag=False):
     # mol object for dummy atom to replace on the core
     dummy = Chem.MolFromSmiles("*")
 
-    # Get the dummy atom and then its atom object
-    dummy_idx = ligand.GetSubstructMatch(Chem.MolFromSmiles("*"))
-    atom = ligand.GetAtomWithIdx(dummy_idx[0])
+    idx, neigh_idx = getAttachmentVector(ligand)
 
-    # Get neighbors to the dummy atom. Should be only 1 neighbor
-    neighbor_pairs = [(dummy_idx[0], x.GetIdx()) for x in atom.GetNeighbors()]
-
-    # Get the bond between dummy and neighbor and fragment on bond
-    # To get ligand with a free bond that can attach to core
-    new_bond = ligand.GetBondBetweenAtoms(
-        neighbor_pairs[0][0], neighbor_pairs[0][1]
-    ).GetIdx()
-    frag = Chem.FragmentOnBonds(ligand, [new_bond], addDummies=False)
-    frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
+    # Remove dummy
+    attach = remove_dummy(ligand)
 
     # TODO IS THIS THE REASON FOR EMBEDDING ERROR? MAYBE BECAUSE IT PUTS DUMMY
     # ON CORE INSTEAD?
@@ -114,7 +112,7 @@ def connect_ligand(core, ligand, NH3_flag=False):
     mol = AllChem.ReplaceSubstructs(
         core,
         dummy,
-        frags[0],
+        attach,
         replaceAll=True,
         replacementConnectionPoint=neighbor_pairs[0][1],
     )[0]
@@ -428,7 +426,7 @@ def create_dummy_ligand(ligand, cut_idx=None):
     # Initialize dummy mol
     dummy = Chem.MolFromSmiles("*")
 
-    # Create explicit hydrogens and sterechemistry i dont know what does.
+    # Create explicit hydrogens
     ligand = Chem.AddHs(ligand)
 
     # Get the neigbouring bonds to the amine given by cut_idx

@@ -44,18 +44,18 @@ NH3_ENERGY: Electronic energy of pure NH3,
 used for scoring the NH3 dissacossiation reaction
 """
 
-file = "templates/core_dummy.sdf"
+file = "../templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
 """
-file_NH3 = "templates/core_NH3_dummy.sdf"
+file_NH3 = "../templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
-with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
+with open("../data/intermediate_smiles.json", "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
 """dict: 
 Dictionary that contains the smiles string for each N-related intermediate

@@ -19,12 +19,12 @@ from datetime import datetime
 import concurrent.futures
 
 
-file = "templates/core_noHS.mol"
+file = "../templates/core_noHS.mol"
 core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
 """
-file_NH3 = "templates/core_NH3_dummy.sdf"
+file_NH3 = "../templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with NH3 in axial position and
@@ -345,7 +345,7 @@ def xtb_pre_optimize(
 
     # Remove the Mo row:
     idx = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]"))[0]
-    intermediate = np.delete(before_ac,idx,axis=0)
+    intermediate = np.delete(before_ac, idx, axis=0)
     before_ac = np.delete(intermediate, idx, axis=1)
 
     # Check if any atoms have 0 bonds, then handle

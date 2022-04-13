@@ -114,7 +114,7 @@ def connect_ligand(core, ligand, NH3_flag=False):
         dummy,
         attach,
         replaceAll=True,
-        replacementConnectionPoint=neighbor_pairs[0][1],
+        replacementConnectionPoint=neigh_idx,
     )[0]
 
     # If NH3 is on the core, then the charge of NH3 must be set

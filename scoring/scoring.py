@@ -137,6 +137,9 @@ def rdkit_embed_scoring(
         )
         print("Mo energy:", Mo_3d_energy)
 
+    if Mo_3d_energy == 9999:
+        return 9999, None, None
+
     # Handle the error and return if xtb did not converge
     if None in (catalyst_NH3_energy, Mo_3d_energy):
         raise Exception(f"None of the XTB calculations converged")

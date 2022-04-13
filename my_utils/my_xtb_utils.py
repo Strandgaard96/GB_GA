@@ -337,7 +337,7 @@ def xtb_pre_optimize(
             output.writelines(lines)
 
     atoms, _, coordinates = read_xyz_file(file_noMo)
-    opt_mol = xyz2mol(atoms, coordinates, -3)[0]
+    opt_mol = xyz2mol(atoms, coordinates, -3, use_huckel=True)[0]
 
     # Check pre and after adjacency matrix
     before_ac = rdmolops.GetAdjacencyMatrix(mol)

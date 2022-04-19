@@ -315,6 +315,10 @@ def main():
     t1 = time.time()
     logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 
+
+    # Return summary of calcs
+
+
     # Addded this to return to the commandline if running this driver
     # on the frontend.
     sys.exit(0)

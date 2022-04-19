@@ -332,7 +332,7 @@ def xtb_pre_optimize(
     if cleanup:
         shutil.rmtree(name)
 
-    file = conf_paths[minidx] + "/xtbopt.xyz"
+    file = conf_paths[minidx] + "/xtbmol000.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
 
     # Alter xyz file
@@ -351,7 +351,7 @@ def xtb_pre_optimize(
 
     # Loop to check different charges. Very hardcoded and should maybe be changed
     for i in range(-3, 1):
-        opt_mol = xyz2mol(atoms, coordinates, i, use_huckel=True)
+        opt_mol = xyz2mol(atoms, coordinates, i)
         if opt_mol:
             opt_mol = opt_mol[0]
             break

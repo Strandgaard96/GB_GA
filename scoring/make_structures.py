@@ -385,7 +385,10 @@ def create_prim_amine(input_ligand):
         ligand[0], dummy, NH2_mol, replacementConnectionPoint=0, replaceAll=True
     )[0]
     # Small hack to prevent the dot open bond on NH2.
+
     output_ligand = Chem.MolFromSmiles(Chem.MolToSmiles(lig))
+    if not output_ligand:
+        return input_ligand, [[0]]
 
     # Get idx where to cut and we just return of of them.
     prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))

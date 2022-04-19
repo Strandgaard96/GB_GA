@@ -106,8 +106,6 @@ def connect_ligand(core, ligand, NH3_flag=False):
     # Remove dummy
     attach = remove_dummy(ligand)
 
-    # TODO IS THIS THE REASON FOR EMBEDDING ERROR? MAYBE BECAUSE IT PUTS DUMMY
-    # ON CORE INSTEAD?
     # Put the ligand won the core with specified bonding atom in the ligand.
     mol = AllChem.ReplaceSubstructs(
         core,

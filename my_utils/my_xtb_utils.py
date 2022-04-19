@@ -307,6 +307,8 @@ def xtb_pre_optimize(
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results3 = executor.map(run_xtb, args)
 
+    print("Finished all optimizations")
+
     energies = []
     geometries = []
     for e, g in results3:
@@ -348,7 +350,7 @@ def xtb_pre_optimize(
     atoms, _, coordinates = read_xyz_file(file_noMo)
 
     # Loop to check different charges. Very hardcoded and should maybe be changed
-    for i in range(-6, 6):
+    for i in range(-3, 1):
         opt_mol = xyz2mol(atoms, coordinates, i, use_huckel=True)
         if opt_mol:
             opt_mol = opt_mol[0]

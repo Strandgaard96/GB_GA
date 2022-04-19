@@ -55,6 +55,7 @@ def make_initial_population_res(population_size, file_name, rand=False):
         if rand:
 
             # Check for any amines
+            flag = False
             while not flag:
                 mol = random.choice(mol_list)
                 candidate_match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2,H1,H0]"))

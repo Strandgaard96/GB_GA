@@ -151,7 +151,7 @@ def rdkit_embed_scoring(
 if __name__ == "__main__":
 
     # runner_for_test()
-    file_name = "../data/ZINC_first_1000.smi"
+    file_name = "data/ZINC_first_1000.smi"
     mol_list = []
     with open(file_name, "r") as file:
         for smiles in file:

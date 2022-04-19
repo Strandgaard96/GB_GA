@@ -397,7 +397,7 @@ def create_prim_amine(input_ligand):
             f"There are several primary amines to cut at with idxs: {prim_amine_index}"
             f"changing one to hydrogen"
         )
-        # Replace dummy with hydrogen in the frag:
+        # Replace other primary amines with hydrogen in the frag:
         output_ligand = AllChem.ReplaceSubstructs(
             output_ligand,
             Chem.MolFromSmarts("[NX3;H2]"),

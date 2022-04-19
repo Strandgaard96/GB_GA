@@ -164,9 +164,9 @@ if __name__ == "__main__":
     ind = Individual(lig, cut_idx=cut_idx)
     # Useful for debugging failed scoring. Load the pickle file
     # From the failed calc.
-    # with open(
-    #    "/home/magstr/generation_prim_amine/scoring_tmp/4772867_8_submitted.pkl", "rb"
-    # ) as handle:
-    #    b = pickle.load(handle)
+    with open(
+        "debug/32439941_5_submitted.pkl", "rb"
+     ) as handle:
+        b = pickle.load(handle)
 
-    rdkit_embed_scoring(ind, n_confs=4, ncpus=2)
+    rdkit_embed_scoring(b.args[0], n_confs=4, ncpus=2)

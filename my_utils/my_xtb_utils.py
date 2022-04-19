@@ -332,7 +332,7 @@ def xtb_pre_optimize(
     if cleanup:
         shutil.rmtree(name)
 
-    file = conf_paths[minidx] + "/xtbmol000.xyz"
+    file = conf_paths[minidx] + f"/xtbopt.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
 
     # Alter xyz file
@@ -342,7 +342,7 @@ def xtb_pre_optimize(
             new_str = str(int(lines[0]) - 1) + "\n"
             lines[0] = new_str
             for i, line in enumerate(lines):
-                if "Mo" in line:
+                if "Mo " in line:
                     lines.pop(i)
                     pass
             output.writelines(lines)

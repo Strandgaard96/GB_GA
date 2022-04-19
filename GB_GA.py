@@ -53,8 +53,15 @@ def make_initial_population_res(population_size, file_name, rand=False):
 
     for i in range(population_size):
         if rand:
-            # Check for primary amine
-            mol = random.choice(mol_list)
+
+            # Check for any amines
+            while not flag:
+                mol = random.choice(mol_list)
+                candidate_match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2,H1,H0]"))
+                if len(candidate_match) > 0:
+                    flag = True
+
+            # Check for prim amine
             match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
             if len(match) == 0:
                 print(f"There are no primary amines to cut so creating new")
@@ -224,6 +231,12 @@ def sanitize(molecules, population_size, prune_population):
 
     return new_population
 
+def debug():
+
+    mol = Chem.MolFromSmiles("c1ccc([C@@H]2C[C@H]2C[NH2+]Cc2nc3c(s2)CCC3)cc1")
+
+    ligand, cut_idx = create_prim_amine(mol)
+
 
 if __name__ == "__main__":
-    pass
+    debug()

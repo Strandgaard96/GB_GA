@@ -31,7 +31,7 @@ def mol_with_atom_index(mol):
         mol.GetAtomWithIdx(idx).SetProp(
             "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
         )
-    Chem.Draw.MolToImage(mol, size=(600, 600)).show()
+    Chem.Draw.MolToImage(mol, size=(900, 900)).show()
     return mol
 
 

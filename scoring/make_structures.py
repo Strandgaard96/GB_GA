@@ -179,7 +179,7 @@ def create_ligands(ligand):
     ligand = Chem.AddHs(ligand)
 
     # Look for teriary amines in the input ligand.
-    tert_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H0;D3;!+1]"))
+    tert_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H0;D3]"))
     if len(tert_amines) == 0:
         raise Exception(
             f"{Chem.MolToSmiles(Chem.RemoveHs(ligand))} constains no tertiary amine."
@@ -259,7 +259,7 @@ def create_primaryamine_ligand(ligand):
     ligand = Chem.AddHs(ligand)
 
     # Look for primary amines in the input ligand.
-    prim_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;D3;!+1]"))
+    prim_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;D3]"))
     if len(prim_amines) == 0:
         raise Exception(
             f"{Chem.MolToSmiles(Chem.RemoveHs(ligand))} constains no Primary amine."
@@ -314,7 +314,7 @@ def create_prim_amine(input_ligand):
     input_ligand = Chem.AddHs(input_ligand)
 
     # Match Secondary or Tertiary amines
-    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0;!+1]"))
+    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0]"))
     if len(matches) == 0:
         raise Exception(
             f"{Chem.MolToSmiles(Chem.RemoveHs(input_ligand))} constains no amines to split on"
@@ -390,9 +390,7 @@ def create_prim_amine(input_ligand):
     output_ligand = Chem.MolFromSmiles(Chem.MolToSmiles(lig))
 
     # Get idx where to cut and we just return of of them.
-    prim_amine_index = output_ligand.GetSubstructMatches(
-        Chem.MolFromSmarts("[NX3;H2;!+1]")
-    )
+    prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
     if len(prim_amine_index) > 1:
         print(
             f"There are several primary amines to cut at with idxs: {prim_amine_index}"
@@ -401,12 +399,12 @@ def create_prim_amine(input_ligand):
         # Replace dummy with hydrogen in the frag:
         output_ligand = AllChem.ReplaceSubstructs(
             output_ligand,
-            Chem.MolFromSmarts("[NX3;H2;!+1]"),
+            Chem.MolFromSmarts("[NX3;H2]"),
             Chem.MolFromSmarts("[H]"),
             replacementConnectionPoint=0,
         )[0]
         prim_amine_index = output_ligand.GetSubstructMatches(
-            Chem.MolFromSmarts("[NX3;H2;!+1]")
+            Chem.MolFromSmarts("[NX3;H2]")
         )
     return output_ligand, prim_amine_index
 

@@ -314,7 +314,17 @@ def xtb_pre_optimize(
         geometries.append(g)
 
     arr = np.array(energies, dtype=np.float)
-    minidx = np.nanargmin(arr)
+
+    try:
+        minidx = np.nanargmin(arr)
+    except ValueError:
+        print(
+            "All-Nan slice encountered, setting minidx to None and returning 9999 energy"
+        )
+        energies = 9999
+        geometries = None
+        minidx = None
+        return energies, geometries, minidx
 
     # Clean up
     if cleanup:
@@ -337,7 +347,12 @@ def xtb_pre_optimize(
             output.writelines(lines)
 
     atoms, _, coordinates = read_xyz_file(file_noMo)
-    opt_mol = xyz2mol(atoms, coordinates, -3, use_huckel=True)[0]
+
+    # Loop to check different charges. Very hardcoded and should maybe be changed
+    for i in range(-6, 6):
+        opt_mol = xyz2mol(atoms, coordinates, i, use_huckel=True)[0]
+        if opt_mol:
+            break
 
     # Check pre and after adjacency matrix
     before_ac = rdmolops.GetAdjacencyMatrix(mol)

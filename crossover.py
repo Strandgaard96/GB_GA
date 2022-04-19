@@ -94,7 +94,7 @@ def tert_amine_OK(mol):
     """
     Checks if there is at least on tertiary amine
     """
-    if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H0;D3;!+1]")):
+    if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H0;D3]")):
         return True
     else:
         return False
@@ -104,7 +104,7 @@ def primary_secondary_amine_OK(mol):
     """
     Checks if there is any secondary or primary amines
     """
-    if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H2,H1;!$(NC=O);!+1]")):
+    if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H2,H1;!$(NC=O)]")):
         return True
     else:
         return False

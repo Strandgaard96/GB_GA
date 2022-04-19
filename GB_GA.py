@@ -55,7 +55,7 @@ def make_initial_population_res(population_size, file_name, rand=False):
         if rand:
             # Check for primary amine
             mol = random.choice(mol_list)
-            match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
+            match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
             if len(match) == 0:
                 print(f"There are no primary amines to cut so creating new")
                 ligand, cut_idx = create_prim_amine(random.choice(mol_list))
@@ -73,7 +73,7 @@ def make_initial_population_res(population_size, file_name, rand=False):
         else:
             mol = mol_list[i]
             # Check for primary amine firstlio
-            match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!+1]"))
+            match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
             if len(match) == 0:
                 ligand, cut_idx = create_prim_amine(random.choice(mol_list))
                 initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))

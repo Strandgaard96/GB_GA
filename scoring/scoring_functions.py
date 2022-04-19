@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit import rdBase
 from rdkit.Chem import rdFMCS
 
-rdBase.DisableLog("rdApp.error")
+#rdBase.DisableLog("rdApp.error")
 
 import numpy as np
 import os

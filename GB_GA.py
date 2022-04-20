@@ -58,7 +58,9 @@ def make_initial_population_res(population_size, file_name, rand=False):
             flag = False
             while not flag:
                 mol = random.choice(mol_list)
-                candidate_match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2,H1,H0]"))
+                candidate_match = mol.GetSubstructMatches(
+                    Chem.MolFromSmarts("[NX3;H2,H1,H0]")
+                )
                 if len(candidate_match) > 0:
                     flag = True
 
@@ -231,6 +233,7 @@ def sanitize(molecules, population_size, prune_population):
     new_population.prune(population_size)
 
     return new_population
+
 
 def debug():
 

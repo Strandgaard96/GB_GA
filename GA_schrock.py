@@ -176,6 +176,8 @@ def GA(args):
     gen.print()
     with open(args["output_dir"] + f"/GA0.out", "w") as f:
         f.write(gen.print(pass_text=True))
+        f.write('\n')
+        f.write(gen.summary())
 
     logging.info("Finished initial generation")
 
@@ -267,6 +269,7 @@ def GA(args):
         # Print to individual generation files to keep track on the fly
         with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
             f.write(gen.print(pass_text=True))
+            f.write('\n')
             f.write(gen.summary())
 
     return gen
@@ -326,25 +329,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from my_utils.my_utils import load_GA
-    from tabulate import tabulate
-    import numpy as np
-    ga_path = "debug/GA09.pkl"
-    ga = load_GA(ga_path)
-
-    nO_NaN = 0
-    nO_9999 = 0
-    for ind in ga.generations[0].children.molecules:
-        tmp = ind.energy
-        if np.isnan(tmp):
-            nO_NaN += 1
-        elif tmp > 5000:
-            nO_9999 += 1
-    table = [[nO_NaN,nO_9999, nO_NaN+nO_9999]]
-    txt = tabulate(
-        table,
-        headers=["Number of NaNs", "Number of high energies", "Total"],
-    )
-
-
     main()

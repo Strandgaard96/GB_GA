@@ -388,6 +388,7 @@ class Generation:
                 ],
             )
             return txt
+
     def summary(self):
         nO_NaN = 0
         nO_9999 = 0
@@ -397,13 +398,12 @@ class Generation:
                 nO_NaN += 1
             elif tmp > 5000:
                 nO_9999 += 1
-        table = [[nO_NaN,nO_9999,nO_NaN+nO_9999]]
+        table = [[nO_NaN, nO_9999, nO_NaN + nO_9999]]
         txt = tabulate(
             table,
             headers=["Number of NaNs", "Number of high energies", "Total"],
         )
         return txt
-
 
     def gen2pd(
         self,
@@ -469,9 +469,3 @@ def load_GA(pkl):
             except EOFError:
                 break
     return ga
-
-if __name__ == '__main__':
-    # Debugging objects
-    ga_path = "../debug/GA09.pkl"
-    ga = load_GA(ga_path)
-

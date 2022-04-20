@@ -108,7 +108,6 @@ def rdkit_embed_scoring(
         )
         print("catalyst energy:", catalyst_NH3_energy)
 
-    # Chec for connectivity issues
     # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
     if catalyst_NH3_energy == 9999:
         return 9999, None, None
@@ -164,9 +163,7 @@ if __name__ == "__main__":
     ind = Individual(lig, cut_idx=cut_idx)
     # Useful for debugging failed scoring. Load the pickle file
     # From the failed calc.
-    with open(
-        "debug/32439941_5_submitted.pkl", "rb"
-     ) as handle:
+    with open("debug/32453094_25_submitted.pkl", "rb") as handle:
         b = pickle.load(handle)
 
-    rdkit_embed_scoring(b.args[0], n_confs=4, ncpus=2)
+    rdkit_embed_scoring(ind , n_confs=4, ncpus=2)

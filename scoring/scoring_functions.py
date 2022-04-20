@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit import rdBase
 from rdkit.Chem import rdFMCS
 
-#rdBase.DisableLog("rdApp.error")
+# rdBase.DisableLog("rdApp.error")
 
 import numpy as np
 import os
@@ -43,9 +43,9 @@ def slurm_scoring(sc_function, population, scoring_args):
         name=f"sc_g{population.molecules[0].idx[0]}",
         cpus_per_task=scoring_args["cpus_per_task"],
         slurm_mem_per_cpu="2GB",
-        timeout_min=9,
+        timeout_min=12,
         slurm_partition="kemi1",
-        slurm_array_parallelism=50,
+        slurm_array_parallelism=100,
     )
 
     # Extract ids

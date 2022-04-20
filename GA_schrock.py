@@ -260,10 +260,14 @@ def GA(args):
         logging.info("Saving current generation")
         gen.save(directory=args["output_dir"], run_No=generation_num)
 
+        # Print gen table to output file
         gen.print()
+        gen.summary()
 
+        # Print to individual generation files to keep track on the fly
         with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
             f.write(gen.print(pass_text=True))
+            f.write(gen.summary())
 
     return gen
 
@@ -276,8 +280,8 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Variables for crossover module
-    co.average_size = 20
-    co.size_stdev = 5
+    co.average_size = 40
+    co.size_stdev = 10
 
     # How many times to run the GA.
     n_tries = args.n_tries
@@ -310,14 +314,11 @@ def main():
     # Run the GA
     generations = GA(GA_args)
 
+    # TODO Print summary of total generations
+
     # Final output handling and logging
-    generations.print()
     t1 = time.time()
     logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
-
-
-    # Return summary of calcs
-
 
     # Addded this to return to the commandline if running this driver
     # on the frontend.
@@ -325,4 +326,25 @@ def main():
 
 
 if __name__ == "__main__":
+    from my_utils.my_utils import load_GA
+    from tabulate import tabulate
+    import numpy as np
+    ga_path = "debug/GA09.pkl"
+    ga = load_GA(ga_path)
+
+    nO_NaN = 0
+    nO_9999 = 0
+    for ind in ga.generations[0].children.molecules:
+        tmp = ind.energy
+        if np.isnan(tmp):
+            nO_NaN += 1
+        elif tmp > 5000:
+            nO_9999 += 1
+    table = [[nO_NaN,nO_9999, nO_NaN+nO_9999]]
+    txt = tabulate(
+        table,
+        headers=["Number of NaNs", "Number of high energies", "Total"],
+    )
+
+
     main()

@@ -349,6 +349,7 @@ def xtb_pre_optimize(
 
     atoms, _, coordinates = read_xyz_file(file_noMo)
 
+    print('Performing carge loop and xyz2mol')
     # Loop to check different charges. Very hardcoded and should maybe be changed
     for i in range(-3, 1):
         opt_mol = xyz2mol(atoms, coordinates, i)
@@ -356,6 +357,7 @@ def xtb_pre_optimize(
             opt_mol = opt_mol[0]
             break
 
+    print('Getting the adjacency matrices')
     # Check pre and after adjacency matrix
     before_ac = rdmolops.GetAdjacencyMatrix(mol)
     after_ac = rdmolops.GetAdjacencyMatrix(opt_mol)

@@ -445,6 +445,18 @@ class GA_run:
         for generation in self.generations:
             generation.print(population)
 
+    def fails(self):
+        nO_NaN = 0
+        nO_9999 = 0
+        for generation in self.generations:
+            for ind in generation.children.molecules:
+                tmp = ind.energy
+                if np.isnan(tmp):
+                    nO_NaN += 1
+                elif tmp > 5000:
+                    nO_9999 += 1
+        return (nO_NaN,nO_9999)
+
     def ga2pd(
         self,
         population="survivors",

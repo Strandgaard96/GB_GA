@@ -669,13 +669,7 @@ def AC2mol(
     if Chem.GetFormalCharge(mol) != charge:
         return []
 
-    # BO2mol returns an arbitrary resonance form. Let's make the rest
-    mols = rdchem.ResonanceMolSupplier(
-        mol, Chem.UNCONSTRAINED_CATIONS, Chem.UNCONSTRAINED_ANIONS
-    )
-    mols = [mol for mol in mols]
-
-    return mols
+    return mol
 
 
 def get_proto_mol(atoms):

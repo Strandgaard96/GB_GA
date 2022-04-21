@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=4,
+        default=2,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -73,7 +73,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--generations",
         type=int,
-        default=2,
+        default=1,
         help="How many times is the population optimized",
     )
     parser.add_argument(

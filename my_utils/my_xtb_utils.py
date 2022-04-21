@@ -478,6 +478,54 @@ def xtb_optimize_schrock(
     if cleanup:
         shutil.rmtree(name)
 
+    file = conf_paths[minidx] + f"/xtbopt.xyz"
+    file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
+
+    # Alter xyz file
+    with open(file, "r") as file_input:
+        with open(file_noMo, "w") as output:
+            lines = file_input.readlines()
+            new_str = str(int(lines[0]) - 1) + "\n"
+            lines[0] = new_str
+            for i, line in enumerate(lines):
+                if "Mo " in line:
+                    lines.pop(i)
+                    pass
+            output.writelines(lines)
+
+    atoms, _, coordinates = read_xyz_file(file_noMo)
+
+    print("Performing charge loop and xyz2mol")
+    # Loop to check different charges. Very hardcoded and should maybe be changed
+    for i in range(-6, 1):
+        opt_mol = xyz2mol(atoms, coordinates, i)
+        if opt_mol:
+            opt_mol = opt_mol[0]
+            break
+    else:
+        print('Could not create mol object, BEWARE OF BOND CHANGES')
+        return energies[minidx], geometries[minidx], minidx.item()
+
+    print("Getting the adjacency matrices")
+    # Check pre and after adjacency matrix
+    before_ac = rdmolops.GetAdjacencyMatrix(mol)
+    after_ac = rdmolops.GetAdjacencyMatrix(opt_mol)
+
+    # Remove the Mo row:
+    idx = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]"))[0]
+    intermediate = np.delete(before_ac, idx, axis=0)
+    before_ac = np.delete(intermediate, idx, axis=1)
+
+    # Check if any atoms have 0 bonds, then handle
+    if not np.all(before_ac == after_ac):
+        print(
+            f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
+        )
+        energies = 9999
+        geometries = None
+        minidx = None
+        return energies, geometries, minidx
+
     return energies, geometries
 
 

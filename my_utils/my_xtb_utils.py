@@ -246,7 +246,7 @@ def xtb_pre_optimize(
 
     # Make input constrain file
     if any("NH3" in s for s in conf_paths):
-        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True)
+        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True, N2=True)
     else:
         make_input_constrain_file(mol, core=core, path=conf_paths)
 
@@ -293,10 +293,6 @@ def xtb_pre_optimize(
         shutil.copy(
             os.path.join(elem, "xtbopt.log"), os.path.join(elem, "constrained_opt.log")
         )
-
-    # Modify constrain file for last opt
-    if any("NH3" in s for s in conf_paths):
-        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True)
 
     # Perform final relaxation
     # cmd = cmd.replace("--input ./xcontrol.inp", "")
@@ -349,13 +345,16 @@ def xtb_pre_optimize(
 
     atoms, _, coordinates = read_xyz_file(file_noMo)
 
-    print("Performing carge loop and xyz2mol")
+    print("Performing charge loop and xyz2mol")
     # Loop to check different charges. Very hardcoded and should maybe be changed
-    for i in range(-3, 1):
+    for i in range(-6, 1):
         opt_mol = xyz2mol(atoms, coordinates, i)
         if opt_mol:
             opt_mol = opt_mol[0]
             break
+    else:
+        print('Could not create mol object, BEWARE OF BOND CHANGES')
+        return energies[minidx], geometries[minidx], minidx.item()
 
     print("Getting the adjacency matrices")
     # Check pre and after adjacency matrix
@@ -540,7 +539,7 @@ def mol_with_atom_index(mol):
     return mol
 
 
-def make_input_constrain_file(molecule, core, path, NH3=False):
+def make_input_constrain_file(molecule, core, path, NH3=False, N2=False):
     # Locate atoms to contrain
     match = (
         np.array(molecule.GetSubstructMatch(core)) + 1
@@ -553,6 +552,10 @@ def make_input_constrain_file(molecule, core, path, NH3=False):
         NH3_match = Chem.AddHs(NH3_match)
         NH3_sub_match = np.array(molecule.GetSubstructMatch(NH3_match)) + 1
         match.extend(NH3_sub_match)
+    if N2:
+        N2_match = Chem.MolFromSmarts("N#N")
+        N2_sub_match = np.array(molecule.GetSubstructMatch(N2_match)) + 1
+        match.extend(N2_sub_match)
 
     for elem in path:
         # Write the xcontrol file

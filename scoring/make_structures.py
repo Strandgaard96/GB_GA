@@ -45,6 +45,15 @@ def remove_NH3(mol):
     return removed_mol
 
 
+def remove_N2(mol):
+
+    # Substructure match the N2
+    NH3_match = Chem.MolFromSmarts("N#N")
+    removed_mol = Chem.DeleteSubstructs(mol, NH3_match)
+
+    return removed_mol
+
+
 def remove_dummy(mol):
 
     dum_match = Chem.MolFromSmiles("*")
@@ -53,7 +62,7 @@ def remove_dummy(mol):
     return removed_mol
 
 
-def getAttachmentVector(mol):
+def getAttachmentVector(mol, atom_num=0):
     """Search for the position of the attachment point and extract the atom index of the attachment point and the connected atom (only single neighbour supported)
     Function from https://pschmidtke.github.io/blog/rdkit/3d-editor/2021/01/23/grafting-fragments.html
     mol: rdkit molecule with a dummy atom
@@ -62,7 +71,7 @@ def getAttachmentVector(mol):
     rindex = -1
     rindexNeighbor = -1
     for atom in mol.GetAtoms():
-        if atom.GetAtomicNum() == 0:
+        if atom.GetAtomicNum() == atom_num:
             rindex = atom.GetIdx()
             neighbours = atom.GetNeighbors()
             if len(neighbours) == 1:
@@ -119,6 +128,7 @@ def connect_ligand(core, ligand, NH3_flag=False):
     # to avoid sanitation error.
     if NH3_flag:
         mol.GetAtomWithIdx(23).SetFormalCharge(1)
+        mol.GetAtomWithIdx(27).SetFormalCharge(1)
 
     # Sanitation ensures that it is a reasonable molecule.
     Chem.SanitizeMol(mol)
@@ -527,23 +537,9 @@ def embed_rdkit(
             print(coordMap, Chem.MolToSmiles(mol))
             raise ValueError("Could not embed molecule")
 
-    # TODO is this step necessarry for me?
     # Rotate embedded conformations onto the core
     algMap = [(j, i) for i, j in enumerate(match)]
     for cid in cids:
-        rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
-        ff = AllChem.UFFGetMoleculeForceField(
-            mol, confId=cid, ignoreInterfragInteractions=False
-        )
-        for i, _ in enumerate(match):
-            ff.UFFAddPositionConstraint(i, 0, force_constant)
-        ff.Initialize()
-        n = 4
-        more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-        while more and n:
-            more = ff.Minimize(energyTol=1e-4, forceTol=1e-3)
-            n -= 1
-        # realign
         rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
     return mol
 

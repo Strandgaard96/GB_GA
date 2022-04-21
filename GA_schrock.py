@@ -177,6 +177,8 @@ def GA(args):
     with open(args["output_dir"] + f"/GA0.out", "w") as f:
         f.write(gen.print(pass_text=True))
         f.write("\n")
+        f.write(gen.print(population="children",pass_text=True))
+        f.write("\n")
         f.write(gen.summary())
 
     logging.info("Finished initial generation")
@@ -269,6 +271,8 @@ def GA(args):
         # Print to individual generation files to keep track on the fly
         with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
             f.write(gen.print(pass_text=True))
+            f.write("\n")
+            f.write(gen.print(population="children", pass_text=True))
             f.write("\n")
             f.write(gen.summary())
 

@@ -669,7 +669,7 @@ def AC2mol(
     if Chem.GetFormalCharge(mol) != charge:
         return []
 
-    return mol
+    return [mol]
 
 
 def get_proto_mol(atoms):

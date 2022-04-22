@@ -14,6 +14,7 @@ import sys, os
 from pathlib import Path
 import json, shutil, argparse, glob, time, pickle
 from multiprocessing import Pool
+from contextlib import suppress
 
 import my_utils.my_utils
 
@@ -61,7 +62,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--gen_path",
         type=pathlib.Path,
-        default="/home/magstr/generation_data/50_gen15min/GA48.pkl",
+        default="/home/magstr/Documents/GB_GA/debug/GA00.pkl",
         help="A generation pickle to load candidates from",
     )
     parser.add_argument(
@@ -95,6 +96,12 @@ def get_arguments(arg_list=None):
         default=9,
         help="What primary amine to cut on",
     )
+    parser.add_argument(
+        "--type",
+        type=str,
+        default='GA',
+        help="Where to get the starting struct from",
+    )
     return parser.parse_args(arg_list)
 
 
@@ -123,7 +130,7 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
         smi_dict = json.load(f)
 
     # Create logfolder
-    (run_dir / log_tmp).mkdir(parents=True)
+    (run_dir / log_tmp).mkdir(parents=True, exist_ok = True)
 
     for key, value in smi_dict.items():
 
@@ -153,6 +160,11 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
             f.write(out)
         with open(run_dir / log_tmp / f"err_{key}.out", "w", encoding="utf-8") as f:
             f.write(err)
+
+
+    # Check for badjobs
+    if sorted(run_dir.rglob('*badjob*')):
+        print("WARNING: Some jobs didnt not complete correctly with MolS")
 
     # Finaly create directory that contains the simple core
     # (for consistentxtb calcs)
@@ -226,11 +238,10 @@ def collect_logfiles(dest=None):
         my_utils.my_utils.mkdir(exist_ok=True)
         shutil.copy(str(file), str(folder))
         os.rename(folder / "xtbjob.out", folder / "job.out")
-    try:
+
+    with suppress(FileNotFoundError):
         os.remove("new_core.xyz")
         os.remove("CLIinput.inp")
-    except OSError:
-        pass
 
     return None
 
@@ -263,7 +274,7 @@ def get_smicat(lig_smi=None):
     return connect_idx[0], new_lig_smi
 
 
-def create_custom_core_rdkit(args):
+def create_custom_core_rdkit(ligand, args):
     """
 
     Create a custom core based on a proposed ligand.
@@ -274,13 +285,6 @@ def create_custom_core_rdkit(args):
     Returns:
 
     """
-
-    # Gen individual path
-    gen_path = args.gen_path
-
-    with open(gen_path, "rb") as f:
-        gen = pickle.load(f)
-    ligand = gen.survivors.molecules[2]
 
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
@@ -300,6 +304,19 @@ def create_custom_core_rdkit(args):
         f.write(Chem.MolToXYZBlock(catalyst_3d))
 
     return newcore_path
+
+def extract_structure(ligand):
+    """
+    Get the structure and prepare
+    """
+    structure_txt = ligand.structure
+    newcore_path = "new_core.xyz"
+    with open(newcore_path, "w+") as f:
+        for line in structure_txt:
+            f.write(line)
+
+    return newcore_path
+
 
 
 def create_custom_core(args):
@@ -337,7 +354,6 @@ def create_custom_core(args):
 
     return
 
-
 def main():
     """
     Driver script
@@ -348,13 +364,23 @@ def main():
 
     args = get_arguments()
 
-    # Put the ligand on core with rdkit
-    create_custom_core_rdkit(args)
+
+    # Extract ligand object from GA.
+    with open(args.gen_path, "rb") as f:
+        gen = pickle.load(f)
+    # TODO add option to select ligand by idx
+    ligand = gen.survivors.molecules[-1]
+
+    # Get the starting core. Either form rdkit or from optimization
+    if args.type == 'GA':
+        extract_structure(ligand)
+    else:
+        create_custom_core_rdkit(ligand, args)
 
     # Check for output structure
     intermediate_smi_path = Path("../data/intermediate_smiles.json")
 
-    new_core = False
+    new_core = True
     if new_core:
         # Pass the output structure to cycle creation
         create_cycleMS(
@@ -374,7 +400,6 @@ def main():
         parameters = json.load(f)
 
     # Start xtb calc
-    # xtb_calc_serial(cycle_dir=args.cycle_dir, param_path=intermediate_smi_path, dest=dest)
     struct = ".xyz"
     paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
 

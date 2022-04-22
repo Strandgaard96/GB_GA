@@ -3,6 +3,7 @@ from rdkit.Chem import AllChem, rdmolops
 
 from .xyz2mol import read_xyz_file, xyz2mol, xyz2AC
 from .auto import shell
+from scoring.make_structures import remove_NH3, remove_N2
 
 import os
 import random
@@ -321,6 +322,21 @@ def xtb_pre_optimize(
     # Clean up
     if cleanup:
         shutil.rmtree(name)
+
+    # TODO Create and save the bare catalyst struct (for molS later)
+
+    file_bare = conf_paths[minidx] + f"/xtbopt_bare.xyz"
+
+    tmp_mol = remove_NH3(mol)
+    if "N2" in file_bare:
+        tmp_mol = remove_N2(tmp_mol)
+    Chem.AddHs(tmp_mol)
+
+    with open(file_bare, 'w') as f:
+        if len(tmp_mol.GetConformers()) == 1:
+            f.write(Chem.MolToXYZBlock(tmp_mol, confId=1))
+        else:
+            f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
 
     file = conf_paths[minidx] + f"/xtbopt.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"

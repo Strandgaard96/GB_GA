@@ -167,9 +167,9 @@ if __name__ == "__main__":
     file_noMo = "/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz"
     from my_utils.xyz2mol import read_xyz_file, xyz2mol, xyz2AC
 
-    atoms, _, coordinates = read_xyz_file(file_noMo)
+    #atoms, _, coordinates = read_xyz_file(file_noMo)
 
-    AC, mol = xyz2AC(atoms, coordinates, -3, use_huckel=True)
+    #AC, mol = xyz2AC(atoms, coordinates, -3, use_huckel=True)
 
     print("Performing charge loop and xyz2mol")
     # Loop to check different charges. Very hardcoded and should maybe be changed
@@ -179,4 +179,4 @@ if __name__ == "__main__":
     #        opt_mol = opt_mol[0]
     #        break
 
-    rdkit_embed_scoring(b.args[0], n_confs=2, ncpus=2)
+    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)

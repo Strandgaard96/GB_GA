@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     lig, cut_idx = create_prim_amine(mol_list[1])
 
-    lig = Chem.MolFromSmiles("CN")
+    lig = Chem.MolFromSmiles("CCN")
     cut_idx = 1
     ind = Individual(lig, cut_idx=cut_idx)
     # Useful for debugging failed scoring. Load the pickle file
@@ -169,12 +169,14 @@ if __name__ == "__main__":
 
     atoms, _, coordinates = read_xyz_file(file_noMo)
 
+    AC, mol = xyz2AC(atoms, coordinates, -3, use_huckel=True)
+
     print("Performing charge loop and xyz2mol")
     # Loop to check different charges. Very hardcoded and should maybe be changed
-    for i in range(-6, 1):
-        opt_mol = xyz2mol(atoms, coordinates, -1)
-        if opt_mol:
-            opt_mol = opt_mol[0]
-            break
+    #for i in range(-6, 1):
+    #    opt_mol = xyz2mol(atoms, coordinates, -3, use_huckel=True)
+    #    if opt_mol:
+    #        opt_mol = opt_mol[0]
+    #        break
 
-    rdkit_embed_scoring(b.args[0], n_confs=2, ncpus=2)
+    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)

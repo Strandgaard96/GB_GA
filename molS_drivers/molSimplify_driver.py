@@ -23,7 +23,7 @@ sys.path.append("..")
 from rdkit import Chem
 from rdkit.Chem import Draw
 from my_utils.my_utils import cd
-from my_utils.my_xtb_utils import run_xtb, run_xtb_my, xtb_optimize_schrock
+from my_utils.my_xtb_utils import run_xtb, xtb_optimize_schrock
 from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
 from scoring.make_structures import create_dummy_ligand, connect_ligand, embed_rdkit
 
@@ -61,7 +61,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--gen_path",
         type=pathlib.Path,
-        default="/home/magstr/Documents/generation_data/prod_test/GA20.pkl",
+        default="/home/magstr/generation_data/50_gen15min/GA48.pkl",
         help="A generation pickle to load candidates from",
     )
     parser.add_argument(
@@ -74,7 +74,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ligand_smi",
         type=str,
-        default="NCC1=C(CN)C(Br)[SH2]C1Br",
+        default="CCOC=CN(C=N)CN",
         help="Set the ligand to put on the core",
     )
     parser.add_argument(
@@ -280,7 +280,7 @@ def create_custom_core_rdkit(args):
 
     with open(gen_path, "rb") as f:
         gen = pickle.load(f)
-    ligand = gen.survivors.molecules[0]
+    ligand = gen.survivors.molecules[2]
 
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
@@ -379,7 +379,7 @@ def main():
     paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
 
     energies, geometries = xtb_optimize_schrock(
-        files=paths[0:1],
+        files=paths,
         parameters=parameters,
         gbsa="benzene",
         alpb=None,

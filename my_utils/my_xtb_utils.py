@@ -347,19 +347,12 @@ def xtb_pre_optimize(
 
     print("Performing charge loop and xyz2mol")
     # Loop to check different charges. Very hardcoded and should maybe be changed
-    for i in range(-6, 1):
-        opt_mol = xyz2mol(atoms, coordinates, i)
-        if opt_mol:
-            opt_mol = opt_mol[0]
-            break
-    else:
-        print('Could not create mol object, BEWARE OF BOND CHANGES')
-        return energies[minidx], geometries[minidx], minidx.item()
 
     print("Getting the adjacency matrices")
+    AC, opt_mol = xyz2AC(atoms, coordinates, charge, use_huckel=True)
+
     # Check pre and after adjacency matrix
     before_ac = rdmolops.GetAdjacencyMatrix(mol)
-    after_ac = rdmolops.GetAdjacencyMatrix(opt_mol)
 
     # Remove the Mo row:
     idx = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]"))[0]
@@ -367,7 +360,7 @@ def xtb_pre_optimize(
     before_ac = np.delete(intermediate, idx, axis=1)
 
     # Check if any atoms have 0 bonds, then handle
-    if not np.all(before_ac == after_ac):
+    if not np.all(before_ac == AC):
         print(
             f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
         )
@@ -506,7 +499,7 @@ def xtb_optimize_schrock(
     workers = np.min([numThreads, n_structs])
     cpus_per_worker = numThreads // n_structs
     args = [
-        (str(xyz_file), cmd[i], 1, xyz_file.parent) for i, xyz_file in enumerate(files)
+        (str(xyz_file), cmd[i], 1, xyz_file.parent, 'test') for i, xyz_file in enumerate(files)
     ]
 
     # with Pool() as pool:

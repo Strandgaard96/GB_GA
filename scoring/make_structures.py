@@ -441,7 +441,7 @@ def create_dummy_ligand(ligand, cut_idx=None):
     # Get the neigbouring bonds to the amine given by cut_idx
     atom = ligand.GetAtomWithIdx(cut_idx)
 
-    # Create list of tuples that contain the amine idx and idx of neighbor.
+    # Create list of tuples that contain the amine idx a    nd idx of neighbor.
     indices = [
         (cut_idx, x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
     ][0]

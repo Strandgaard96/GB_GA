@@ -49,7 +49,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=2,
+        default=4,
         help="Sets the size of population pool",
     )
     parser.add_argument(
@@ -118,6 +118,7 @@ def get_arguments(arg_list=None):
         default="generation_debug",
         help="Directory to put various files",
     )
+    parser.add_argument('--debug', action='store_true')
     return parser.parse_args(arg_list)
 
 
@@ -128,6 +129,7 @@ def get_scoring_args(args):
     scoring_args["n_confs"] = args.n_confs
     scoring_args["cpus_per_task"] = args.n_cpus
     scoring_args["cleanup"] = False
+    scoring_args["debug"] = args.debug
     scoring_args["output_dir"] = args.output_dir
     return scoring_args
 
@@ -143,9 +145,13 @@ def GA(args):
     """
 
     # Create initial population and get initial score
-    population = ga.make_initial_population_res(
-        args["population_size"], args["file_name"], rand=True
-    )
+
+    if args["debug"]:
+        population = ga.make_initial_population_debug(4, args["file_name"], rand=True)
+    else:
+        population = ga.make_initial_population(
+            args["population_size"], args["file_name"], rand=True
+        )
 
     results = sc.slurm_scoring(
         args["scoring_function"], population, args["scoring_args"]
@@ -156,6 +162,7 @@ def GA(args):
 
     population.setprop("energy", energies)
     population.setprop("score", energies)
+    population.setprop("structure", geometries)
     population.setprop("min_conf", min_conf)
 
     population.sortby("score")
@@ -177,7 +184,7 @@ def GA(args):
     with open(args["output_dir"] + f"/GA0.out", "w") as f:
         f.write(gen.print(pass_text=True))
         f.write("\n")
-        f.write(gen.print(population="children",pass_text=True))
+        f.write(gen.print(population="children", pass_text=True))
         f.write("\n")
         f.write(gen.summary())
 
@@ -227,6 +234,7 @@ def GA(args):
 
         new_population.setprop("energy", energies)
         new_population.setprop("score", energies)
+        new_population.setprop("structure", geometries)
         new_population.sortby("score")
 
         if args["sa_screening"]:
@@ -287,8 +295,8 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Variables for crossover module
-    co.average_size = 20
-    co.size_stdev = 5
+    co.average_size = 50
+    co.size_stdev = 10
 
     # How many times to run the GA.
     n_tries = args.n_tries

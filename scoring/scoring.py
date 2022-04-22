@@ -19,7 +19,7 @@ catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from my_utils.my_xtb_utils import xtb_optimize, xtb_pre_optimize
+from my_utils.my_xtb_utils import xtb_pre_optimize
 from my_utils.my_utils import cd
 from make_structures import (
     connect_ligand,
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     with open("debug/32529843_42_submitted.pkl", "rb") as handle:
         b = pickle.load(handle)
 
-    file_noMo='/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz'
+    file_noMo = "/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz"
     from my_utils.xyz2mol import read_xyz_file, xyz2mol, xyz2AC
 
     atoms, _, coordinates = read_xyz_file(file_noMo)
@@ -173,10 +173,10 @@ if __name__ == "__main__":
 
     print("Performing charge loop and xyz2mol")
     # Loop to check different charges. Very hardcoded and should maybe be changed
-    #for i in range(-6, 1):
+    # for i in range(-6, 1):
     #    opt_mol = xyz2mol(atoms, coordinates, -3, use_huckel=True)
     #    if opt_mol:
     #        opt_mol = opt_mol[0]
     #        break
 
-    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)
+    rdkit_embed_scoring(b.args[0], n_confs=2, ncpus=2)

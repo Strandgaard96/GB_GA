@@ -35,24 +35,6 @@ def make_initial_population(population_size, file_name, rand=False):
 
     for i in range(population_size):
         if rand:
-            ligand = create_ligands(random.choice(mol_list))
-            initial_population.molecules.append(Individual(ligand))
-        else:
-            ligand = create_ligands(mol_list[i])
-            initial_population.molecules.append(Individual(ligand))
-
-    initial_population.generation_num = 0
-    initial_population.assign_idx()
-
-    return initial_population
-
-
-def make_initial_population_res(population_size, file_name, rand=False):
-    mol_list = read_file(file_name)
-    initial_population = Population()
-
-    for i in range(population_size):
-        if rand:
 
             # Check for any amines
             flag = False
@@ -72,7 +54,7 @@ def make_initial_population_res(population_size, file_name, rand=False):
                 # If we cannot split, simply add methyl as ligand
                 if not cut_idx:
                     ligand = Chem.MolFromSmiles("CN")
-                    cut_idx = [[0]]
+                    cut_idx = [[1]]
                 initial_population.molecules.append(
                     Individual(ligand, cut_idx=cut_idx[0][0])
                 )
@@ -91,6 +73,23 @@ def make_initial_population_res(population_size, file_name, rand=False):
                 initial_population.molecules.append(
                     Individual(mol, cut_idx=random.choice(match))
                 )
+    initial_population.generation_num = 0
+    initial_population.assign_idx()
+    return initial_population
+
+
+def make_initial_population_debug(population_size, file_name, rand=False):
+    mol_list = read_file("data/ZINC_1000_amines.smi")
+    initial_population = Population()
+
+    smiles = ["CN", "CCN", "CCCN", "CCCCN"]
+    idx = [1, 2, 3, 4]
+
+    for i in range(population_size):
+
+        ligand = Chem.MolFromSmiles(smiles[i])
+        cut_idx = [[idx[i]]]
+        initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0]))
     initial_population.generation_num = 0
     initial_population.assign_idx()
     return initial_population

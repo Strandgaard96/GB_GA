@@ -258,8 +258,8 @@ class Population:
                     output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
                 except Exception as e:
                     print("Could not create primary amine, setting methyl as ligand")
-                    output_ligand = Chem.MolFromSmiles("[CH4]")
-                    cut_idx = [[0]]
+                    output_ligand = Chem.MolFromSmiles("CN")
+                    cut_idx = [[1]]
                 mol.rdkit_mol = output_ligand
                 mol.cut_idx = cut_idx[0][0]
                 mol.smiles = Chem.MolToSmiles(output_ligand)
@@ -455,7 +455,7 @@ class GA_run:
                     nO_NaN += 1
                 elif tmp > 5000:
                     nO_9999 += 1
-        return (nO_NaN,nO_9999)
+        return (nO_NaN, nO_9999)
 
     def ga2pd(
         self,

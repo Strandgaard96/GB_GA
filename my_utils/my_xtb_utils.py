@@ -24,12 +24,6 @@ core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
 """
-file_NH3 = "templates/core_NH3_dummy.sdf"
-core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
-"""Mol: 
-mol object of the Mo core with NH3 in axial position and
-dummy atoms instead of ligands
-"""
 
 
 def mol_with_atom_index(mol):
@@ -369,84 +363,13 @@ def xtb_pre_optimize(
         minidx = None
         return energies, geometries, minidx
 
+    if True:
+        with open(file, "r") as f:
+            final_geom = f.readlines()
+    else:
+        final_geom = geometries[minidx]
 
-    return energies[minidx], geometries[minidx], minidx.item()
-
-
-def xtb_optimize(
-    mol,
-    method=" 2",
-    charge=None,
-    spin=None,
-    gbsa="methanol",
-    alpb=None,
-    opt_level="tight",
-    input=None,
-    name=None,
-    cleanup=False,
-    numThreads=1,
-):
-    # check mol input
-    assert isinstance(mol, Chem.rdchem.Mol)
-    if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
-        raise Exception("Implicit Hydrogens")
-    conformers = mol.GetConformers()
-    n_confs = len(conformers)
-    if not conformers:
-        raise Exception("Mol is not embedded")
-    elif not conformers[-1].Is3D():
-        raise Exception("Conformer is not 3D")
-
-    if not name:
-        name = "tmp_" + "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=4)
-        )
-
-    # set SCRATCH if environmental variable
-    try:
-        scr_dir = os.environ["SCRATCH"]
-    except:
-        scr_dir = os.getcwd()
-    print(f"SCRATCH DIR = {scr_dir}")
-
-    print("write input files")
-    xyz_files, conf_path = write_xtb_input_files(mol, "xtbmol", destination=name)
-
-    # xtb options
-    XTB_OPTIONS = {
-        "gfn": method,
-        "opt": opt_level,
-        "chrg": charge,
-        "uhf": spin,
-        "gbsa": gbsa,
-    }
-
-    cmd = "xtb"
-    for key, value in XTB_OPTIONS.items():
-        cmd += f" --{key} {value}"
-
-    workers = numThreads
-    cpus_per_worker = numThreads // workers
-    args = [(xyz_file, cmd, cpus_per_worker, conf_path) for xyz_file in xyz_files]
-
-    # For debug
-    # results = run_xtb(args[0])
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        results = executor.map(run_xtb, args)
-
-    energies = []
-    geometries = []
-    for e, g in results:
-        energies.append(e)
-        geometries.append(g)
-
-    minidx = np.argmin(energies)
-
-    # Clean up
-    if cleanup:
-        shutil.rmtree(name)
-
-    return energies[minidx], geometries[minidx]
+    return energies[minidx], final_geom, minidx.item()
 
 
 def xtb_optimize_schrock(
@@ -499,7 +422,8 @@ def xtb_optimize_schrock(
     workers = np.min([numThreads, n_structs])
     cpus_per_worker = numThreads // n_structs
     args = [
-        (str(xyz_file), cmd[i], 1, xyz_file.parent, 'test') for i, xyz_file in enumerate(files)
+        (str(xyz_file), cmd[i], 1, xyz_file.parent, "test")
+        for i, xyz_file in enumerate(files)
     ]
 
     # with Pool() as pool:
@@ -519,7 +443,6 @@ def xtb_optimize_schrock(
     # Clean up
     if cleanup:
         shutil.rmtree(name)
-
 
     return energies, geometries
 

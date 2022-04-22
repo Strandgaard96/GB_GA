@@ -161,7 +161,20 @@ if __name__ == "__main__":
     ind = Individual(lig, cut_idx=cut_idx)
     # Useful for debugging failed scoring. Load the pickle file
     # From the failed calc.
-    with open("debug/32500090_57_submitted.pkl", "rb") as handle:
+    with open("debug/32529843_42_submitted.pkl", "rb") as handle:
         b = pickle.load(handle)
 
-    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)
+    file_noMo='/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz'
+    from my_utils.xyz2mol import read_xyz_file, xyz2mol, xyz2AC
+
+    atoms, _, coordinates = read_xyz_file(file_noMo)
+
+    print("Performing charge loop and xyz2mol")
+    # Loop to check different charges. Very hardcoded and should maybe be changed
+    for i in range(-6, 1):
+        opt_mol = xyz2mol(atoms, coordinates, -1)
+        if opt_mol:
+            opt_mol = opt_mol[0]
+            break
+
+    rdkit_embed_scoring(b.args[0], n_confs=2, ncpus=2)

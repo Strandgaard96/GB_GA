@@ -287,8 +287,8 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Variables for crossover module
-    co.average_size = 40
-    co.size_stdev = 10
+    co.average_size = 20
+    co.size_stdev = 5
 
     # How many times to run the GA.
     n_tries = args.n_tries

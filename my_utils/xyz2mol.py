@@ -621,7 +621,6 @@ def AC2BO(AC, atoms, charge, allow_charged_fragments=True, use_graph=True):
                 valences,
                 allow_charged_fragments=allow_charged_fragments,
             )
-
             if status:
                 return BO, atomic_valence_electrons
             elif (

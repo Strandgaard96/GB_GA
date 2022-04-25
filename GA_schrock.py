@@ -118,7 +118,7 @@ def get_arguments(arg_list=None):
         default="generation_debug",
         help="Directory to put various files",
     )
-    parser.add_argument('--debug', action='store_true')
+    parser.add_argument("--debug", action="store_true")
     return parser.parse_args(arg_list)
 
 

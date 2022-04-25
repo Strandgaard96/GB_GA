@@ -332,9 +332,9 @@ def xtb_pre_optimize(
         tmp_mol = remove_N2(tmp_mol)
     Chem.AddHs(tmp_mol)
 
-    with open(file_bare, 'w') as f:
+    with open(file_bare, "w") as f:
         if len(tmp_mol.GetConformers()) == 1:
-            f.write(Chem.MolToXYZBlock(tmp_mol, confId=1))
+            f.write(Chem.MolToXYZBlock(tmp_mol, confId=0))
         else:
             f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
 

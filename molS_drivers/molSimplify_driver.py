@@ -16,10 +16,7 @@ import json, shutil, argparse, glob, time, pickle
 from multiprocessing import Pool
 from contextlib import suppress
 
-import my_utils.my_utils
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.append("..")
 
 from rdkit import Chem
 from rdkit.Chem import Draw
@@ -28,7 +25,7 @@ from my_utils.my_xtb_utils import run_xtb, xtb_optimize_schrock
 from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
 from scoring.make_structures import create_dummy_ligand, connect_ligand, embed_rdkit
 
-file = "../templates/core_dummy.sdf"
+file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands
@@ -62,8 +59,14 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--gen_path",
         type=pathlib.Path,
-        default="/home/magstr/Documents/GB_GA/debug/GA00.pkl",
+        default="/groups/kemi/magstr/GB_GA/generation_testbare/GA01.pkl",
         help="A generation pickle to load candidates from",
+    )
+    parser.add_argument(
+        "--bare_struct",
+        type=pathlib.Path,
+        default="/groups/kemi/magstr/GB_GA/generation_testbare/001_005_Mo_N2_NH3/conf001/xtbopt_bare.xyz",
+        help="The structure with ligand and bare Mo",
     )
     parser.add_argument(
         "--cleanup",
@@ -99,7 +102,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--type",
         type=str,
-        default='GA',
+        default="GA",
         help="Where to get the starting struct from",
     )
     return parser.parse_args(arg_list)
@@ -128,15 +131,25 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
     """
     with open(smi_path, "r", encoding="utf-8") as f:
         smi_dict = json.load(f)
+        smi_dict.pop("Mo")
 
     # Create logfolder
-    (run_dir / log_tmp).mkdir(parents=True, exist_ok = True)
+    (run_dir / log_tmp).mkdir(parents=True, exist_ok=True)
+
+    # Get the idx of the Mo atom
+    with open(new_core, "r") as f:
+        lines = f.readlines()
+        for i, line in enumerate(lines):
+            if "Mo" in line:
+                # cc atoms is 1 indexed. # Substract 2 for the two empty lines and add one to get 1 index
+                ccatoms = i - 2 + 1
+                break
 
     for key, value in smi_dict.items():
 
         intermediate_cmd = (
             f"molsimplify -core {new_core} -lig {value['smi']} -ligocc 1"
-            f" -ccatoms 8 -skipANN True -spin 1 -oxstate 3 -ffoption no"
+            f" -ccatoms {ccatoms} -skipANN True -spin 1 -oxstate 3 -ffoption no"
             f" -smicat 1 -suff intermediate_{key} -rundir {run_dir}"
         )
 
@@ -146,7 +159,7 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
             intermediate_cmd = None
             intermediate_cmd = (
                 f"molsimplify -core {new_core} -oxstate 3 -lig [NH3],N#N"
-                f" -ligocc 1,1 -ligloc True -ccatoms 8,8 -spin 1 -oxstate 3"
+                f" -ligocc 1,1 -ligloc True -ccatoms {ccatoms},{ccatoms} -spin 1 -oxstate 3"
                 f" -skipANN True -smicat [1],[1]"
                 f" -ffoption no -suff intermediate_{key} -rundir {run_dir}"
             )
@@ -161,9 +174,8 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
         with open(run_dir / log_tmp / f"err_{key}.out", "w", encoding="utf-8") as f:
             f.write(err)
 
-
     # Check for badjobs
-    if sorted(run_dir.rglob('*badjob*')):
+    if sorted(run_dir.rglob("*badjob*")):
         print("WARNING: Some jobs didnt not complete correctly with MolS")
 
     # Finaly create directory that contains the simple core
@@ -305,7 +317,8 @@ def create_custom_core_rdkit(ligand, args):
 
     return newcore_path
 
-def extract_structure(ligand):
+
+def extract_structure_scoring(ligand):
     """
     Get the structure and prepare
     """
@@ -317,6 +330,15 @@ def extract_structure(ligand):
 
     return newcore_path
 
+
+def extract_structure_bare(bare_struct):
+    """
+    Get the bare ligand structure from the GA files
+    """
+    newcore_path = "new_core.xyz"
+    shutil.copy(bare_struct, newcore_path)
+
+    return newcore_path
 
 
 def create_custom_core(args):
@@ -331,7 +353,7 @@ def create_custom_core(args):
 
     """
     lig_smi = args.ligand_smi
-    core_file = Path("../templates/core_withHS.xyz")
+    core_file = Path("templates/core_withHS.xyz")
     # Flag for using replace feature
     replig = 1
     suffix = "core_custom"
@@ -354,6 +376,7 @@ def create_custom_core(args):
 
     return
 
+
 def main():
     """
     Driver script
@@ -364,21 +387,25 @@ def main():
 
     args = get_arguments()
 
-
     # Extract ligand object from GA.
     with open(args.gen_path, "rb") as f:
         gen = pickle.load(f)
-    # TODO add option to select ligand by idx
+    # TODO add option to select ligand by idx, currently selecting best one
     ligand = gen.survivors.molecules[-1]
 
+    # Possibly remove old calcs here
+    # if dirpath.exists() and dirpath.is_dir():
+    #    shutil.rmtree(dirpath)
+
     # Get the starting core. Either form rdkit or from optimization
-    if args.type == 'GA':
-        extract_structure(ligand)
+    if args.type == "GA":
+        # extract_structure(ligand)
+        extract_structure_bare(args.bare_struct)
     else:
         create_custom_core_rdkit(ligand, args)
 
     # Check for output structure
-    intermediate_smi_path = Path("../data/intermediate_smiles.json")
+    intermediate_smi_path = Path("data/intermediate_smiles.json")
 
     new_core = True
     if new_core:
@@ -412,7 +439,7 @@ def main():
         input=None,
         name=None,
         cleanup=False,
-        numThreads=6,
+        numThreads=1,
     )
     print("I made it, yuhu")
 

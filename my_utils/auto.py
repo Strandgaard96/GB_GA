@@ -12,7 +12,7 @@ from ase.io import read, write, Trajectory
 from ase.visualize import view
 
 
-def shell(cmd, shell=False):
+def shell(args, shell=False):
     """
     Subprocess handler function
     Args:
@@ -23,7 +23,8 @@ def shell(cmd, shell=False):
         output (str): Program output
         err (str): Possible error messages
     """
-
+    cmd, key = args
+    print(f"String passed to shell: {cmd}")
     if shell:
         p = subprocess.Popen(
             cmd,
@@ -43,6 +44,12 @@ def shell(cmd, shell=False):
             universal_newlines=True,
         )
     output, err = p.communicate()
+
+    with open(Path(key) / f"{logname}job.out", "w") as f:
+        f.write(output)
+    with open(Path(key) / f"{logname}err.out", "w") as f:
+        f.write(err)
+
     return output, err
 
 

@@ -327,16 +327,16 @@ def xtb_pre_optimize(
 
     file_bare = conf_paths[minidx] + f"/xtbopt_bare.xyz"
 
-    tmp_mol = remove_NH3(mol)
     if "N2" in file_bare:
+        tmp_mol = remove_NH3(mol)
         tmp_mol = remove_N2(tmp_mol)
-    Chem.AddHs(tmp_mol)
+        Chem.AddHs(tmp_mol)
 
-    with open(file_bare, "w") as f:
-        if len(tmp_mol.GetConformers()) == 1:
-            f.write(Chem.MolToXYZBlock(tmp_mol, confId=0))
-        else:
-            f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
+        with open(file_bare, "w") as f:
+            if len(tmp_mol.GetConformers()) == 1:
+                f.write(Chem.MolToXYZBlock(tmp_mol, confId=1))
+            else:
+                f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
 
     file = conf_paths[minidx] + f"/xtbopt.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
@@ -389,17 +389,15 @@ def xtb_pre_optimize(
 
 
 def xtb_optimize_schrock(
-    files,
-    parameters=None,
+    args,
     gbsa="benzene",
     alpb=None,
     opt_level="tight",
     input=None,
     name=None,
     cleanup=False,
-    numThreads=1,
 ):
-
+    files, parameters, numThreads, run_dir = args
     if not name:
         name = "tmp_" + "".join(
             random.choices(string.ascii_uppercase + string.digits, k=4)
@@ -436,7 +434,6 @@ def xtb_optimize_schrock(
     n_structs = len(files)
 
     workers = np.min([numThreads, n_structs])
-    cpus_per_worker = numThreads // n_structs
     args = [
         (str(xyz_file), cmd[i], 1, xyz_file.parent, "test")
         for i, xyz_file in enumerate(files)
@@ -453,8 +450,6 @@ def xtb_optimize_schrock(
     for e, g in results:
         energies.append(e)
         geometries.append(g)
-
-    minidx = np.argmin(energies)
 
     # Clean up
     if cleanup:

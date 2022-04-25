@@ -156,7 +156,7 @@ if __name__ == "__main__":
 
     lig, cut_idx = create_prim_amine(mol_list[1])
 
-    lig = Chem.MolFromSmiles("CCN")
+    lig = Chem.MolFromSmiles("CN")
     cut_idx = 1
     ind = Individual(lig, cut_idx=cut_idx)
     # Useful for debugging failed scoring. Load the pickle file

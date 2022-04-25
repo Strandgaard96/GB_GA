@@ -82,3 +82,56 @@ def catch(func, *args, handle=lambda e: e, **kwargs):
     except Exception as e:
         print(e)
         return handle(e)
+
+
+### MolSimplify
+
+
+def slurm_scoring_molS(sc_function, scoring_args):
+
+    executor = submitit.AutoExecutor(
+        folder=Path(scoring_args["run_dir"]) / "scoring_tmp",
+        slurm_max_num_timeout=0,
+    )
+    executor.update_parameters(
+        name=f"cycle",
+        cpus_per_task=scoring_args["ncores"],
+        slurm_mem_per_cpu="2GB",
+        timeout_min=10,
+        slurm_partition="kemi1",
+        slurm_array_parallelism=2,
+    )
+
+    job = executor.submit(sc_function, **scoring_args)
+
+    results = catch(job.result, handle=lambda e: None)
+
+    # if scoring_args["cleanup"]:
+    #    shutil.rmtree("scoring_tmp")
+
+    return results
+
+
+def slurm_scoring_molS_xtb(sc_function, scoring_args):
+
+    executor = submitit.AutoExecutor(
+        folder=scoring_args[-1] / "scoring_tmp",
+        slurm_max_num_timeout=0,
+    )
+    executor.update_parameters(
+        name=f"xtb",
+        cpus_per_task=scoring_args[-2],
+        slurm_mem_per_cpu="2GB",
+        timeout_min=10,
+        slurm_partition="kemi1",
+        slurm_array_parallelism=2,
+    )
+
+    job = executor.submit(sc_function, scoring_args)
+
+    results = catch(job.result, handle=lambda e: (None, None))
+
+    # if scoring_args["cleanup"]:
+    #    shutil.rmtree("scoring_tmp")
+
+    return results

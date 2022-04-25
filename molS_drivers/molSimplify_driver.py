@@ -24,6 +24,10 @@ from my_utils.my_utils import cd
 from my_utils.my_xtb_utils import run_xtb, xtb_optimize_schrock
 from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
 from scoring.make_structures import create_dummy_ligand, connect_ligand, embed_rdkit
+from scoring import scoring_functions as sc
+
+import concurrent.futures
+
 
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
@@ -47,13 +51,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--run_dir",
         type=pathlib.Path,
-        default="Runs",
+        default="molS_drivers/Runs",
         help="Sets the output dir of the molSimplify commands",
     )
     parser.add_argument(
         "--cycle_dir",
         type=pathlib.Path,
-        default="Runs/Runs_cycle",
+        default="molS_drivers/Runs/Runs_cycle",
         help="Sets the output dir of the cycle molSimplify commands",
     )
     parser.add_argument(
@@ -65,7 +69,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--bare_struct",
         type=pathlib.Path,
-        default="/groups/kemi/magstr/GB_GA/generation_testbare/001_005_Mo_N2_NH3/conf001/xtbopt_bare.xyz",
+        default="/home/magstr/generation_data/test_bare/xtbopt_bare.xyz",
         help="The structure with ligand and bare Mo",
     )
     parser.add_argument(
@@ -76,6 +80,13 @@ def get_arguments(arg_list=None):
     )
     parser.set_defaults(cleanup=True)
     parser.add_argument(
+        "--create_cycle",
+        dest="create_cycle",
+        action="store_true",
+        help="Variable to control if cycle is created with ligand",
+    )
+    parser.set_defaults(create_cycle=True)
+    parser.add_argument(
         "--ligand_smi",
         type=str,
         default="CCOC=CN(C=N)CN",
@@ -84,13 +95,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--xtbout",
         type=pathlib.Path,
-        default="xtbout",
+        default="molS_drivers/xtbout",
         help="Directory to put xtb calculations",
     )
     parser.add_argument(
         "--log_tmp",
         type=pathlib.Path,
-        default="tmp_log",
+        default="molS_drivers/tmp_log",
         help="Directory to logfiles",
     )
     parser.add_argument(
@@ -105,6 +116,12 @@ def get_arguments(arg_list=None):
         default="GA",
         help="Where to get the starting struct from",
     )
+    parser.add_argument(
+        "--ncores",
+        type=int,
+        default=15,
+        help="How many cores to use for the xtb",
+    )
     return parser.parse_args(arg_list)
 
 
@@ -117,7 +134,9 @@ def mol_with_atom_index(mol):
     return mol
 
 
-def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
+def create_cycleMS(
+    new_core=None, smi_path=None, run_dir=None, log_tmp=None, ncores=None
+):
     """
     Creates all the intermediates for the cycle based on the proposed catalyst.
 
@@ -145,6 +164,7 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
                 ccatoms = i - 2 + 1
                 break
 
+    args = []
     for key, value in smi_dict.items():
 
         intermediate_cmd = (
@@ -163,16 +183,10 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, log_tmp=None):
                 f" -skipANN True -smicat [1],[1]"
                 f" -ffoption no -suff intermediate_{key} -rundir {run_dir}"
             )
+        args.append((intermediate_cmd, key))
 
-        print(f"String passed to shell: {intermediate_cmd}")
-        out, err = shell(
-            intermediate_cmd,
-            shell=False,
-        )
-        with open(run_dir / log_tmp / f"job_{key}.out", "w", encoding="utf-8") as f:
-            f.write(out)
-        with open(run_dir / log_tmp / f"err_{key}.out", "w", encoding="utf-8") as f:
-            f.write(err)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=ncores) as executor:
+        results = executor.map(shell, args)
 
     # Check for badjobs
     if sorted(run_dir.rglob("*badjob*")):
@@ -385,13 +399,7 @@ def main():
         None
     """
 
-    args = get_arguments()
-
-    # Extract ligand object from GA.
-    with open(args.gen_path, "rb") as f:
-        gen = pickle.load(f)
-    # TODO add option to select ligand by idx, currently selecting best one
-    ligand = gen.survivors.molecules[-1]
+    args = get_arguments()  # Create logfolder
 
     # Possibly remove old calcs here
     # if dirpath.exists() and dirpath.is_dir():
@@ -402,20 +410,27 @@ def main():
         # extract_structure(ligand)
         extract_structure_bare(args.bare_struct)
     else:
+        # Extract ligand object from GA.
+        with open(args.gen_path, "rb") as f:
+            gen = pickle.load(f)
+        # TODO add option to select ligand by idx, currently selecting best one
+        ligand = gen.survivors.molecules[-1]
         create_custom_core_rdkit(ligand, args)
 
     # Check for output structure
     intermediate_smi_path = Path("data/intermediate_smiles.json")
 
-    new_core = True
-    if new_core:
+    if args.create_cycle:
         # Pass the output structure to cycle creation
-        create_cycleMS(
-            new_core="new_core.xyz",
-            smi_path=intermediate_smi_path,
-            run_dir=args.cycle_dir,
-            log_tmp=args.log_tmp,
-        )
+        scoring_args = {
+            "new_core": "new_core.xyz",
+            "smi_path": intermediate_smi_path,
+            "run_dir": args.cycle_dir,
+            "log_tmp": args.log_tmp,
+            "ncores": args.ncores,
+        }
+
+        results = sc.slurm_scoring_molS(create_cycleMS, scoring_args)
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -430,21 +445,16 @@ def main():
     struct = ".xyz"
     paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
 
-    energies, geometries = xtb_optimize_schrock(
-        files=paths,
-        parameters=parameters,
-        gbsa="benzene",
-        alpb=None,
-        opt_level="tight",
-        input=None,
-        name=None,
-        cleanup=False,
-        numThreads=1,
-    )
-    print("I made it, yuhu")
+    # Start xtb calcs
+    xtb_args = [paths, parameters, args.ncores, args.run_dir]
+    results = sc.slurm_scoring_molS_xtb(xtb_optimize_schrock, xtb_args)
+    #energies = results[0]
+    #geometries = results[1]
 
     if args.cleanup:
         collect_logfiles(dest=dest)
+
+    sys.exit(0)
 
 
 if __name__ == "__main__":

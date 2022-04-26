@@ -161,7 +161,7 @@ if __name__ == "__main__":
     ind = Individual(lig, cut_idx=cut_idx)
     # Useful for debugging failed scoring. Load the pickle file
     # From the failed calc.
-    with open("debug/32529843_42_submitted.pkl", "rb") as handle:
+    with open("debug/32597920_46_submitted.pkl", "rb") as handle:
         b = pickle.load(handle)
 
     file_noMo = "/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz"
@@ -179,4 +179,4 @@ if __name__ == "__main__":
     #        opt_mol = opt_mol[0]
     #        break
 
-    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)
+    rdkit_embed_scoring(b.args[0], n_confs=2, ncpus=2)

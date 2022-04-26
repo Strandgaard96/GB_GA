@@ -119,7 +119,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ncores",
         type=int,
-        default=15,
+        default=14,
         help="How many cores to use for the xtb",
     )
     return parser.parse_args(arg_list)
@@ -258,12 +258,12 @@ def collect_logfiles(dest=None):
     log_path = dest / "logfiles"
     os.mkdir(log_path)
 
-    logfiles = dest.rglob("*xtbjob.out")
+    logfiles = dest.rglob("*job.out")
     for file in logfiles:
         folder = log_path / file.parents[0].name
         my_utils.my_utils.mkdir(exist_ok=True)
         shutil.copy(str(file), str(folder))
-        os.rename(folder / "xtbjob.out", folder / "job.out")
+        os.rename(folder / sile.stem, folder / "job.out")
 
     with suppress(FileNotFoundError):
         os.remove("new_core.xyz")

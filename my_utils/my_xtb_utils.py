@@ -333,10 +333,10 @@ def xtb_pre_optimize(
         Chem.AddHs(tmp_mol)
 
         with open(file_bare, "w") as f:
-            if len(tmp_mol.GetConformers()) == 1:
-                f.write(Chem.MolToXYZBlock(tmp_mol, confId=1))
-            else:
+            try:
                 f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
+            except ValueError:
+                print('Something happened with the conformer id')
 
     file = conf_paths[minidx] + f"/xtbopt.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"

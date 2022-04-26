@@ -119,7 +119,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ncores",
         type=int,
-        default=14,
+        default=8,
         help="How many cores to use for the xtb",
     )
     return parser.parse_args(arg_list)
@@ -261,7 +261,7 @@ def collect_logfiles(dest=None):
     logfiles = dest.rglob("*job.out")
     for file in logfiles:
         folder = log_path / file.parents[0].name
-        my_utils.my_utils.mkdir(exist_ok=True)
+        folder.mkdir(exist_ok=True)
         shutil.copy(str(file), str(folder))
         os.rename(folder / sile.stem, folder / "job.out")
 
@@ -448,8 +448,8 @@ def main():
     # Start xtb calcs
     xtb_args = [paths, parameters, args.ncores, args.run_dir]
     results = sc.slurm_scoring_molS_xtb(xtb_optimize_schrock, xtb_args)
-    #energies = results[0]
-    #geometries = results[1]
+    # energies = results[0]
+    # geometries = results[1]
 
     if args.cleanup:
         collect_logfiles(dest=dest)

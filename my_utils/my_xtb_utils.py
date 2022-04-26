@@ -243,7 +243,7 @@ def xtb_pre_optimize(
     if any("N2" in s for s in conf_paths):
         make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True, N2=True)
     else:
-        make_input_constrain_file(mol, core=core, path=conf_paths, NH3 = True)
+        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True)
 
     # xtb options
     XTB_OPTIONS = {
@@ -294,9 +294,13 @@ def xtb_pre_optimize(
 
     # Constrain only N reactants and Mo
     if any("N2" in s for s in conf_paths):
-        make_input_constrain_file(mol, core=Chem.MolFromSmiles('[Mo]'), path=conf_paths, NH3=True, N2=True)
+        make_input_constrain_file(
+            mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=True
+        )
     else:
-        make_input_constrain_file(mol, core=Chem.MolFromSmiles('[Mo]'), path=conf_paths, NH3=True, N2=False)
+        make_input_constrain_file(
+            mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=False
+        )
 
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
@@ -341,7 +345,7 @@ def xtb_pre_optimize(
             try:
                 f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
             except ValueError:
-                print('Something happened with the conformer id')
+                print("Something happened with the conformer id")
 
     file = conf_paths[minidx] + f"/xtbopt.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
@@ -401,6 +405,7 @@ def xtb_optimize_schrock(
     input=None,
     name=None,
     cleanup=False,
+    method="ff",
 ):
     files, parameters, numThreads, run_dir = args
     if not name:
@@ -415,8 +420,9 @@ def xtb_optimize_schrock(
     print(f"SCRATCH DIR = {scr_dir}")
 
     cmd = []
-    xtb_string = "xtb"
+    xtb_string = f"xtb --gfn{method}"
     for elem in files:
+
         intermediate_name = elem.parent.name
         # Get intermediate parameters from the dict
         charge = parameters[intermediate_name]["charge"]
@@ -443,9 +449,6 @@ def xtb_optimize_schrock(
         (str(xyz_file), cmd[i], 1, xyz_file.parent, "test")
         for i, xyz_file in enumerate(files)
     ]
-
-    # with Pool() as pool:
-    #    output = pool.map(run_xtb, args)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=numThreads) as executor:
         results = executor.map(run_xtb, args)

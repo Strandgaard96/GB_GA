@@ -240,10 +240,10 @@ def xtb_pre_optimize(
     xyz_files, conf_paths = write_xtb_input_files(mol, "xtbmol", destination=name)
 
     # Make input constrain file
-    if any("NH3" in s for s in conf_paths):
+    if any("N2" in s for s in conf_paths):
         make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True, N2=True)
     else:
-        make_input_constrain_file(mol, core=core, path=conf_paths)
+        make_input_constrain_file(mol, core=core, path=conf_paths, NH3 = True)
 
     # xtb options
     XTB_OPTIONS = {
@@ -291,6 +291,13 @@ def xtb_pre_optimize(
 
     # Perform final relaxation
     # cmd = cmd.replace("--input ./xcontrol.inp", "")
+
+    # Constrain only N reactants and Mo
+    if any("N2" in s for s in conf_paths):
+        make_input_constrain_file(mol, core=Chem.MolFromSmiles('[Mo]'), path=conf_paths, NH3=True, N2=True)
+    else:
+        make_input_constrain_file(mol, core=Chem.MolFromSmiles('[Mo]'), path=conf_paths, NH3=True, N2=False)
+
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
         for i, xyz_file in enumerate(xyz_files)
@@ -322,8 +329,6 @@ def xtb_pre_optimize(
     # Clean up
     if cleanup:
         shutil.rmtree(name)
-
-    # TODO Create and save the bare catalyst struct (for molS later)
 
     file_bare = conf_paths[minidx] + f"/xtbopt_bare.xyz"
 

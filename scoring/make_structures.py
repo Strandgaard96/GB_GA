@@ -349,10 +349,10 @@ def create_prim_amine(input_ligand):
             )
         ]
 
-        bond = []
         if indices:
             break
 
+    bond = []
     try:
         atoms = random.choice(indices)
     except IndexError as e:

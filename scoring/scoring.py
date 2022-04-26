@@ -179,4 +179,4 @@ if __name__ == "__main__":
     #        opt_mol = opt_mol[0]
     #        break
 
-    rdkit_embed_scoring(b.args[0], n_confs=2, ncpus=2)
+    rdkit_embed_scoring(ind, n_confs=2, ncpus=2)

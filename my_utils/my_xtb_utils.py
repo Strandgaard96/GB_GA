@@ -3,7 +3,7 @@ from rdkit.Chem import AllChem, rdmolops
 
 from .xyz2mol import read_xyz_file, xyz2mol, xyz2AC
 from .auto import shell
-from scoring.make_structures import remove_NH3, remove_N2
+from scoring.make_structures import remove_NH3, remove_N2, mol_with_atom_index
 
 import os
 import random
@@ -212,6 +212,7 @@ def xtb_pre_optimize(
     cleanup=False,
     preoptimize=True,
     numThreads=1,
+    xyzcoordinates=True,
 ):
     # check mol input
     assert isinstance(mol, Chem.rdchem.Mol)
@@ -388,7 +389,8 @@ def xtb_pre_optimize(
         minidx = None
         return energies, geometries, minidx
 
-    if True:
+    # Get xyz coordnates or tuple
+    if xyzcoordinates:
         with open(file, "r") as f:
             final_geom = f.readlines()
     else:
@@ -405,7 +407,7 @@ def xtb_optimize_schrock(
     input=None,
     name=None,
     cleanup=False,
-    method="ff",
+    method=" 2",
 ):
     files, parameters, numThreads, run_dir = args
     if not name:
@@ -419,10 +421,23 @@ def xtb_optimize_schrock(
         scr_dir = os.getcwd()
     print(f"SCRATCH DIR = {scr_dir}")
 
+    # Get number of structs to optimize for parallellization
+    n_structs = len(files)
+    workers = np.min([numThreads, n_structs])
+
+    # Perform initial ff optimization
+    xtb_string = "xtb --gfnff --opt"
+    args = [
+        (str(xyz_file), xtb_string, 1, xyz_file.parent, "xtb_ff")
+        for i, xyz_file in enumerate(files)
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results = executor.map(run_xtb, args)
+
+    # Prepare constrained opt string
     cmd = []
     xtb_string = f"xtb --gfn{method}"
     for elem in files:
-
         intermediate_name = elem.parent.name
         # Get intermediate parameters from the dict
         charge = parameters[intermediate_name]["charge"]
@@ -442,20 +457,21 @@ def xtb_optimize_schrock(
         cmd.append(xtb_string)
         xtb_string = "xtb"
 
-    n_structs = len(files)
+    print("lol")
 
-    workers = np.min([numThreads, n_structs])
+    xtbopt_files = [Path(xyz_file).parent / "xtbopt.xyz" for xyz_file in files]
     args = [
-        (str(xyz_file), cmd[i], 1, xyz_file.parent, "test")
-        for i, xyz_file in enumerate(files)
+        (str(xyz_file), cmd[i], 1, xyz_file.parent, "xtb_con")
+        for i, xyz_file in enumerate(xtbopt_files)
     ]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=numThreads) as executor:
-        results = executor.map(run_xtb, args)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results2 = executor.map(run_xtb, args)
 
+    # Get energies and geometries from final opt
     energies = []
     geometries = []
-    for e, g in results:
+    for e, g in results2:
         energies.append(e)
         geometries.append(g)
 
@@ -464,16 +480,6 @@ def xtb_optimize_schrock(
         shutil.rmtree(name)
 
     return energies, geometries
-
-
-def mol_with_atom_index(mol):
-    atoms = mol.GetNumAtoms()
-    for idx in range(atoms):
-        mol.GetAtomWithIdx(idx).SetProp(
-            "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
-        )
-    Chem.Draw.MolToImage(mol, size=(400, 400)).show()
-    return mol
 
 
 def make_input_constrain_file(molecule, core, path, NH3=False, N2=False):

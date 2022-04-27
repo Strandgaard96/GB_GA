@@ -16,14 +16,17 @@ import json, shutil, argparse, glob, time, pickle
 from multiprocessing import Pool
 from contextlib import suppress
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from rdkit import Chem
 from rdkit.Chem import Draw
 from my_utils.my_utils import cd
 from my_utils.my_xtb_utils import run_xtb, xtb_optimize_schrock
 from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
-from scoring.make_structures import create_dummy_ligand, connect_ligand, embed_rdkit
+from scoring.make_structures import (
+    create_dummy_ligand,
+    connect_ligand,
+    embed_rdkit,
+    mol_with_atom_index,
+)
 from scoring import scoring_functions as sc
 
 import concurrent.futures
@@ -78,7 +81,7 @@ def get_arguments(arg_list=None):
         action="store_true",
         help="Cleans xtb output folders",
     )
-    parser.add_argument('--no_cleanup', dest='cleanup', action='store_false')
+    parser.add_argument("--no_cleanup", dest="cleanup", action="store_false")
     parser.set_defaults(cleanup=True)
     parser.add_argument(
         "--create_cycle",
@@ -104,12 +107,6 @@ def get_arguments(arg_list=None):
         type=pathlib.Path,
         default="molS_drivers/xtbout",
         help="Directory to put xtb calculations",
-    )
-    parser.add_argument(
-        "--log_tmp",
-        type=pathlib.Path,
-        default="molS_drivers/tmp_log",
-        help="Directory to logfiles",
     )
     parser.add_argument(
         "--cut_idx",
@@ -138,18 +135,7 @@ def get_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def mol_with_atom_index(mol):
-    atoms = mol.GetNumAtoms()
-    for idx in range(atoms):
-        mol.GetAtomWithIdx(idx).SetProp(
-            "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
-        )
-    return mol
-
-
-def create_cycleMS(
-    new_core=None, smi_path=None, run_dir=None, log_tmp=None, ncores=None
-):
+def create_cycleMS(new_core=None, smi_path=None, run_dir=None, ncores=None):
     """
     Creates all the intermediates for the cycle based on the proposed catalyst.
 
@@ -164,9 +150,6 @@ def create_cycleMS(
     with open(smi_path, "r", encoding="utf-8") as f:
         smi_dict = json.load(f)
         smi_dict.pop("Mo")
-
-    # Create logfolder
-    (run_dir / log_tmp).mkdir(parents=True, exist_ok=True)
 
     # Get the idx of the Mo atom
     with open(new_core, "r") as f:
@@ -299,7 +282,7 @@ def get_smicat(lig_smi=None):
     atom = mol.GetAtomWithIdx(dummy_idx[0])
 
     # Get the neighbor the dummy atom has.
-    connect_idx = [x.GetIdx() for x in atom.GetNeighbors()]
+    connect_idx = [x.GetIdx() for x in atom.GetNeighbors()][0]
 
     # Finaly replace the dummy with a hydrogen and print back to smiles
     for a in mol.GetAtoms():
@@ -309,11 +292,10 @@ def get_smicat(lig_smi=None):
     new_lig_smi = Chem.MolToSmiles(mol)
 
     # We add one to the idx as molS is 1-indexed
-    return connect_idx[0], new_lig_smi
+    return connect_idx, new_lig_smi
 
 
-def create_custom_core_rdkit(ligand, newcore_path='new_core.xyz'):
-
+def create_custom_core_rdkit(ligand, newcore_path="new_core.xyz"):
 
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
@@ -336,7 +318,8 @@ def create_custom_core_rdkit(ligand, newcore_path='new_core.xyz'):
 
 def extract_structure_scoring(ligand):
     """
-    Get the structure and prepare
+    Get the optimized xtb xyz structure for the given ligand
+    and print into xyz-file
     """
     structure_txt = ligand.structure
     newcore_path = "new_core.xyz"
@@ -409,7 +392,7 @@ def main():
             gen = pickle.load(f)
         # TODO add option to select ligand by idx, currently selecting best one
         ligand = gen.survivors.molecules[-1]
-        newcore_path = create_custom_core_rdkit(ligand, args)
+        create_custom_core_rdkit(ligand, args)
 
     # Get path object for parameter dict
     intermediate_smi_path = Path("data/intermediate_smiles.json")
@@ -417,10 +400,9 @@ def main():
     if args.create_cycle:
         # Pass the output structure to cycle creation
         scoring_args = {
-            "new_core": newcore_path,
+            "new_core": args.newcore_path,
             "smi_path": intermediate_smi_path,
             "run_dir": args.cycle_dir,
-            "log_tmp": args.log_tmp,
             "ncores": args.ncores,
         }
 

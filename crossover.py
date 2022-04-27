@@ -94,7 +94,7 @@ def tert_amine_OK(mol):
     """
     Checks if there is at least on tertiary amine
     """
-    if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H0;D3]")):
+    if mol.HasSubstructMatch(Chem.MolFromSmarts("[NX3;H0;D3,!$(NC=O)]")):
         return True
     else:
         return False

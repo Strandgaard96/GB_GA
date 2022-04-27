@@ -69,7 +69,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--bare_struct",
         type=pathlib.Path,
-        default="/home/magstr/generation_data/test_bare/xtbopt_bare.xyz",
+        default="/home/magstr/Documents/GB_GA/debug/069_040_Mo_N2_NH3/conf001/xtbopt_bare.xyz",
         help="The structure with ligand and bare Mo",
     )
     parser.add_argument(
@@ -78,6 +78,7 @@ def get_arguments(arg_list=None):
         action="store_true",
         help="Cleans xtb output folders",
     )
+    parser.add_argument('--no_cleanup', dest='cleanup', action='store_false')
     parser.set_defaults(cleanup=True)
     parser.add_argument(
         "--create_cycle",
@@ -85,11 +86,17 @@ def get_arguments(arg_list=None):
         action="store_true",
         help="Variable to control if cycle is created with ligand",
     )
+    parser.add_argument(
+        "--no_create_cycle",
+        dest="create_cycle",
+        action="store_false",
+        help="Dont create cycle with molS",
+    )
     parser.set_defaults(create_cycle=True)
     parser.add_argument(
         "--ligand_smi",
         type=str,
-        default="CCOC=CN(C=N)CN",
+        default="NS(=O)(=O)N1CC1(Br)C#CS(=O)(=O)NBr",
         help="Set the ligand to put on the core",
     )
     parser.add_argument(
@@ -111,9 +118,15 @@ def get_arguments(arg_list=None):
         help="What primary amine to cut on",
     )
     parser.add_argument(
-        "--type",
+        "--starting_struct",
         type=str,
-        default="GA",
+        default="GA_bare",
+        help="Where to get the starting struct from",
+    )
+    parser.add_argument(
+        "--newcore_path",
+        type=pathlib.Path,
+        default="newcore.xyz",
         help="Where to get the starting struct from",
     )
     parser.add_argument(
@@ -258,12 +271,11 @@ def collect_logfiles(dest=None):
     log_path = dest / "logfiles"
     os.mkdir(log_path)
 
-    logfiles = dest.rglob("*job.out")
+    logfiles = sorted(dest.rglob("*job.out"))
     for file in logfiles:
         folder = log_path / file.parents[0].name
         folder.mkdir(exist_ok=True)
         shutil.copy(str(file), str(folder))
-        os.rename(folder / sile.stem, folder / "job.out")
 
     with suppress(FileNotFoundError):
         os.remove("new_core.xyz")
@@ -300,17 +312,8 @@ def get_smicat(lig_smi=None):
     return connect_idx[0], new_lig_smi
 
 
-def create_custom_core_rdkit(ligand, args):
-    """
+def create_custom_core_rdkit(ligand, newcore_path='new_core.xyz'):
 
-    Create a custom core based on a proposed ligand.
-
-    Args:
-        args (Namespace): args from driver
-
-    Returns:
-
-    """
 
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
@@ -325,7 +328,6 @@ def create_custom_core_rdkit(ligand, args):
     )
 
     # Save mol
-    newcore_path = "new_core.xyz"
     with open(newcore_path, "w+") as f:
         f.write(Chem.MolToXYZBlock(catalyst_3d))
 
@@ -341,16 +343,6 @@ def extract_structure_scoring(ligand):
     with open(newcore_path, "w+") as f:
         for line in structure_txt:
             f.write(line)
-
-    return newcore_path
-
-
-def extract_structure_bare(bare_struct):
-    """
-    Get the bare ligand structure from the GA files
-    """
-    newcore_path = "new_core.xyz"
-    shutil.copy(bare_struct, newcore_path)
 
     return newcore_path
 
@@ -399,31 +391,33 @@ def main():
         None
     """
 
-    args = get_arguments()  # Create logfolder
+    args = get_arguments()
 
-    # Possibly remove old calcs here
-    # if dirpath.exists() and dirpath.is_dir():
-    #    shutil.rmtree(dirpath)
+    # Remove old cycle if dir exists, to prevent molS error.
+
+    dirpath = args.run_dir
+    if dirpath.exists() and dirpath.is_dir():
+        shutil.rmtree(dirpath)
 
     # Get the starting core. Either form rdkit or from optimization
-    if args.type == "GA":
+    if args.starting_struct == "GA_bare":
         # extract_structure(ligand)
-        extract_structure_bare(args.bare_struct)
+        shutil.copy(args.bare_struct, args.newcore_path)
     else:
         # Extract ligand object from GA.
         with open(args.gen_path, "rb") as f:
             gen = pickle.load(f)
         # TODO add option to select ligand by idx, currently selecting best one
         ligand = gen.survivors.molecules[-1]
-        create_custom_core_rdkit(ligand, args)
+        newcore_path = create_custom_core_rdkit(ligand, args)
 
-    # Check for output structure
+    # Get path object for parameter dict
     intermediate_smi_path = Path("data/intermediate_smiles.json")
 
     if args.create_cycle:
         # Pass the output structure to cycle creation
         scoring_args = {
-            "new_core": "new_core.xyz",
+            "new_core": newcore_path,
             "smi_path": intermediate_smi_path,
             "run_dir": args.cycle_dir,
             "log_tmp": args.log_tmp,
@@ -441,15 +435,13 @@ def main():
     with open(intermediate_smi_path) as f:
         parameters = json.load(f)
 
-    # Start xtb calc
+    # Create new dir for xtb calcs and get paths
     struct = ".xyz"
     paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
 
     # Start xtb calcs
     xtb_args = [paths, parameters, args.ncores, args.run_dir]
     results = sc.slurm_scoring_molS_xtb(xtb_optimize_schrock, xtb_args)
-    # energies = results[0]
-    # geometries = results[1]
 
     if args.cleanup:
         collect_logfiles(dest=dest)

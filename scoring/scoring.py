@@ -38,7 +38,7 @@ hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698
 NH3_ENERGY = -4.4260
 
-n2_correction = 0.06
+n2_correction = 0.00
 N2_ENERGY = -5.7639 - n2_correction
 """int: Module level constants
 hartree2kcalmol: Handles conversion from hartree to kcal/mol

@@ -70,6 +70,12 @@ def get_arguments(arg_list=None):
         help="A generation pickle to load candidates from",
     )
     parser.add_argument(
+        "--initial_opt",
+        type=pathlib.Path,
+        default="molS_drivers/initial_opt/newcore.xyz",
+        help="Where to perform initial opt",
+    )
+    parser.add_argument(
         "--bare_struct",
         type=pathlib.Path,
         default="/home/magstr/Documents/GB_GA/debug/069_040_Mo_N2_NH3/conf001/xtbopt_bare.xyz",
@@ -129,7 +135,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ncores",
         type=int,
-        default=8,
+        default=6,
         help="How many cores to use for the xtb",
     )
     return parser.parse_args(arg_list)
@@ -376,16 +382,24 @@ def main():
 
     args = get_arguments()
 
-    # Remove old cycle if dir exists, to prevent molS error.
+    # Get path object for parameter dict
+    intermediate_smi_path = Path("data/intermediate_smiles.json")
+    # Get spin and charge dict
+    with open(intermediate_smi_path) as f:
+        parameters = json.load(f)
 
+    # Remove old cycle if dir exists, to prevent molS error.
     dirpath = args.run_dir
     if dirpath.exists() and dirpath.is_dir():
         shutil.rmtree(dirpath)
 
+    # Create inital opt dir
+    Path(args.initial_opt.parent).mkdir(parents=True, exist_ok=True)
+
     # Get the starting core. Either form rdkit or from optimization
     if args.starting_struct == "GA_bare":
         # extract_structure(ligand)
-        shutil.copy(args.bare_struct, args.newcore_path)
+        shutil.copy(args.bare_struct, args.initial_opt)
     else:
         # Extract ligand object from GA.
         with open(args.gen_path, "rb") as f:
@@ -394,13 +408,40 @@ def main():
         ligand = gen.survivors.molecules[-1]
         create_custom_core_rdkit(ligand, args)
 
-    # Get path object for parameter dict
-    intermediate_smi_path = Path("data/intermediate_smiles.json")
+    # Perform initial optimization of the struct before passing to molS
+    xyz_file = args.initial_opt.resolve()
+    with cd(args.initial_opt.parent):
+        run_xtb((xyz_file, "xtb --gfnff --opt", 4, ".", "initial_opt"))
+
+        # Prepare constrained opt string
+        cmd = []
+        xtb_string = f"xtb --gfn2"
+        intermediate_name = "Mo"
+        # Get intermediate parameters from the dict
+        charge = parameters[intermediate_name]["charge"]
+        spin = parameters[intermediate_name]["spin"]
+
+        # xtb options
+        XTB_OPTIONS = {
+            "opt": "tight",
+            "chrg": charge,
+            "uhf": spin,
+            "gbsa": "benzene",
+        }
+
+        for key, value in XTB_OPTIONS.items():
+            xtb_string += f" --{key} {value}"
+        cmd.append(xtb_string)
+        run_xtb(
+            (xyz_file.parent / "xtbopt.xyz", xtb_string, 4, ".", "initial_gfn2_opt")
+        )
+        final_core_path = xyz_file.parent / "xtbopt.xyz"
+    shutil.copy(final_core_path, "newcore.xyz")
 
     if args.create_cycle:
         # Pass the output structure to cycle creation
         scoring_args = {
-            "new_core": args.newcore_path,
+            "new_core": "newcore.xyz",
             "smi_path": intermediate_smi_path,
             "run_dir": args.cycle_dir,
             "ncores": args.ncores,
@@ -412,10 +453,6 @@ def main():
     timestr = time.strftime("%Y%m%d-%H%M%S")
     dest = args.xtbout / (args.ligand_smi + timestr)
     dest.mkdir(parents=True, exist_ok=False)
-
-    # Get spin and charge dict
-    with open(intermediate_smi_path) as f:
-        parameters = json.load(f)
 
     # Create new dir for xtb calcs and get paths
     struct = ".xyz"

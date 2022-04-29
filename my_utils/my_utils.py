@@ -256,6 +256,10 @@ class Population:
             if not match:
                 try:
                     output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
+                    # Handle if None is returned
+                    if not output_ligand:
+                        output_ligand = Chem.MolFromSmiles("CCCCCN")
+                        cut_idx = [[1]]
                 except Exception as e:
                     print("Could not create primary amine, setting methyl as ligand")
                     output_ligand = Chem.MolFromSmiles("CN")

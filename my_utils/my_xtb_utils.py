@@ -296,7 +296,7 @@ def xtb_pre_optimize(
     # Constrain only N reactants and Mo
     if any("N2" in s for s in conf_paths):
         make_input_constrain_file(
-            mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=True
+            mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=False
         )
     else:
         make_input_constrain_file(

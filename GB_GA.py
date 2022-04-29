@@ -14,6 +14,7 @@ import random
 import crossover as co
 import mutate as mu
 from my_utils.my_utils import Individual, Population
+from scoring.make_structures import create_ligands, create_prim_amine
 import copy
 
 
@@ -24,9 +25,6 @@ def read_file(file_name):
             mol_list.append(Chem.MolFromSmiles(smiles))
 
     return mol_list
-
-
-from scoring.make_structures import create_ligands, create_prim_amine
 
 
 def make_initial_population(population_size, file_name, rand=False):

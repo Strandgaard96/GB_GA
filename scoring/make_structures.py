@@ -357,7 +357,7 @@ def create_prim_amine(input_ligand):
         atoms = random.choice(indices)
     except IndexError as e:
         print("Oh no, found no valid cut points")
-        return input_ligand, [[0]]
+        return None, None
     bond.append(input_ligand.GetBondBetweenAtoms(*atoms).GetIdx())
 
     # Get the fragments from breaking the amine bonds.
@@ -379,7 +379,7 @@ def create_prim_amine(input_ligand):
         ligand = [
             struct
             for struct in frags
-            if len(struct.GetSubstructMatches(Chem.MolFromSmarts("[1*][N]"))) == 0
+            if struct.HasSubstructMatch(Chem.MolFromSmarts("[1*]N"))
         ]
 
     # As this function is also run outside paralellization, an error here will break

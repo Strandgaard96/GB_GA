@@ -66,7 +66,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--gen_path",
         type=pathlib.Path,
-        default="/groups/kemi/magstr/GB_GA/generation_testbare/GA01.pkl",
+        default="/home/magstr/generation_data/vin_overnight2/GA01.pkl",
         help="A generation pickle to load candidates from",
     )
     parser.add_argument(
@@ -78,7 +78,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--bare_struct",
         type=pathlib.Path,
-        default="/home/magstr/Documents/GB_GA/debug/069_040_Mo_N2_NH3/conf001/xtbopt_bare.xyz",
+        default="/home/magstr/Documents/GB_GA/debug/004_057_Mo_N2_NH3/conf000/xtbopt_bare.xyz",
         help="The structure with ligand and bare Mo",
     )
     parser.add_argument(
@@ -105,7 +105,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ligand_smi",
         type=str,
-        default="NS(=O)(=O)N1CC1(Br)C#CS(=O)(=O)NBr",
+        default="NC1CNC(=O)N1",
         help="Set the ligand to put on the core",
     )
     parser.add_argument(
@@ -301,7 +301,7 @@ def get_smicat(lig_smi=None):
     return connect_idx, new_lig_smi
 
 
-def create_custom_core_rdkit(ligand, newcore_path="new_core.xyz"):
+def create_custom_core_rdkit(ligand, newcore_path="newcore.xyz"):
 
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
@@ -446,6 +446,8 @@ def main():
             "run_dir": args.cycle_dir,
             "ncores": args.ncores,
         }
+
+    #create_cycleMS(**scoring_args)
 
         results = sc.slurm_scoring_molS(create_cycleMS, scoring_args)
 

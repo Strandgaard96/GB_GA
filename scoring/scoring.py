@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """ Scoring module
-
 Module handling the driver for scoring ligand candidates.
 Contains various global variables that should be available to the scoring
 function at all times
-
 Todo:
     *
 """
@@ -112,7 +110,7 @@ def rdkit_embed_scoring(
     if Mo_N2_NH3_energy == 9999:
         return 9999, None, None
 
-    # Now we want to remove the NH3 on the already embedded structure
+    # Now we want to remove the NH2 on the already embedded structure
     discard_conf = [x for x in range(len(Mo_N2_NH3_3d.GetConformers())) if x != minidx]
     for elem in discard_conf:
         Mo_N2_NH3_3d.RemoveConformer(elem)

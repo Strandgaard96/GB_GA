@@ -78,7 +78,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--bare_struct",
         type=pathlib.Path,
-        default="/home/magstr/Documents/GB_GA/debug/004_057_Mo_N2_NH3/conf000/xtbopt_bare.xyz",
+        default="/home/magstr/Documents/GB_GA/debug/conf001/xtbopt_bare.xyz",
         help="The structure with ligand and bare Mo",
     )
     parser.add_argument(
@@ -105,7 +105,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ligand_smi",
         type=str,
-        default="NC1CNC(=O)N1",
+        default="test",
         help="Set the ligand to put on the core",
     )
     parser.add_argument(
@@ -353,7 +353,6 @@ def create_custom_core(args):
     replig = 1
     suffix = "core_custom"
     run_dir = args.run_dir
-
     core_cmd = (
         f"molsimplify -core {core_file} -lig {lig_smi} -replig {replig} -ligocc 3"
         f" -ccatoms 24, 25, 26 -skipANN True -spin 1 -oxstate 3"
@@ -411,7 +410,7 @@ def main():
     # Perform initial optimization of the struct before passing to molS
     xyz_file = args.initial_opt.resolve()
     with cd(args.initial_opt.parent):
-        run_xtb((xyz_file, "xtb --gfnff --opt", 4, ".", "initial_opt"))
+        run_xtb((xyz_file, "xtb --gfnff --opt", args.ncores, ".", "initial_opt"))
 
         # Prepare constrained opt string
         cmd = []
@@ -433,7 +432,13 @@ def main():
             xtb_string += f" --{key} {value}"
         cmd.append(xtb_string)
         run_xtb(
-            (xyz_file.parent / "xtbopt.xyz", xtb_string, 4, ".", "initial_gfn2_opt")
+            (
+                xyz_file.parent / "xtbopt.xyz",
+                xtb_string,
+                args.ncores,
+                ".",
+                "initial_gfn2_opt",
+            )
         )
         final_core_path = xyz_file.parent / "xtbopt.xyz"
     shutil.copy(final_core_path, "newcore.xyz")
@@ -447,7 +452,7 @@ def main():
             "ncores": args.ncores,
         }
 
-    #create_cycleMS(**scoring_args)
+        # create_cycleMS(**scoring_args)
 
         results = sc.slurm_scoring_molS(create_cycleMS, scoring_args)
 

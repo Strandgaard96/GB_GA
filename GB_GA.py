@@ -80,7 +80,7 @@ def make_initial_population_debug(population_size, file_name, rand=False):
     mol_list = read_file("data/ZINC_1000_amines.smi")
     initial_population = Population()
 
-    smiles = ["CN", "CCN", "CCCN", "CCCCN"]
+    smiles = ["CN", "CCN", "CCN", "CCCN"]
     idx = [1, 2, 3, 4]
 
     for i in range(population_size):

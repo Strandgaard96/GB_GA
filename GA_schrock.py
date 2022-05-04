@@ -9,12 +9,14 @@ Example:
 
 """
 
+import pathlib
 import time
 import argparse
 import os
 import copy
 from pathlib import Path
 import sys
+import pickle
 
 # Homemade stuff from Julius mostly
 import crossover as co
@@ -50,7 +52,7 @@ def get_arguments(arg_list=None):
         "--population_size",
         type=int,
         default=20,
-        help="Sets the size of population pool",
+        help="Sets the size of population pool.",
     )
     parser.add_argument(
         "--mating_pool_size",
@@ -69,6 +71,18 @@ def get_arguments(arg_list=None):
         type=int,
         default=1,
         help="How many conformers to generate",
+    )
+    parser.add_argument(
+        "--n_tries",
+        type=int,
+        default=1,
+        help="How many overall runs of the GA",
+    )
+    parser.add_argument(
+        "--n_cpus",
+        type=int,
+        default=4,
+        help="Number of cores to distribute over",
     )
     parser.add_argument(
         "--generations",
@@ -95,18 +109,6 @@ def get_arguments(arg_list=None):
         action="store_true",
     )
     parser.add_argument(
-        "--n_tries",
-        type=int,
-        default=1,
-        help="How many overall runs of the GA",
-    )
-    parser.add_argument(
-        "--n_cpus",
-        type=int,
-        default=4,
-        help="Number of cores to distribute over",
-    )
-    parser.add_argument(
         "--file_name",
         type=str,
         default="data/ZINC_250k.smi",
@@ -117,6 +119,12 @@ def get_arguments(arg_list=None):
         type=str,
         default="generation_debug",
         help="Directory to put various files",
+    )
+    parser.add_argument(
+        "--database",
+        type=pathlib.Path,
+        default="generation_debug",
+        help="Path to database to write files to",
     )
     parser.add_argument("--debug", action="store_true")
     return parser.parse_args(arg_list)
@@ -231,6 +239,7 @@ def GA(args):
 
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]
+        min_conf = [res[2] for res in results]
 
         new_population.setprop("energy", energies)
         new_population.setprop("score", energies)

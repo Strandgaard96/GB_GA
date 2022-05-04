@@ -330,8 +330,13 @@ def create_prim_amine(input_ligand):
 
     # TODO perhaps randomly scramble the matches list and maybe prefer tertiary amine split
 
+    # Shuffle list of matches
+    l = list(matches)
+    random.shuffle(l)
+
     # Randomly select one of the amines.
-    for match in matches:
+    for match in l:
+
 
         # Get the neigbouring bonds to the selected amine
         atom = input_ligand.GetAtomWithIdx(match[0])
@@ -379,7 +384,7 @@ def create_prim_amine(input_ligand):
         ligand = [
             struct
             for struct in frags
-            if struct.HasSubstructMatch(Chem.MolFromSmarts("[1*]N"))
+            if not struct.HasSubstructMatch(Chem.MolFromSmarts("[1*]N"))
         ]
 
     # As this function is also run outside paralellization, an error here will break

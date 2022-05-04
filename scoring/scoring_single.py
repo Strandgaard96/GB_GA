@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """ Scoring module
-Module handling the driver for scoring ligand candidates.
+Module handling the driver for scoring single ligand candidates.
 Contains various global variables that should be available to the scoring
 function at all times
 Todo:
@@ -17,7 +17,7 @@ catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from my_utils.my_xtb_utils import xtb_pre_optimize
+from my_utils.my_xtb_utils_single import xtb_pre_optimize
 from my_utils.my_utils import cd
 from make_structures import (
     connect_ligand,
@@ -127,7 +127,7 @@ def rdkit_embed_scoring(
             spin=smi_dict["Mo_NH3"]["spin"],
             opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            numThreads=1,
+            numThreads=ncpus,
             cleanup=cleanup,
         )
         print("Mo energy:", Mo_NH3_energy)
@@ -145,30 +145,10 @@ def rdkit_embed_scoring(
 
 if __name__ == "__main__":
 
-    # runner_for_test()
-    file_name = "data/ZINC_first_1000.smi"
-    mol_list = []
-    with open(file_name, "r") as file:
-        for smiles in file:
-            mol_list.append(Chem.MolFromSmiles(smiles))
-
-    lig, cut_idx = create_prim_amine(mol_list[1])
-
-    lig = Chem.MolFromSmiles("CN")
-    cut_idx = 1
-    ind = Individual(lig, cut_idx=cut_idx)
-    # Useful for debugging failed scoring. Load the pickle file
-    # From the failed calc.
-    with open("debug/32597920_46_submitted.pkl", "rb") as handle:
-        b = pickle.load(handle)
-
-    file_noMo = "/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz"
-    from my_utils.xyz2mol import read_xyz_file, xyz2mol, xyz2AC
-
     # Testing HIPT ligand
     smi = 'CC(C)c1cc(C(C)C)c(-c2cc(N)cc(-c3c(C(C)C)cc(C(C)C)cc3C(C)C)c2)c(C(C)C)c1'
     HIPT = Chem.AddHs(Chem.MolFromSmiles(smi))
-    cut_idx = 1
+    cut_idx = 13
     HIPT_ind = Individual(HIPT, cut_idx=cut_idx)
 
-    rdkit_embed_scoring(HIPT_ind, n_confs=2, ncpus=2)
+    rdkit_embed_scoring(HIPT_ind, n_confs=2, ncpus=16)

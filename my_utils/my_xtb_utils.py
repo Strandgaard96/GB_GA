@@ -14,8 +14,14 @@ import subprocess
 import logging
 import json
 import sys
+import re
 from pathlib import Path
 from datetime import datetime
+
+# Ase stuff for database functionality
+from ase.db import connect
+from ase.io import read,write
+from ase.calculators.singlepoint import SinglePointCalculator
 
 import concurrent.futures
 
@@ -36,6 +42,23 @@ def mol_with_atom_index(mol):
     Chem.Draw.MolToImage(mol, size=(400, 400)).show()
     return mol
 
+def write_to_db(database_dir=None, structs=None, log_energies=None):
+    '''
+
+    Args:
+        database_dir Path:
+        structs List(xyz):
+
+    Returns:
+
+    '''
+
+    with connect(database_dir) as db:
+        for elem, energy in zip(structs, log_energies):
+            elem.calc = SinglePointCalculator(elem, energy=energy)
+            db.write(elem)
+
+    return
 
 # %%
 def write_xtb_input_files(fragment, name, destination="."):
@@ -213,6 +236,7 @@ def xtb_pre_optimize(
     preoptimize=True,
     numThreads=1,
     xyzcoordinates=True,
+    database_dir='../ase_database.db'
 ):
     # check mol input
     assert isinstance(mol, Chem.rdchem.Mol)
@@ -395,6 +419,18 @@ def xtb_pre_optimize(
             final_geom = f.readlines()
     else:
         final_geom = geometries[minidx]
+
+    print('Printing optimized structure to database')
+    try:
+        # Write to database
+        logfile = Path(conf_paths[minidx] + f"/xtbopt.log")
+        trajfile = Path(conf_paths[minidx] + f"/traj.xyz")
+        shutil.copy(logfile,trajfile)
+        log_energies = extract_energyxtb(logfile)
+        trajs = read(trajfile, index=':')
+        write_to_db(database_dir=database_dir, structs=trajs, log_energies=log_energies)
+    except Exception as e:
+        print(e)
 
     return energies[minidx], final_geom, minidx.item()
 

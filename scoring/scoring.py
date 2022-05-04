@@ -165,16 +165,10 @@ if __name__ == "__main__":
     file_noMo = "/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz"
     from my_utils.xyz2mol import read_xyz_file, xyz2mol, xyz2AC
 
-    # atoms, _, coordinates = read_xyz_file(file_noMo)
-
-    # AC, mol = xyz2AC(atoms, coordinates, -3, use_huckel=True)
-
-    print("Performing charge loop and xyz2mol")
-    # Loop to check different charges. Very hardcoded and should maybe be changed
-    # for i in range(-6, 1):
-    #    opt_mol = xyz2mol(atoms, coordinates, -3, use_huckel=True)
-    #    if opt_mol:
-    #        opt_mol = opt_mol[0]
-    #        break
+    # Testing HIPT ligand
+    smi = 'CC(C)c1cc(C(C)C)c(-c2cc(N)cc(-c3c(C(C)C)cc(C(C)C)cc3C(C)C)c2)c(C(C)C)c1'
+    HIPT = Chem.AddHs(Chem.MolFromSmiles(smi))
+    cut_idx = 1
+    HIPT_ind = Individual(HIPT, cut_idx=cut_idx)
 
     rdkit_embed_scoring(ind, n_confs=2, ncpus=2)

@@ -337,7 +337,6 @@ def create_prim_amine(input_ligand):
     # Randomly select one of the amines.
     for match in l:
 
-
         # Get the neigbouring bonds to the selected amine
         atom = input_ligand.GetAtomWithIdx(match[0])
 

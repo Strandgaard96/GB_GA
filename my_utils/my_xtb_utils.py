@@ -20,7 +20,7 @@ from datetime import datetime
 
 # Ase stuff for database functionality
 from ase.db import connect
-from ase.io import read,write
+from ase.io import read, write
 from ase.calculators.singlepoint import SinglePointCalculator
 
 import concurrent.futures
@@ -42,8 +42,9 @@ def mol_with_atom_index(mol):
     Chem.Draw.MolToImage(mol, size=(400, 400)).show()
     return mol
 
-def write_to_db(database_dir=None, structs=None, log_energies=None):
-    '''
+
+def write_to_db(database_dir=None, log_energies=None, trajfile=None):
+    """
 
     Args:
         database_dir Path:
@@ -51,14 +52,19 @@ def write_to_db(database_dir=None, structs=None, log_energies=None):
 
     Returns:
 
-    '''
+    """
 
+    structs = read(trajfile, index=":")
     with connect(database_dir) as db:
         for elem, energy in zip(structs, log_energies):
+            id = db.reserve(name=str(trajfile))
+            if id is None:
+                continue
             elem.calc = SinglePointCalculator(elem, energy=energy)
-            db.write(elem)
+            db.write(elem, id=id, name=str(trajfile))
 
     return
+
 
 # %%
 def write_xtb_input_files(fragment, name, destination="."):
@@ -236,7 +242,7 @@ def xtb_pre_optimize(
     preoptimize=True,
     numThreads=1,
     xyzcoordinates=True,
-    database_dir='../ase_database.db'
+    database_dir="ase_database.db",
 ):
     # check mol input
     assert isinstance(mol, Chem.rdchem.Mol)
@@ -420,15 +426,18 @@ def xtb_pre_optimize(
     else:
         final_geom = geometries[minidx]
 
-    print('Printing optimized structure to database')
+    print("Printing optimized structure to database")
     try:
         # Write to database
         logfile = Path(conf_paths[minidx] + f"/xtbopt.log")
         trajfile = Path(conf_paths[minidx] + f"/traj.xyz")
-        shutil.copy(logfile,trajfile)
+        shutil.copy(logfile, trajfile)
         log_energies = extract_energyxtb(logfile)
-        trajs = read(trajfile, index=':')
-        write_to_db(database_dir=database_dir, structs=trajs, log_energies=log_energies)
+        write_to_db(
+            database_dir=database_dir,
+            log_energies=log_energies,
+            trajfile=trajfile,
+        )
     except Exception as e:
         print(e)
 

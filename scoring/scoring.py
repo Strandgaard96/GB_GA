@@ -166,7 +166,7 @@ if __name__ == "__main__":
     from my_utils.xyz2mol import read_xyz_file, xyz2mol, xyz2AC
 
     # Testing HIPT ligand
-    smi = 'CC(C)c1cc(C(C)C)c(-c2cc(N)cc(-c3c(C(C)C)cc(C(C)C)cc3C(C)C)c2)c(C(C)C)c1'
+    smi = "CC(C)c1cc(C(C)C)c(-c2cc(N)cc(-c3c(C(C)C)cc(C(C)C)cc3C(C)C)c2)c(C(C)C)c1"
     HIPT = Chem.AddHs(Chem.MolFromSmiles(smi))
     cut_idx = 1
     HIPT_ind = Individual(HIPT, cut_idx=cut_idx)

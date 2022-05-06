@@ -127,7 +127,7 @@ def rdkit_embed_scoring(
             spin=smi_dict["Mo_NH3"]["spin"],
             opt_level="tight",
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            numThreads=1,
+            numThreads=ncpus,
             cleanup=cleanup,
         )
         print("Mo energy:", Mo_NH3_energy)

@@ -289,8 +289,8 @@ def xtb_pre_optimize(
     for key, value in XTB_OPTIONS.items():
         cmd += f" --{key} {value}"
 
-    workers = numThreads
-    cpus_per_worker = 1
+    workers = np.min([numThreads, n_confs])
+    cpus_per_worker = numThreads // workers
     print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i], "ff")
@@ -439,6 +439,7 @@ def xtb_pre_optimize(
             trajfile=trajfile,
         )
     except Exception as e:
+        print(f"Failed to write to database at {logfile}")
         print(e)
 
     return energies[minidx], final_geom, minidx.item()

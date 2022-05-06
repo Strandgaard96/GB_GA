@@ -39,7 +39,6 @@ def draw_generation(
                         xyz_f = open(mol)
                         line = xyz_f.read()
                         xyz_f.close()
-                        print(line)
                         p.addModel(line, "xyz")
                 else:
                     mb = Chem.MolToMolBlock(mol, confId=confId)

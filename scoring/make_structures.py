@@ -126,6 +126,7 @@ def connect_ligand(core, ligand, NH3_flag=False):
 
     # If NH3 is on the core, then the charge of NH3 must be set
     # to avoid sanitation error.
+    # TODO PREVENT HARDCODE
     if NH3_flag:
         mol.GetAtomWithIdx(23).SetFormalCharge(1)
         mol.GetAtomWithIdx(27).SetFormalCharge(1)

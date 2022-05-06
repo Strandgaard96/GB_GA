@@ -1,9 +1,11 @@
 """ Functionality to neutralize molecules """
 
-import json
-import numpy as np
 import copy
+import json
+from typing import List, Tuple
+from pathlib import Path
 
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem.rdmolops import FastFindRings
 
@@ -11,10 +13,11 @@ from .sascorer import calculateScore
 
 _neutralize_reactions = None
 
+package_directory = Path(__file__).parent.resolve()
 
-def read_neutralizers(name="neutralize"):
-    # filename = f"{name}.json"
-    filename = "/home/julius/soft/GB-GA/sa/neutralize.json"
+
+def read_neutralizers(name="neutralize") -> List[Tuple[Chem.Mol, Chem.Mol]]:
+    filename = package_directory / f"{name}.json"
     with open(filename) as json_file:
         reactions = json.load(json_file)
         neutralize_reactions = []
@@ -29,9 +32,9 @@ def read_neutralizers(name="neutralize"):
     return neutralize_reactions
 
 
-def neutralize_smiles(smiles):
+def neutralize_smiles(smiles: List[str]) -> List[str]:
     """Neutralize a set of SMILES
-    :param list smiles: a list of SMILES
+    :param smiles: a list of SMILES
     """
     assert type(smiles) == list
 
@@ -65,29 +68,6 @@ def neutralize_molecules(population):
         mol.UpdatePropertyCache()
         FastFindRings(mol)
         individual.neutral_rdkit_mol = mol
-
-
-def sa_score_modifier(sa_scores, mu=2.230044, sigma=0.6526308):
-    """Computes a synthesizability multiplier for a (range of) synthetic accessibility score(s)
-    The multiplier is between 1 (perfectly synthesizable) and 0 (not synthesizable).
-    Based on the work of https://arxiv.org/pdf/2002.07007
-    :param list sa_scores: list of synthetic availability scores
-    :param float mu: average synthetic availability score
-    :param float sigma: standard deviation of the score to accept
-    """
-    mod_scores = np.maximum(sa_scores, mu)
-    return np.exp(-0.5 * np.power((mod_scores - mu) / sigma, 2.0))
-
-
-def reweigh_scores_by_sa(population):
-    sa_scores = sa_score_modifier(
-        [
-            calculateScore(individual.neutral_rdkit_mol)
-            for individual in population.molecules
-        ]
-    )
-    for individual, sa_score in zip(population.molecules, sa_scores):
-        individual.sa_score = sa_score
 
 
 if __name__ == "__main__":

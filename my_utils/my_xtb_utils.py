@@ -291,6 +291,7 @@ def xtb_pre_optimize(
 
     workers = np.min([numThreads, n_confs])
     cpus_per_worker = numThreads // workers
+    #cpus_per_worker = 1
     print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i], "ff")

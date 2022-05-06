@@ -20,6 +20,8 @@
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 import pickle
+from typing import List
+from modifiers import gaussian_modifier_clipped
 
 import math
 from collections import defaultdict
@@ -27,6 +29,35 @@ from collections import defaultdict
 import os.path as op
 
 _fscores = None
+
+
+def sa_target_score_clipped(
+    m, target: float = 2.230044, sigma: float = 0.6526308
+) -> float:
+    """Computes a synthesizability multiplier for a (range of) synthetic accessibility score(s)
+    The return value is between 1 (perfectly synthesizable) and 0 (not synthesizable).
+    Based on the work of https://arxiv.org/pdf/2002.07007. Default values from paper.
+    :param m: RDKit molecule
+    :param target: the target logp value
+    :param sigma: the width of the gaussian distribution
+    """
+    score: float = calculateScore(m)
+    return gaussian_modifier_clipped(score, target, sigma)
+
+
+def reweigh_scores_by_sa(population):
+    """Reweighs scores with synthetic accessibility score
+    :param population: list of RDKit molecules to be re-weighted
+    :param scores: list of docking scores
+    :return: list of re-weighted docking scores
+    """
+    sa_scores = [
+        sa_target_score_clipped(individual.neutral_rdkit_mol)
+        for individual in population.molecules
+    ]
+    for individual, sa_score in zip(population.molecules, sa_scores):
+        individual.sa_score = sa_score
+        individual.score = sa_score*individual.pre_score
 
 
 def readFragmentScores(name="fpscores"):

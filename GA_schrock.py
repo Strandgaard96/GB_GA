@@ -25,7 +25,8 @@ from scoring import scoring_functions as sc
 from scoring.scoring import rdkit_embed_scoring
 from my_utils.my_utils import Generation
 import logging
-from sa import reweigh_scores_by_sa, neutralize_molecules
+from sa.neutralize import neutralize_molecules
+from sa.sascorer import reweigh_scores_by_sa
 import GB_GA as ga
 
 # Julius filter functionality.
@@ -51,7 +52,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=20,
+        default=4,
         help="Sets the size of population pool.",
     )
     parser.add_argument(
@@ -169,16 +170,17 @@ def GA(args):
     min_conf = [res[2] for res in results]
 
     population.setprop("energy", energies)
-    population.setprop("score", energies)
+    population.setprop("pre_score", energies)
     population.setprop("structure", geometries)
     population.setprop("min_conf", min_conf)
 
-    population.sortby("score")
-
+    population.setprop("score", energies)
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
         neutralize_molecules(population)
         reweigh_scores_by_sa(population)
+
+    population.sortby("score")
 
     # Normalize the score of population infividuals to value between 0 and 1
     ga.calculate_normalized_fitness(population)
@@ -242,13 +244,17 @@ def GA(args):
         min_conf = [res[2] for res in results]
 
         new_population.setprop("energy", energies)
-        new_population.setprop("score", energies)
+        new_population.setprop("pre_score", energies)
         new_population.setprop("structure", geometries)
-        new_population.sortby("score")
+        new_population.setprop("min_conf", min_conf)
 
+        new_population.setprop("score", energies)
+        # Functionality to check synthetic accessibility
         if args["sa_screening"]:
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
+
+        new_population.sortby("score")
 
         # Select best Individuals from old and new population
         potential_survivors = copy.deepcopy(population.molecules)

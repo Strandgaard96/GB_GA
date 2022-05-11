@@ -57,7 +57,7 @@ def write_to_db(database_dir=None, log_energies=None, trajfile=None):
     structs = read(trajfile, index=":")
     with connect(database_dir) as db:
         for elem, energy in zip(structs, log_energies):
-            id = db.reserve(name=str(trajfile))
+            id = db.reserve(name=str(elem))
             if id is None:
                 continue
             elem.calc = SinglePointCalculator(elem, energy=energy)

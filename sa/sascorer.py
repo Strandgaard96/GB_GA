@@ -57,7 +57,10 @@ def reweigh_scores_by_sa(population):
     ]
     for individual, sa_score in zip(population.molecules, sa_scores):
         individual.sa_score = sa_score
-        individual.score = sa_score*individual.pre_score
+        if individual.score > 5000:
+            continue
+        else:
+            individual.score = sa_score*individual.pre_score
 
 
 def readFragmentScores(name="fpscores"):

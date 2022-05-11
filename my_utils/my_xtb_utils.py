@@ -56,12 +56,12 @@ def write_to_db(database_dir=None, log_energies=None, trajfile=None):
 
     structs = read(trajfile, index=":")
     with connect(database_dir) as db:
-        for elem, energy in zip(structs, log_energies):
-            id = db.reserve(name=str(elem))
+        for i,(elem, energy) in enumerate(zip(structs, log_energies)):
+            id = db.reserve(name=str(trajfile)+str(i))
             if id is None:
                 continue
             elem.calc = SinglePointCalculator(elem, energy=energy)
-            db.write(elem, id=id, name=str(trajfile))
+            db.write(elem, id=id, name=str(trajfile)+str(i))
 
     return
 
@@ -242,7 +242,7 @@ def xtb_pre_optimize(
     preoptimize=True,
     numThreads=1,
     xyzcoordinates=True,
-    database_dir="ase_database.db",
+    database_dir="/groups/kemi/magstr/GB_GA/database/ase_database.db",
 ):
     # check mol input
     assert isinstance(mol, Chem.rdchem.Mol)
@@ -291,7 +291,7 @@ def xtb_pre_optimize(
 
     workers = np.min([numThreads, n_confs])
     cpus_per_worker = numThreads // workers
-    #cpus_per_worker = 1
+    # cpus_per_worker = 1
     print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i], "ff")

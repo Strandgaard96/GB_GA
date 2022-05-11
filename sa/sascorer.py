@@ -60,7 +60,7 @@ def reweigh_scores_by_sa(population):
         if individual.score > 5000:
             continue
         else:
-            individual.score = sa_score*individual.pre_score
+            individual.score = sa_score * individual.pre_score
 
 
 def readFragmentScores(name="fpscores"):

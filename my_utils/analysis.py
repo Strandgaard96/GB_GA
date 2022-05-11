@@ -97,7 +97,7 @@ def draw_database(
                 else:
                     mb = Chem.MolToMolBlock(mol, confId=confId)
                     p.addModel(mb, "sdf")
-        p.setStyle({"stick": {"radius": 0.2}, "sphere": {"radius": 0.3}})
+        p.setStyle({"stick": {"radius": 0.2}, "sphere": {"radius": 0.4}})
         if atomlabel:
             p.addPropertyLabels("index")  # ,{'elem':'H'}
         #
@@ -124,15 +124,32 @@ def draw_database(
 
 
 def conf_viewer(idx, confs, **kwargs):
-    mol = confs[idx]
-    gen = confs[idx].parts[-3].split("_")[0][1:]
-    print(f"Generation : {gen}, {mol}")
-    return draw_generation(str(confs[idx]), **kwargs)
+    mol = str(confs[idx][2])
+    gen_idx = confs[idx][0]
+    score = confs[idx][1]
+
+    print(f"Generation idx: {gen_idx}, score: {score} , Path: {mol}")
+
+    return draw_generation(mol, **kwargs)
 
 
 def sort_ga(x):
     num = int(str(x).split(".pkl")[-2].split("GA")[-1])
     return num
+
+
+# Two functions for human sorting
+# https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
 
 
 def main():

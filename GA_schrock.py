@@ -124,7 +124,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--database",
         type=pathlib.Path,
-        default="generation_debug",
+        default="ase_database.db",
         help="Path to database to write files to",
     )
     parser.add_argument("--debug", action="store_true")

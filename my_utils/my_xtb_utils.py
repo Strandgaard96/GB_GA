@@ -43,7 +43,7 @@ def mol_with_atom_index(mol):
     return mol
 
 
-def write_to_db(database_dir=None, log_energies=None, trajfile=None):
+def write_to_db(database_dir=None, logfiles=None, trajfile=None):
     """
 
     Args:
@@ -54,14 +54,17 @@ def write_to_db(database_dir=None, log_energies=None, trajfile=None):
 
     """
 
-    structs = read(trajfile, index=":")
     with connect(database_dir) as db:
-        for i,(elem, energy) in enumerate(zip(structs, log_energies)):
-            id = db.reserve(name=str(trajfile)+str(i))
-            if id is None:
-                continue
-            elem.calc = SinglePointCalculator(elem, energy=energy)
-            db.write(elem, id=id, name=str(trajfile)+str(i))
+        for i,(traj, logfile) in enumerate(zip(trajfile, logfiles)):
+
+            energies = extract_energyxtb(logfile)
+            structs = read(traj, index=":")
+            for struct,energy in zip(structs,energies):
+                id = db.reserve(name=str(traj)+str(i))
+                if id is None:
+                    continue
+                struct.calc = SinglePointCalculator(struct, energy=energy)
+                db.write(struct, id=id, name=str(traj))
 
     return
 
@@ -427,21 +430,10 @@ def xtb_pre_optimize(
     else:
         final_geom = geometries[minidx]
 
-    print("Printing optimized structure to database")
-    try:
-        # Write to database
-        logfile = Path(conf_paths[minidx] + f"/xtbopt.log")
-        trajfile = Path(conf_paths[minidx] + f"/traj.xyz")
-        shutil.copy(logfile, trajfile)
-        log_energies = extract_energyxtb(logfile)
-        write_to_db(
-            database_dir=database_dir,
-            log_energies=log_energies,
-            trajfile=trajfile,
-        )
-    except Exception as e:
-        print(f"Failed to write to database at {logfile}")
-        print(e)
+    # Create traj file ready to write to database
+    logfile = Path(conf_paths[minidx] + f"/xtbopt.log")
+    trajfile = Path(conf_paths[minidx] + f"/traj.xyz")
+    shutil.copy(logfile, trajfile)
 
     return energies[minidx], final_geom, minidx.item()
 

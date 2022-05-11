@@ -140,6 +140,7 @@ def get_scoring_args(args):
     scoring_args["cleanup"] = False
     scoring_args["debug"] = args.debug
     scoring_args["output_dir"] = args.output_dir
+    scoring_args["database"] = args.database
     return scoring_args
 
 

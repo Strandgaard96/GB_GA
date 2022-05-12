@@ -48,8 +48,8 @@ def remove_NH3(mol):
 def remove_N2(mol):
 
     # Substructure match the N2
-    NH3_match = Chem.MolFromSmarts("N#N")
-    removed_mol = Chem.DeleteSubstructs(mol, NH3_match)
+    NH2_match = Chem.MolFromSmarts("N#N")
+    removed_mol = Chem.DeleteSubstructs(mol, NH2_match)
 
     return removed_mol
 

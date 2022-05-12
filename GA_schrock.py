@@ -22,7 +22,7 @@ import pickle
 import crossover as co
 from scoring import scoring_functions as sc
 
-from scoring.scoring import rdkit_embed_scoring
+from scoring.scoring import rdkit_embed_scoring, rdkit_embed_scoring_NH3toN2
 from my_utils.my_utils import Generation
 import logging
 from sa.neutralize import neutralize_molecules
@@ -128,6 +128,7 @@ def get_arguments(arg_list=None):
         help="Path to database to write files to",
     )
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--write_db", action="store_true")
     return parser.parse_args(arg_list)
 
 
@@ -141,6 +142,7 @@ def get_scoring_args(args):
     scoring_args["debug"] = args.debug
     scoring_args["output_dir"] = args.output_dir
     scoring_args["database"] = args.database
+    scoring_args["write_db"] = args.write_db
     return scoring_args
 
 
@@ -333,7 +335,7 @@ def main():
 
     # Parse the set arguments and add scoring function to dict.
     args_dict = vars(args)
-    args_dict["scoring_function"] = rdkit_embed_scoring
+    args_dict["scoring_function"] = rdkit_embed_scoring_NH3toN2
     args_dict["scoring_args"] = get_scoring_args(args)
 
     # Create list of dicts for the distributed GAs

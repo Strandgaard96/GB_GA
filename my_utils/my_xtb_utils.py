@@ -55,12 +55,12 @@ def write_to_db(database_dir=None, logfiles=None, trajfile=None):
     """
 
     with connect(database_dir) as db:
-        for i,(traj, logfile) in enumerate(zip(trajfile, logfiles)):
+        for i, (traj, logfile) in enumerate(zip(trajfile, logfiles)):
 
             energies = extract_energyxtb(logfile)
             structs = read(traj, index=":")
-            for struct,energy in zip(structs,energies):
-                id = db.reserve(name=str(traj)+str(i))
+            for struct, energy in zip(structs, energies):
+                id = db.reserve(name=str(traj) + str(i))
                 if id is None:
                     continue
                 struct.calc = SinglePointCalculator(struct, energy=energy)

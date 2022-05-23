@@ -93,7 +93,7 @@ def replaceAtom(mol, indexAtom, indexNeighbor, atom_type="Br"):
     return emol.GetMol()
 
 
-def connect_ligand(core, ligand, NH3_flag=False):
+def connect_ligand(core, ligand, NH3_flag=True):
     """
     Function that takes two mol objects at creates a core with ligand.
     Args:
@@ -124,12 +124,9 @@ def connect_ligand(core, ligand, NH3_flag=False):
         replacementConnectionPoint=neigh_idx,
     )[0]
 
-    # If NH3 is on the core, then the charge of NH3 must be set
-    # to avoid sanitation error.
-    # TODO PREVENT HARDCODE
     if NH3_flag:
-        mol.GetAtomWithIdx(23).SetFormalCharge(1)
-        mol.GetAtomWithIdx(27).SetFormalCharge(1)
+        match = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo][NH3]"))
+        mol.GetAtomWithIdx(match[1]).SetFormalCharge(1)
 
     # Sanitation ensures that it is a reasonable molecule.
     Chem.SanitizeMol(mol)

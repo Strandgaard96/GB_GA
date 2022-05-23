@@ -224,7 +224,7 @@ def rdkit_embed_scoring_NH3toN2(
         )
         print("Mo energy:", Mo_N2_energy)
 
-    if Mo_NH3_energy == 9999:
+    if Mo_N2_energy == 9999:
         return 9999, None, None
 
     # Handle the error and return if xtb did not converge
@@ -264,7 +264,7 @@ if __name__ == "__main__":
     HIPT_ind = Individual(HIPT, cut_idx=cut_idx)
 
     # Current dir:
-    gen = Path("debug/33279892_1_submitted.pkl")
+    gen = Path("debug/33422997_32_submitted.pkl")
 
     # 370399_submitted.pkl
     with open(gen, "rb") as f:
@@ -273,4 +273,4 @@ if __name__ == "__main__":
 
     ind = gen0.args[0]
 
-    rdkit_embed_scoring_NH3toN2(ind, n_confs=2, ncpus=2)
+    rdkit_embed_scoring_NH3toN2(ind, n_confs=1, ncpus=3)

@@ -77,14 +77,13 @@ def slurm_scoring(sc_function, population, scoring_args):
 
     # Collect results in database
 
-    # Get traj paths for current gen
-    p = Path(scoring_args["output_dir"])
-    gen_no = f"{population.molecules[0].idx[0]}".zfill(3)
-
-    trajs = sorted(p.rglob(f"{gen_no}*/*/*traj*"))
-    logfiles = [p.parent / "xtbopt.log" for p in trajs]
-
     if scoring_args["write_db"]:
+        # Get traj paths for current gen
+        p = Path(scoring_args["output_dir"])
+        gen_no = f"{population.molecules[0].idx[0]}".zfill(3)
+
+        trajs = sorted(p.rglob(f"{gen_no}*/*/*traj*"))
+        logfiles = [p.parent / "xtbopt.log" for p in trajs]
         # TODO paralellize the writing to database
         print("Printing optimized structures to database")
         try:

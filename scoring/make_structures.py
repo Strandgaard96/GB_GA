@@ -244,62 +244,6 @@ def create_ligands(ligand):
     return lig
 
 
-# DEPRECATED
-def create_primaryamine_ligand(ligand):
-    """
-    Takes mol object and splits it based on a primary amine such that the frags can connect to
-    the primary amine on the Mo core.
-    Args:
-        ligand (mol):
-
-    Returns:
-        cut_ligand mol:
-
-    """
-    # TODO AllChem.ReplaceCore() could be used here instead
-
-    # A smile indicating the dummy atoms on the core
-    dummy = Chem.MolFromSmiles("*")
-
-    # Create explicit hydrogens and sterechemistry i dont know what does.
-    ligand = Chem.AddHs(ligand)
-
-    # Look for primary amines in the input ligand.
-    prim_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;D3]"))
-    if len(prim_amines) == 0:
-        raise Exception(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(ligand))} constains no Primary amine."
-        )
-
-    # Get the neigbouring bonds to the amine
-    atom = ligand.GetAtomWithIdx(prim_amines[0][0])
-    # Create list of tuples that contain the amine idx and idx of each of the three
-    # neighbors.
-    indices = [
-        (prim_amines[0][0], x.GetIdx())
-        for x in atom.GetNeighbors()
-        if x.GetAtomicNum() != 1
-    ][0]
-
-    # Get the bonds to the neighbors.
-    bond = []
-    bond.append(ligand.GetBondBetweenAtoms(indices[0], indices[1]).GetIdx())
-
-    # Get the two fragments, the ligand and the NH2
-    frag = Chem.FragmentOnBonds(ligand, bond, addDummies=True, dummyLabels=[(1, 1)])
-    frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
-
-    # Find frag that is NH2+dummy
-    smart = "[1*][N]([H])([H])"
-    # Initialize patternhttps://github.com/Strandgaard96/GB_GA.git
-    patt = Chem.MolFromSmarts(smart)
-
-    # Get the ligand that is not NH2
-    ligands = [struct for struct in frags if len(struct.GetSubstructMatches(patt)) == 0]
-
-    return ligands
-
-
 def create_prim_amine(input_ligand):
     """
     A function that takes a ligand and splits on a nitrogen bond, and then gives
@@ -345,6 +289,7 @@ def create_prim_amine(input_ligand):
             for x in atom.GetNeighbors()
             if (
                 (x.GetAtomicNum() != 1)
+                and ((x.GetAtomicNum() != 7))
                 and not input_ligand.GetBondBetweenAtoms(
                     match[0], x.GetIdx()
                 ).IsInRing()
@@ -388,7 +333,7 @@ def create_prim_amine(input_ligand):
     # the whole driver. This statement ensures that something is returned at least
     # If the list is empty.
     if not ligand:
-        return input_ligand, [[0]]
+        return None, None
 
     # Put primary amine on the dummy location for the ligand just created.
     # Currently only the first ligand is selected.
@@ -400,7 +345,7 @@ def create_prim_amine(input_ligand):
 
     output_ligand = Chem.MolFromSmiles(Chem.MolToSmiles(lig))
     if not output_ligand:
-        return input_ligand, [[0]]
+        return None, None
 
     # Get idx where to cut and we just return of of them.
     prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))

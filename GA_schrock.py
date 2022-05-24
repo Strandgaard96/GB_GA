@@ -17,13 +17,14 @@ import copy
 from pathlib import Path
 import sys
 import pickle
+from copy import deepcopy
 
 # Homemade stuff from Julius mostly
 import crossover as co
 from scoring import scoring_functions as sc
 
 from scoring.scoring import rdkit_embed_scoring, rdkit_embed_scoring_NH3toN2
-from my_utils.my_utils import Generation
+from my_utils.my_utils import Generation, Population
 import logging
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import reweigh_scores_by_sa
@@ -223,6 +224,9 @@ def GA(args):
             molecule_filter=molecule_filter,
         )
 
+        # Save new_population before altering to new population.
+        pre_population = Population(molecules=new_population.molecules)
+
         # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
         new_population.modify_population()
@@ -284,7 +288,10 @@ def GA(args):
         # Here new_population is the generated children. Not all of these are passed to the
         # next generation which is held by survivors.
         gen = Generation(
-            generation_num=generation_num, children=new_population, survivors=population
+            generation_num=generation_num,
+            children=new_population,
+            survivors=population,
+            pre_children=pre_population,
         )
         # Save data from current generation
         logging.info("Saving current generation")

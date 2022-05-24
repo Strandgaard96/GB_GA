@@ -24,7 +24,6 @@ from make_structures import (
     connect_ligand,
     create_ligands,
     create_prim_amine,
-    create_primaryamine_ligand,
     embed_rdkit,
     create_dummy_ligand,
     connectMols,

@@ -348,6 +348,7 @@ class Generation:
     generation_num: int = field(init=True)
     children: Population = field(default_factory=Population)
     survivors: Population = field(default_factory=Population)
+    pre_children: Population = field(default_factory=Population)
     # a counter to count how ofter molecules got flagged during mutation/crossover by filter
 
     def __post_init__(self):
@@ -528,7 +529,7 @@ def write_to_db(args):
 
 def db_write_driver(output_dir=None, workers=6):
 
-    database_dir = '../generation_debug/ase_database.db'
+    database_dir = "../generation_debug/ase_database.db"
 
     # Get traj paths for current gen
     p = Path(output_dir)
@@ -539,10 +540,7 @@ def db_write_driver(output_dir=None, workers=6):
     print("Printing optimized structures to database")
     try:
 
-        args = [
-            (database_dir, trajs)
-            for i, trajs in enumerate(trajs)
-        ]
+        args = [(database_dir, trajs) for i, trajs in enumerate(trajs)]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             results = executor.map(write_to_db, args)
@@ -551,6 +549,7 @@ def db_write_driver(output_dir=None, workers=6):
         print(e)
 
     return
+
 
 def extract_energyxtb(logfile=None):
     """
@@ -571,5 +570,6 @@ def extract_energyxtb(logfile=None):
                 energy.append(float(re_energy.search(line).groups()[0]))
     return energy
 
-if __name__ == '__main__':
-    db_write_driver('../generation_debug')
+
+if __name__ == "__main__":
+    db_write_driver("../generation_debug")

@@ -5,9 +5,6 @@ Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_bas
 
 from rdkit import Chem
 
-# from rdkit import rdBase
-# rdBase.DisableLog('rdApp.error')
-
 import numpy as np
 import random
 
@@ -19,6 +16,14 @@ import copy
 
 
 def read_file(file_name):
+    '''
+    Read
+    Args:
+        file_name:
+
+    Returns:
+
+    '''
     mol_list = []
     with open(file_name, "r") as file:
         for smiles in file:
@@ -54,22 +59,24 @@ def make_initial_population(population_size, file_name, rand=False):
                     ligand = Chem.MolFromSmiles("CN")
                     cut_idx = [[1]]
                 initial_population.molecules.append(
-                    Individual(ligand, cut_idx=cut_idx[0][0])
+                    Individual(ligand, cut_idx=cut_idx[0][0], original_mol=mol)
                 )
             else:
                 initial_population.molecules.append(
-                    Individual(mol, cut_idx=random.choice(match)[0])
+                    Individual(mol, cut_idx=random.choice(match)[0], original_mol=mol)
                 )
         else:
             mol = mol_list[i]
-            # Check for primary amine firstlio
+            # Check for primary amine first
             match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
             if len(match) == 0:
                 ligand, cut_idx = create_prim_amine(mol)
-                initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx))
+                initial_population.molecules.append(
+                    Individual(ligand, cut_idx=cut_idx), original_mol=mol
+                )
             else:
                 initial_population.molecules.append(
-                    Individual(mol, cut_idx=random.choice(match))
+                    Individual(mol, cut_idx=random.choice(match), original_mol=mol)
                 )
     initial_population.generation_num = 0
     initial_population.assign_idx()
@@ -77,6 +84,7 @@ def make_initial_population(population_size, file_name, rand=False):
 
 
 def make_initial_population_debug(population_size, file_name, rand=False):
+    '''Function that runs localy and creates a small pop for debugging'''
     mol_list = read_file("data/ZINC_1000_amines.smi")
     initial_population = Population()
 
@@ -121,29 +129,6 @@ def make_mating_pool(population, mating_pool_size):
         )
 
     return mating_pool  # list of Individuals
-
-
-def reproduce_old(mating_pool, population_size, mutation_rate, filter):  # + filter
-    """Creates a new population based on the mating_pool"""
-    new_population = []
-    while len(new_population) < population_size:
-        parent_A = copy.deepcopy(random.choice(mating_pool))
-        parent_B = copy.deepcopy(random.choice(mating_pool))
-        new_child = co.crossover(parent_A.rdkit_mol, parent_B.rdkit_mol, filter)
-        if new_child != None:
-            mutated_child, mutated = mu.mutate(new_child, mutation_rate, filter)
-            if mutated_child != None:
-                # print(','.join([Chem.MolToSmiles(mutated_child),Chem.MolToSmiles(new_child),Chem.MolToSmiles(parent_A),Chem.MolToSmiles(parent_B)]))
-                new_population.append(
-                    Individual(
-                        rdkit_mol=mutated_child,
-                        parentA_idx=parent_A.idx,
-                        parentB_idx=parent_B.idx,
-                        mutated=mutated,
-                    )
-                )
-
-    return Population(molecules=new_population)
 
 
 def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):

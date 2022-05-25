@@ -224,9 +224,6 @@ def GA(args):
             molecule_filter=molecule_filter,
         )
 
-        # Save new_population before altering to new population.
-        pre_population = Population(molecules=new_population.molecules)
-
         # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
         new_population.modify_population()
@@ -291,7 +288,6 @@ def GA(args):
             generation_num=generation_num,
             children=new_population,
             survivors=population,
-            pre_children=pre_population,
         )
         # Save data from current generation
         logging.info("Saving current generation")

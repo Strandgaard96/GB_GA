@@ -207,6 +207,9 @@ def hartree2kJmol(hartree):
 @dataclass
 class Individual:
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
+    original_mol: Chem.rdchem.Mol = field(
+        default_factory=Chem.rdchem.Mol, repr=False, compare=False
+    )
     cut_idx: int = field(default=None, repr=False, compare=False)
     idx: tuple = field(default=(None, None), repr=False, compare=False)
     smiles: str = field(init=False, compare=True, repr=True)
@@ -260,6 +263,7 @@ class Population:
 
             # Check for primary amine
             match = mol.rdkit_mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
+            mol.original_mol = mol.rdkit_mol
 
             # Create primary amine if it doesnt have once. Otherwise, pas the cut idx
             if not match:
@@ -276,6 +280,7 @@ class Population:
                 mol.rdkit_mol = output_ligand
                 mol.cut_idx = cut_idx[0][0]
                 mol.smiles = Chem.MolToSmiles(output_ligand)
+
             else:
                 cut_idx = random.choice(match)
                 mol.cut_idx = cut_idx[0]

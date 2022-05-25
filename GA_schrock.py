@@ -5,7 +5,7 @@ This is the driver script for running a GA algorithm on the Schrock catalysts
 Example:
     How to run:
 
-        $ python GA_schrock.py args
+        $ python GA_schrock.py --args
 
 """
 
@@ -16,8 +16,8 @@ import os
 import copy
 from pathlib import Path
 import sys
-import pickle
 from copy import deepcopy
+import logging
 
 # Homemade stuff from Julius mostly
 import crossover as co
@@ -25,7 +25,6 @@ from scoring import scoring_functions as sc
 
 from scoring.scoring import rdkit_embed_scoring, rdkit_embed_scoring_NH3toN2
 from my_utils.my_utils import Generation, Population
-import logging
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import reweigh_scores_by_sa
 import GB_GA as ga
@@ -134,9 +133,8 @@ def get_arguments(arg_list=None):
 
 
 def get_scoring_args(args):
-
+    """Collect arguments from parser into a dict"""
     scoring_args = {}
-
     scoring_args["n_confs"] = args.n_confs
     scoring_args["cpus_per_task"] = args.n_cpus
     scoring_args["cleanup"] = False
@@ -154,11 +152,10 @@ def GA(args):
         args(dict): Dictionary containint all relevant args for the functionscoring_a
 
     Returns:
-        gen: Generation class that contains the respickleults of the final generation
+        gen: Generation class that contains the results of the final generation
     """
 
     # Create initial population and get initial score
-
     if args["debug"]:
         population = ga.make_initial_population_debug(4, args["file_name"], rand=True)
     else:
@@ -195,7 +192,7 @@ def GA(args):
     # Save the generation as pickle file.
     gen.save(directory=args["output_dir"], run_No=0)
     gen.print()
-    with open(args["output_dir"] + f"/GA0.out", "w") as f:
+    with open(args["output_dir"] + "/GA0.out", "w") as f:
         f.write(gen.print(pass_text=True))
         f.write("\n")
         f.write(gen.print(population="children", pass_text=True))
@@ -228,10 +225,8 @@ def GA(args):
         logging.info("Creating attachment points for new population")
         new_population.modify_population()
 
-        # Assign which generation the population is form.
+        # Assign generation and population idx to the population
         new_population.generation_num = generation_num
-        # Assign idx to molecules in population that contain the index in population,
-        # but also the generation each molecule comes from
         new_population.assign_idx()
 
         # Sort population based on size
@@ -258,6 +253,7 @@ def GA(args):
             neutralize_molecules(new_population)
             reweigh_scores_by_sa(new_population)
 
+        # Sort scores, possibly scaled by SA screening
         new_population.sortby("score")
 
         # Select best Individuals from old and new population
@@ -265,10 +261,7 @@ def GA(args):
         for mol in potential_survivors:
             mol.survival_idx = mol.idx
 
-        # Here the total population of new and old are sorted according to score, and the
-        # Remaining population is the ones with thte highest scores
-        # Note that there is a namechange here. new_population is merged with population
-        # which is effectively the new population.
+        # The calculated population is merged with current top population
         population = ga.sanitize(
             potential_survivors + new_population.molecules,
             args["population_size"],
@@ -282,8 +275,6 @@ def GA(args):
         ga.calculate_normalized_fitness(population)
 
         # Create generation object from the result. And save for this generation
-        # Here new_population is the generated children. Not all of these are passed to the
-        # next generation which is held by survivors.
         gen = Generation(
             generation_num=generation_num,
             children=new_population,
@@ -349,8 +340,6 @@ def main():
 
     # Run the GA
     generations = GA(GA_args)
-
-    # TODO Print summary of total generations
 
     # Final output handling and logging
     t1 = time.time()

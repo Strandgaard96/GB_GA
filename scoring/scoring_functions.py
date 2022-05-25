@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 """
-Written by Jan H. Jensen 2018
+Module that contains submitit scoring functions. These submit multiple
+scoring calculation jobs.
 """
 
 from rdkit import Chem
@@ -15,16 +17,6 @@ import time
 import submitit
 from pathlib import Path
 from my_utils.my_xtb_utils import write_to_db, extract_energyxtb
-
-logP_values = np.loadtxt("data/logP_values.txt")
-SA_scores = np.loadtxt("data/SA_scores.txt")
-cycle_scores = np.loadtxt("data/cycle_scores.txt")
-SA_mean = np.mean(SA_scores)
-SA_std = np.std(SA_scores)
-logP_mean = np.mean(logP_values)
-logP_std = np.std(logP_values)
-cycle_mean = np.mean(cycle_scores)
-cycle_std = np.std(cycle_scores)
 
 
 def slurm_scoring(sc_function, population, scoring_args):
@@ -101,6 +93,8 @@ def slurm_scoring(sc_function, population, scoring_args):
 
 
 def catch(func, *args, handle=lambda e: e, **kwargs):
+    """Helper function that takes the submitit result and returns an exception if
+    no results can be retrieved"""
     try:
         return func(*args, **kwargs)
     except Exception as e:
@@ -109,6 +103,7 @@ def catch(func, *args, handle=lambda e: e, **kwargs):
 
 
 ### MolSimplify
+# Submitit scoring functions related to molSimplify driver scripts
 
 
 def slurm_scoring_molS(sc_function, scoring_args):

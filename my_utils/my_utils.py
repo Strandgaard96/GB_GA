@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Module that contains mol manipulations and various resuable functionality classes.
-
-Todo:
-    *
 """
 import pickle
 import random

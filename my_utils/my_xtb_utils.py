@@ -1,10 +1,3 @@
-from rdkit import Chem
-from rdkit.Chem import AllChem, rdmolops
-
-from .xyz2mol import read_xyz_file, xyz2mol, xyz2AC
-from .auto import shell
-from scoring.make_structures import remove_NH3, remove_N2, mol_with_atom_index
-
 import os
 import random
 import numpy as np
@@ -18,10 +11,17 @@ import re
 from pathlib import Path
 from datetime import datetime
 
-# Ase stuff for database functionality
 from ase.db import connect
 from ase.io import read, write
 from ase.calculators.singlepoint import SinglePointCalculator
+from rdkit import Chem
+from rdkit.Chem import AllChem, rdmolops
+
+from .xyz2mol import read_xyz_file, xyz2mol, xyz2AC
+from .auto import shell
+from scoring.make_structures import remove_NH3, remove_N2, mol_with_atom_index
+
+# Ase stuff for database functionality
 
 import concurrent.futures
 
@@ -33,26 +33,7 @@ mol object of the Mo core with dummy atoms instead of ligands
 """
 
 
-def mol_with_atom_index(mol):
-    atoms = mol.GetNumAtoms()
-    for idx in range(atoms):
-        mol.GetAtomWithIdx(idx).SetProp(
-            "molAtomMapNumber", str(mol.GetAtomWithIdx(idx).GetIdx())
-        )
-    Chem.Draw.MolToImage(mol, size=(400, 400)).show()
-    return mol
-
-
 def write_to_db(database_dir=None, logfiles=None, trajfile=None):
-    """
-
-    Args:
-        database_dir Path:
-        structs List(xyz):
-
-    Returns:
-
-    """
 
     with connect(database_dir) as db:
         for i, (traj, logfile) in enumerate(zip(trajfile, logfiles)):
@@ -135,7 +116,7 @@ def extract_energyxtb(logfile=None):
         logfile (str): Specifies logfile to pull energy from
 
     Returns:
-        energy (list[float]): List of floats containing the energy in each step
+        energy (List[float]): List of floats containing the energy in each step
     """
 
     re_energy = re.compile("energy: (-\\d+\\.\\d+)")
@@ -182,7 +163,8 @@ def create_intermediates(file=None, charge=0):
         mol, bonds, addDummies=True, dummyLabels=[(1, 1), (1, 1), (1, 1)]
     )
 
-    # Split mol object into individual fragments. sanitizeFrags needs to be false, otherwise not work.
+    # Split mol object into individual fragments. sanitizeFrags needs to be false,
+    # otherwise not work.
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
     # Substructure match to find the fragment with the Mo-core

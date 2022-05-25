@@ -3,11 +3,10 @@ Written by Jan H. Jensen 2018.
 Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_baselines/tree/master/graph_ga
 """
 
-from rdkit import Chem
-
 import numpy as np
 import random
 
+from rdkit import Chem
 import crossover as co
 import mutate as mu
 from my_utils.my_utils import Individual, Population
@@ -16,14 +15,7 @@ import copy
 
 
 def read_file(file_name):
-    '''
-    Read
-    Args:
-        file_name:
-
-    Returns:
-
-    '''
+    """Read smiles from file"""
     mol_list = []
     with open(file_name, "r") as file:
         for smiles in file:
@@ -33,6 +25,16 @@ def read_file(file_name):
 
 
 def make_initial_population(population_size, file_name, rand=False):
+    """
+
+    Args:
+        population_size (int): How many molecules in starting population
+        file_name (str): Name of csv til to load molecules from
+        rand (bool): Indicates whether molecules are randomly selected from file
+
+    Returns:
+        initial_population (Population)
+    """
     mol_list = read_file(file_name)
     initial_population = Population()
 
@@ -84,7 +86,7 @@ def make_initial_population(population_size, file_name, rand=False):
 
 
 def make_initial_population_debug(population_size, file_name, rand=False):
-    '''Function that runs localy and creates a small pop for debugging'''
+    """Function that runs localy and creates a small pop for debugging"""
     mol_list = read_file("data/ZINC_1000_amines.smi")
     initial_population = Population()
 
@@ -101,7 +103,15 @@ def make_initial_population_debug(population_size, file_name, rand=False):
     return initial_population
 
 
+# TODO convert to class method
 def calculate_normalized_fitness(population):
+    """
+    Args:
+        population (Population):
+
+    Returns:
+        None
+    """
 
     # onvert to high and low scores.
     scores = population.get("score")
@@ -121,6 +131,7 @@ def calculate_normalized_fitness(population):
 
 
 def make_mating_pool(population, mating_pool_size):
+    """Select candidates from population based on fitness(score)"""
     fitness = population.get("normalized_fitness")
     mating_pool = []
     for _ in range(mating_pool_size):
@@ -132,6 +143,7 @@ def make_mating_pool(population, mating_pool_size):
 
 
 def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
+    """Perform crossover operations on the mating pool"""
     new_population = []
     counter = 0
     while len(new_population) < population_size:
@@ -155,51 +167,15 @@ def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
     return Population(molecules=new_population)
 
 
-def reproduce2(
-    mating_pool, population_size, mutation_rate=0.5, crossover_rate=1, filter=None
-):
-    new_population = []
-    succeeded = True
-    counter = 0
-    while len(new_population) < population_size and counter < 10:
-        parent_A = copy.deepcopy(random.choice(mating_pool))
-        parent_B = copy.deepcopy(random.choice(mating_pool))
-        parent_A_idx = parent_A.idx
-        parent_B_idx = parent_B.idx
-        if succeeded:
-            x = random.random()
-        if x < crossover_rate:
-            new_child = co.crossover(parent_A.rdkit_mol, parent_B.rdkit_mol, filter)
-            if new_child == None:
-                succeeded = False
-                counter += 1
-                continue
-        else:
-            new_child = parent_A.rdkit_mol
-            parent_A_idx = None
-            parent_B_idx = None
-
-        mutated_child, mutated = mu.mutate(new_child, mutation_rate, filter)
-        if mutated_child == None:
-            succeeded = False
-            counter += 1
-            continue
-
-        new_population.append(
-            Individual(
-                rdkit_mol=mutated_child,
-                parentA_idx=parent_A_idx,
-                parentB_idx=parent_B_idx,
-                mutated=mutated,
-            )
-        )
-        succeeded = True
-        counter = 0
-
-    return Population(molecules=new_population)
-
-
 def sanitize(molecules, population_size, prune_population):
+    """Create a new population from the proposed molecules.
+    If any molecules from newly scored molecules exists in population,
+    we only select one. Finaly the prune class method is called to
+    return only the top scoring molecules.
+
+        molecules List(Individual)
+
+    """
     if prune_population:
         smiles_list = []
         new_population = Population()

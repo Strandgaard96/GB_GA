@@ -16,16 +16,15 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
 from rdkit import RDLogger
+
+# Options to visualise molecules
 from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
 
 IPythonConsole.drawOptions.addAtomIndices = True
 
-# RDLogger.DisableLog("rdApp.*")
-
-# from my_utils import my_utils
-
 
 def mol_with_atom_index(mol):
+    """Visualize mol object with atom indices"""
     atoms = mol.GetNumAtoms()
     for idx in range(atoms):
         mol.GetAtomWithIdx(idx).SetProp(
@@ -140,6 +139,7 @@ def connect_ligand(core, ligand, NH3_flag=True):
 
 
 def connectMols(core, NH3_flag=True):
+    """Connect NH3 to Mo core"""
 
     query = Chem.MolFromSmarts("[NX3;H3]")
     mol = Chem.MolFromSmiles("[NH3]")

@@ -269,6 +269,6 @@ if __name__ == "__main__":
         gen0 = pickle.load(f)
     # ind = gen0.args[0]
 
-    ind = gen0.args[0]
+    #ind = gen0.args[0]
 
     rdkit_embed_scoring_NH3toN2(ind, n_confs=1, ncpus=3)

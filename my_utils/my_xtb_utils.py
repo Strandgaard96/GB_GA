@@ -326,11 +326,30 @@ def xtb_pre_optimize(
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results3 = executor.map(run_xtb, args)
 
+    # Store the log file
+    for elem in conf_paths:
+        shutil.copy(
+            os.path.join(elem, "xtbopt.log"), os.path.join(elem, "Mo_gascon.log")
+        )
+
+    # NH3-Mo bond optimization
+    make_input_constrain_file(
+        mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=True, Mo_bond=True
+    )
+    args = [
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
+        for i, xyz_file in enumerate(xyz_files)
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results4 = executor.map(run_xtb, args)
+
+
+
     print("Finished all optimizations")
 
     energies = []
     geometries = []
-    for e, g in results3:
+    for e, g in results4:
         energies.append(e)
         geometries.append(g)
 
@@ -503,7 +522,7 @@ def xtb_optimize_schrock(
     return energies, geometries
 
 
-def make_input_constrain_file(molecule, core, path, NH3=False, N2=False):
+def make_input_constrain_file(molecule, core, path, NH3=False, N2=False, Mo_bond=False):
     # Locate atoms to contrain
     match = (
         np.array(molecule.GetSubstructMatch(core)) + 1
@@ -520,6 +539,13 @@ def make_input_constrain_file(molecule, core, path, NH3=False, N2=False):
         N2_match = Chem.MolFromSmarts("N#N")
         N2_sub_match = np.array(molecule.GetSubstructMatch(N2_match)) + 1
         match.extend(N2_sub_match)
+
+    if Mo_bond:
+        idxs = []
+        for elem in molecule.GetAtoms():
+            idxs.append(elem.GetIdx()+1)
+        match=[idx for idx in idxs if idx not in match]
+
 
     for elem in path:
         # Write the xcontrol file

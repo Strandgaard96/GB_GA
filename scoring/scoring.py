@@ -109,7 +109,7 @@ def rdkit_embed_scoring(
 
     # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
     if Mo_N2_NH3_energy == 9999:
-        return 9999, None, None
+        return 9999, None,None, None
 
     # Now we want to remove the NH2 on the already embedded structure
     discard_conf = [x for x in range(len(Mo_N2_NH3_3d.GetConformers())) if x != minidx]
@@ -133,14 +133,14 @@ def rdkit_embed_scoring(
         print("Mo energy:", Mo_NH3_energy)
 
     if Mo_NH3_energy == 9999:
-        return 9999, None, None
+        return 9999, None,None, None
 
     # Handle the error and return if xtb did not converge
     if None in (Mo_N2_NH3_energy, Mo_NH3_energy):
         raise Exception(f"None of the XTB calculations converged")
     De = ((Mo_N2_NH3_energy - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
     print(f"diff energy: {De}")
-    return De, Mo_N2_NH3_3d_geom, minidx
+    return De, Mo_N2_NH3_3d_geom, Mo_NH3_3d_geom,minidx
 
 
 def rdkit_embed_scoring_NH3toN2(
@@ -177,7 +177,7 @@ def rdkit_embed_scoring_NH3toN2(
 
     # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
     if Mo_NH3_energy == 9999:
-        return 9999, None, None
+        return 9999, None, None, None
 
     # Now we want to remove the NH2 on the already embedded structure
     discard_conf = [x for x in range(len(Mo_NH3_3d.GetConformers())) if x != minidx]
@@ -223,14 +223,14 @@ def rdkit_embed_scoring_NH3toN2(
         print("Mo energy:", Mo_N2_energy)
 
     if Mo_N2_energy == 9999:
-        return 9999, None, None
+        return 9999, None, None, None
 
     # Handle the error and return if xtb did not converge
     if None in (Mo_N2_energy, Mo_NH3_energy):
         raise Exception(f"None of the XTB calculations converged")
     De = (((Mo_N2_energy + NH3_ENERGY) - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
     print(f"diff energy: {De}")
-    return De, Mo_N2_3d_geom, minidx
+    return De, Mo_N2_3d_geom, Mo_NH3_3d_geom, minidx
 
 
 if __name__ == "__main__":

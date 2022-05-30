@@ -168,11 +168,13 @@ def GA(args):
     )
     energies = [res[0] for res in results]
     geometries = [res[1] for res in results]
-    min_conf = [res[2] for res in results]
+    geometries2 = [res[2] for res in results]
+    min_conf = [res[3] for res in results]
 
     population.setprop("energy", energies)
     population.setprop("pre_score", energies)
     population.setprop("structure", geometries)
+    population.setprop("structure2", geometries2)
     population.setprop("min_conf", min_conf)
 
     population.setprop("score", energies)
@@ -240,11 +242,13 @@ def GA(args):
 
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]
-        min_conf = [res[2] for res in results]
+        geometries2 = [res[2] for res in results]
+        min_conf = [res[3] for res in results]
 
         new_population.setprop("energy", energies)
         new_population.setprop("pre_score", energies)
         new_population.setprop("structure", geometries)
+        new_population.setprop("structure2", geometries2)
         new_population.setprop("min_conf", min_conf)
 
         new_population.setprop("score", energies)

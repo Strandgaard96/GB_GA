@@ -23,6 +23,7 @@ def draw_generation(
     multipleConfs=False,
     atomlabel=False,
     hit_ats=None,
+    gen_struct=None,
 ):
     try:
         p = py3Dmol.view(width=width, height=height)
@@ -33,7 +34,7 @@ def draw_generation(
                 for conf in mol.GetConformers():
                     mb = Chem.MolToMolBlock(mol, confId=conf.GetId())
                     p.addModel(mb, "sdf")
-            else:
+            elif not gen_struct:
                 if type(mol) is str:
                     if os.path.splitext(mol)[-1] == ".xyz":
                         xyz_f = open(mol)
@@ -43,6 +44,8 @@ def draw_generation(
                 else:
                     mb = Chem.MolToMolBlock(mol, confId=confId)
                     p.addModel(mb, "sdf")
+            elif gen_struct:
+                p.addModel(mols[0], "xyz")
         p.setStyle({"stick": {"radius": 0.2}, "sphere": {"radius": 0.3}})
         if atomlabel:
             p.addPropertyLabels("index")  # ,{'elem':'H'}

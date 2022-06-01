@@ -23,7 +23,11 @@ import logging
 import crossover as co
 from scoring import scoring_functions as sc
 
-from scoring.scoring import rdkit_embed_scoring, rdkit_embed_scoring_NH3toN2
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3toN2,
+    rdkit_embed_scoring_NH3plustoNH3,
+)
 from my_utils.my_utils import Generation, Population
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import reweigh_scores_by_sa
@@ -80,7 +84,7 @@ def get_arguments(arg_list=None):
         help="How many overall runs of the GA",
     )
     parser.add_argument(
-        "--n_cpus",
+        "--cpus_per_task",
         type=int,
         default=4,
         help="Number of cores to distribute over",
@@ -129,20 +133,19 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--write_db", action="store_true")
+    parser.add_argument("--cleanup", action="store_true")
+    parser.add_argument(
+        "--scoring_func",
+        dest="func",
+        choices=[
+            "rdkit_embed_scoring",
+            "rdkit_embed_scoring_NH3toN2",
+            "rdkit_embed_scoring_NH3plustoNH3",
+        ],
+        required=True,
+        help="""Choose one of the specified scoring functions to be run.""",
+    )
     return parser.parse_args(arg_list)
-
-
-def get_scoring_args(args):
-    """Collect arguments from parser into a dict"""
-    scoring_args = {}
-    scoring_args["n_confs"] = args.n_confs
-    scoring_args["cpus_per_task"] = args.n_cpus
-    scoring_args["cleanup"] = False
-    scoring_args["debug"] = args.debug
-    scoring_args["output_dir"] = args.output_dir
-    scoring_args["database"] = args.database
-    scoring_args["write_db"] = args.write_db
-    return scoring_args
 
 
 def GA(args):
@@ -157,15 +160,15 @@ def GA(args):
 
     # Create initial population and get initial score
     if args["debug"]:
-        population = ga.make_initial_population_debug(4, args["file_name"], rand=True)
+        population = ga.make_initial_population_debug(
+            4, "data/ZINC_1000_amines.smi", rand=True
+        )
     else:
         population = ga.make_initial_population(
             args["population_size"], args["file_name"], rand=True
         )
 
-    results = sc.slurm_scoring(
-        args["scoring_function"], population, args["scoring_args"]
-    )
+    results = sc.slurm_scoring(args["scoring_function"], population, args)
     energies = [res[0] for res in results]
     geometries = [res[1] for res in results]
     geometries2 = [res[2] for res in results]
@@ -237,7 +240,7 @@ def GA(args):
         # Calculate new scores based on new population
         logging.info("Getting scores for new population")
         results = sc.slurm_scoring(
-            args["scoring_function"], new_population, args["scoring_args"]
+            args["scoring_function"], new_population, args
         )
 
         energies = [res[0] for res in results]
@@ -331,10 +334,18 @@ def main():
     # Log the argparse set values
     logging.info("Input args: %r", args)
 
-    # Parse the set arguments and add scoring function to dict.
+    # a dictionary mapping strings of function names to function objects:
+    funcs = {
+        "rdkit_embed_scoring": rdkit_embed_scoring,
+        "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2,
+        "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3,
+    }
+    # Resolve the chosen function object using its name:
+    scoring_func = funcs[args.func]
+
+    # Get arguments as dict and add scoring function to dict.
     args_dict = vars(args)
-    args_dict["scoring_function"] = rdkit_embed_scoring_NH3toN2
-    args_dict["scoring_args"] = get_scoring_args(args)
+    args_dict["scoring_function"] = scoring_func
 
     # Create list of dicts for the distributed GAs
     GA_args = args_dict

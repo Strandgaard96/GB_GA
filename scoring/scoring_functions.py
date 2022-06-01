@@ -61,7 +61,9 @@ def slurm_scoring(sc_function, population, scoring_args):
         output_dir_list,
     )
 
-    results = [catch(job.result, handle=lambda e: (np.nan, None, None, None)) for job in jobs]
+    results = [
+        catch(job.result, handle=lambda e: (np.nan, None, None, None)) for job in jobs
+    ]
     # catch submitit exceptions and return same output as scoring function
     # (np.nan, None) for (energy, geometry)
     if scoring_args["cleanup"]:

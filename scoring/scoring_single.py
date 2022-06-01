@@ -42,7 +42,7 @@ N2_ENERGY = -5.7639 - n2_correction
 hartree2kcalmol: Handles conversion from hartree to kcal/mol
 CORE_ELECTRONIC_ENERGY: The electronic energy of the Mo core with cut
 ligands
-NH3_ENERGY: Electronic energy of pure NH3, 
+NH3_ENERGY_gfn2: Electronic energy of pure NH3, 
 used for scoring the NH3 dissacossiation reaction
 """
 

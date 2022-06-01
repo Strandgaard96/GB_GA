@@ -227,6 +227,7 @@ def xtb_pre_optimize(
     preoptimize=True,
     numThreads=1,
     xyzcoordinates=True,
+    bare=False,
     database_dir="/groups/kemi/magstr/GB_GA/database/ase_database.db",
 ):
     # check mol input
@@ -256,10 +257,7 @@ def xtb_pre_optimize(
     xyz_files, conf_paths = write_xtb_input_files(mol, "xtbmol", destination=name)
 
     # Make input constrain file
-    if any("N2" in s for s in conf_paths):
-        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True, N2=True)
-    else:
-        make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True)
+    make_input_constrain_file(mol, core=core, path=conf_paths, NH3=True, N2=True)
 
     # xtb options
     XTB_OPTIONS = {
@@ -310,14 +308,9 @@ def xtb_pre_optimize(
     # cmd = cmd.replace("--input ./xcontrol.inp", "")
 
     # Constrain only N reactants and Mo
-    if any("N2" in s for s in conf_paths):
-        make_input_constrain_file(
-            mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=False
-        )
-    else:
-        make_input_constrain_file(
-            mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=False
-        )
+    make_input_constrain_file(
+        mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=True
+    )
 
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
@@ -332,9 +325,14 @@ def xtb_pre_optimize(
             os.path.join(elem, "xtbopt.log"), os.path.join(elem, "Mo_gascon.log")
         )
 
-    # NH3-Mo bond optimization
+    # Constrain everything else than Mo and N-stuff
     make_input_constrain_file(
-        mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=True, Mo_bond=True
+        mol,
+        core=Chem.MolFromSmiles("[Mo]"),
+        path=conf_paths,
+        NH3=True,
+        N2=True,
+        Mo_bond=True,
     )
     args = [
         (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
@@ -342,8 +340,6 @@ def xtb_pre_optimize(
     ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         results4 = executor.map(run_xtb, args)
-
-
 
     print("Finished all optimizations")
 
@@ -370,9 +366,22 @@ def xtb_pre_optimize(
     if cleanup:
         shutil.rmtree(name)
 
-    file_bare = conf_paths[minidx] + f"/xtbopt_bare.xyz"
+    final_geom, bond_change = post_process(
+        bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinates
+    )
+    if bond_change:
+        energies = 9999
+        geometries = None
+        minidx = None
+        return energies, geometries, minidx
 
-    if "N2" in file_bare:
+    return energies[minidx], final_geom, minidx.item()
+
+
+def post_process(bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinates):
+
+    if bare:
+        file_bare = conf_paths[minidx] + f"/xtbopt_bare.xyz"
         tmp_mol = remove_NH3(mol)
         tmp_mol = remove_N2(tmp_mol)
         Chem.AddHs(tmp_mol)
@@ -382,10 +391,8 @@ def xtb_pre_optimize(
                 f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
             except ValueError:
                 print("Something happened with the conformer id")
-
     file = conf_paths[minidx] + f"/xtbopt.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
-
     # Alter xyz file
     with open(file, "r") as file_input:
         with open(file_noMo, "w") as output:
@@ -397,12 +404,7 @@ def xtb_pre_optimize(
                     lines.pop(i)
                     pass
             output.writelines(lines)
-
     atoms, _, coordinates = read_xyz_file(file_noMo)
-
-    print("Performing charge loop and xyz2mol")
-    # Loop to check different charges. Very hardcoded and should maybe be changed
-
     print("Getting the adjacency matrices")
     AC, opt_mol = xyz2AC(atoms, coordinates, charge, use_huckel=True)
 
@@ -415,14 +417,12 @@ def xtb_pre_optimize(
     before_ac = np.delete(intermediate, idx, axis=1)
 
     # Check if any atoms have 0 bonds, then handle
+    bond_change = False
     if not np.all(before_ac == AC):
         print(
             f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
         )
-        energies = 9999
-        geometries = None
-        minidx = None
-        return energies, geometries, minidx
+        bond_change = True
 
     # Get xyz coordnates or tuple
     if xyzcoordinates:
@@ -430,13 +430,11 @@ def xtb_pre_optimize(
             final_geom = f.readlines()
     else:
         final_geom = geometries[minidx]
-
     # Create traj file ready to write to database
     logfile = Path(conf_paths[minidx] + f"/xtbopt.log")
     trajfile = Path(conf_paths[minidx] + f"/traj.xyz")
     shutil.copy(logfile, trajfile)
-
-    return energies[minidx], final_geom, minidx.item()
+    return final_geom, bond_change
 
 
 def xtb_optimize_schrock(
@@ -543,9 +541,8 @@ def make_input_constrain_file(molecule, core, path, NH3=False, N2=False, Mo_bond
     if Mo_bond:
         idxs = []
         for elem in molecule.GetAtoms():
-            idxs.append(elem.GetIdx()+1)
-        match=[idx for idx in idxs if idx not in match]
-
+            idxs.append(elem.GetIdx() + 1)
+        match = [idx for idx in idxs if idx not in match]
 
     for elem in path:
         # Write the xcontrol file

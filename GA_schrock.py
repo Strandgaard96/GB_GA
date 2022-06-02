@@ -86,7 +86,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--cpus_per_task",
         type=int,
-        default=4,
+        default=2,
         help="Number of cores to distribute over",
     )
     parser.add_argument(
@@ -133,6 +133,12 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--write_db", action="store_true")
+    parser.add_argument(
+        "--method",
+        type=str,
+        default="2",
+        help="gfn method to use",
+    )
     parser.add_argument("--cleanup", action="store_true")
     parser.add_argument(
         "--scoring_func",
@@ -239,9 +245,7 @@ def GA(args):
 
         # Calculate new scores based on new population
         logging.info("Getting scores for new population")
-        results = sc.slurm_scoring(
-            args["scoring_function"], new_population, args
-        )
+        results = sc.slurm_scoring(args["scoring_function"], new_population, args)
 
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]

@@ -35,14 +35,19 @@ from my_utils.my_utils import Individual, Population
 
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698
-NH3_ENERGY_gfn2 = -4.427496335658
 
-n2_correction = 0.00
-N2_ENERGY_gfn2 = -5.766345142003 - n2_correction
+NH3_ENERGY_gfn2 = -4.427496335658
+N2_ENERGY_gfn2 = -5.766345142003
 CP_RED_ENERGY_gfn2 = 0.2788559959203811
 
 NH3_ENERGY_gfn1 = -4.834742774551
 N2_ENERGY_gfn1 = -6.331044264474
+CP_RED_ENERGY_gfn1 = 0.2390159933706209
+
+GAS_ENERGIES = {
+    "2": (NH3_ENERGY_gfn2, N2_ENERGY_gfn2, CP_RED_ENERGY_gfn2),
+    "1": (NH3_ENERGY_gfn1, N2_ENERGY_gfn1, CP_RED_ENERGY_gfn1),
+}
 
 
 """int: Module level constants
@@ -81,9 +86,23 @@ and the charge and spin for the specific intermediate
 """
 
 
-def rdkit_embed_scoring(
-    ligand, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."
-):
+def unpack_args(scoring_args):
+    ncpus = scoring_args["cpus_per_task"]
+    n_confs = scoring_args["n_confs"]
+    cleanup = scoring_args["cleanup"]
+    output_dir = scoring_args["output_dir"]
+    method = scoring_args["method"]
+    return ncpus, n_confs, cleanup, output_dir, method
+
+
+def rdkit_embed_scoring(ligand, scoring_args):
+
+    # Unpack variables
+    idx = ligand.idx
+    ncpus, n_confs, cleanup, output_dir, method = unpack_args(scoring_args)
+
+    # Unpack gas energies
+    NH3_ENERGY, N2_ENERGY, CP_RED_ENERGY = GAS_ENERGIES[scoring_args["method"]]
 
     # Create ligand based on a primary amine
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
@@ -110,6 +129,8 @@ def rdkit_embed_scoring(
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_N2_NH3",
             numThreads=ncpus,
             cleanup=cleanup,
+            bare=True,
+            method=method,
         )
         print("catalyst energy:", Mo_N2_NH3_energy)
 
@@ -135,6 +156,7 @@ def rdkit_embed_scoring(
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
             numThreads=ncpus,
             cleanup=cleanup,
+            method=method,
         )
         print("Mo energy:", Mo_NH3_energy)
 
@@ -144,14 +166,18 @@ def rdkit_embed_scoring(
     # Handle the error and return if xtb did not converge
     if None in (Mo_N2_NH3_energy, Mo_NH3_energy):
         raise Exception(f"None of the XTB calculations converged")
-    De = ((Mo_N2_NH3_energy - (Mo_NH3_energy + N2_ENERGY_gfn2))) * hartree2kcalmol
+    De = ((Mo_N2_NH3_energy - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
     print(f"diff energy: {De}")
     return De, Mo_N2_NH3_3d_geom, Mo_NH3_3d_geom, minidx
 
 
-def rdkit_embed_scoring_NH3toN2(
-    ligand, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."
-):
+def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
+
+    idx = ligand.idx
+    ncpus, n_confs, cleanup, output_dir, method = unpack_args(scoring_args)
+
+    # Unpack gas energies
+    NH3_ENERGY, N2_ENERGY, CP_RED_ENERGY = GAS_ENERGIES[scoring_args["method"]]
 
     # Create ligand based on a primary amine
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
@@ -178,6 +204,8 @@ def rdkit_embed_scoring_NH3toN2(
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
             numThreads=ncpus,
             cleanup=cleanup,
+            bare=True,
+            method=method,
         )
         print("catalyst energy:", Mo_NH3_energy)
 
@@ -225,6 +253,7 @@ def rdkit_embed_scoring_NH3toN2(
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_N2",
             numThreads=ncpus,
             cleanup=cleanup,
+            method=method,
         )
         print("Mo energy:", Mo_N2_energy)
 
@@ -234,16 +263,17 @@ def rdkit_embed_scoring_NH3toN2(
     # Handle the error and return if xtb did not converge
     if None in (Mo_N2_energy, Mo_NH3_energy):
         raise Exception(f"None of the XTB calculations converged")
-    De = (
-        ((Mo_N2_energy + NH3_ENERGY_gfn2) - (Mo_NH3_energy + N2_ENERGY_gfn2))
-    ) * hartree2kcalmol
+    De = (((Mo_N2_energy + NH3_ENERGY) - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
     print(f"diff energy: {De}")
     return De, Mo_N2_3d_geom, Mo_NH3_3d_geom, minidx
 
 
-def rdkit_embed_scoring_NH3plustoNH3(
-    ligand, idx=(0, 0), ncpus=1, n_confs=10, cleanup=False, output_dir="."
-):
+def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
+    idx = ligand.idx
+    ncpus, n_confs, cleanup, output_dir, method = unpack_args(scoring_args)
+
+    # Unpack gas energies
+    NH3_ENERGY, N2_ENERGY, CP_RED_ENERGY = GAS_ENERGIES[scoring_args["method"]]
 
     # Create ligand based on a primary amine
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
@@ -271,6 +301,7 @@ def rdkit_embed_scoring_NH3plustoNH3(
             numThreads=ncpus,
             cleanup=cleanup,
             bare=True,
+            method=method,
         )
         print("catalyst energy:", Mo_NH3plus_energy)
 
@@ -288,6 +319,7 @@ def rdkit_embed_scoring_NH3plustoNH3(
             name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
             numThreads=ncpus,
             cleanup=cleanup,
+            method=method,
         )
         print("Mo energy:", Mo_NH3_energy)
 
@@ -297,7 +329,7 @@ def rdkit_embed_scoring_NH3plustoNH3(
     # Handle the error and return if xtb did not converge
     if None in (Mo_NH3_energy, Mo_NH3plus_energy):
         raise Exception(f"None of the XTB calculations converged")
-    De = (Mo_NH3_energy - Mo_NH3plus_energy + CP_RED_ENERGY_gfn2) * hartree2kcalmol
+    De = (Mo_NH3_energy - Mo_NH3plus_energy + CP_RED_ENERGY) * hartree2kcalmol
     print(f"diff energy: {De}")
     return De, Mo_NH3_3d_geom, Mo_NH3plus_3d_geom, minidx
 

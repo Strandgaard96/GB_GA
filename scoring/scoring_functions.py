@@ -36,29 +36,13 @@ def slurm_scoring(sc_function, population, scoring_args):
         name=f"sc_g{population.molecules[0].idx[0]}",
         cpus_per_task=scoring_args["cpus_per_task"],
         slurm_mem_per_cpu="2GB",
-        timeout_min=7,
+        timeout_min=8,
         slurm_partition="kemi1",
         slurm_array_parallelism=100,
     )
 
-    # Extract ids
-    ids = []
-    for ind in population.molecules:
-        ids.append(ind.idx)
-
-    # cpus per task needs to be list
-    cpus_per_task_list = [scoring_args["cpus_per_task"] for p in population.molecules]
-    n_confs_list = [scoring_args["n_confs"] for p in population.molecules]
-    cleanup_list = [scoring_args["cleanup"] for p in population.molecules]
-    output_dir_list = [scoring_args["output_dir"] for p in population.molecules]
     jobs = executor.map_array(
-        sc_function,
-        population.molecules,
-        ids,
-        cpus_per_task_list,
-        n_confs_list,
-        cleanup_list,
-        output_dir_list,
+        sc_function, population.molecules, [scoring_args for p in population.molecules]
     )
 
     results = [

@@ -87,7 +87,7 @@ def run_xtb(args):
     cmd = f"{xtb_cmd} -- {xyz_file} "
     os.environ["OMP_NUM_THREADS"] = f"{numThreads}"
     os.environ["MKL_NUM_THREADS"] = f"{numThreads}"
-    os.environ["OMP_STACKSIZE"] = "2G"
+    os.environ["OMP_STACKSIZE"] = "1G"
 
     popen = subprocess.Popen(
         cmd.split(),
@@ -216,7 +216,7 @@ def read_results(output, err):
 
 def xtb_pre_optimize(
     mol,
-    method="ff",
+    method="2",
     charge=None,
     spin=None,
     gbsa="benzene",
@@ -268,7 +268,8 @@ def xtb_pre_optimize(
         "input": "./xcontrol.inp",
     }
 
-    cmd = f"xtb --gfn{method}"
+    # Start with ff optimization
+    cmd = f"xtb --gfnff"
     for key, value in XTB_OPTIONS.items():
         cmd += f" --{key} {value}"
 
@@ -289,10 +290,10 @@ def xtb_pre_optimize(
         shutil.copy(os.path.join(elem, "xtbopt.log"), os.path.join(elem, "ffopt.log"))
 
     if preoptimize:
-        cmd = cmd.replace("gfnff", "gfn 2")
+        cmd = cmd.replace("gfnff", f"gfn {method}")
         xyz_files = [Path(xyz_file).parent / "xtbopt.xyz" for xyz_file in xyz_files]
         args = [
-            (xyz_file, cmd, cpus_per_worker, conf_paths[i], "const_gfn2")
+            (xyz_file, cmd, cpus_per_worker, conf_paths[i], f"const_gfn{method}")
             for i, xyz_file in enumerate(xyz_files)
         ]
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -313,7 +314,7 @@ def xtb_pre_optimize(
     )
 
     args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], f"gfn{method}")
         for i, xyz_file in enumerate(xyz_files)
     ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
@@ -335,7 +336,7 @@ def xtb_pre_optimize(
         Mo_bond=True,
     )
     args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i], "gfn2")
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], f"gfn{method}")
         for i, xyz_file in enumerate(xyz_files)
     ]
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:

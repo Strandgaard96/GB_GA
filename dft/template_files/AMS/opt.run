@@ -1,0 +1,33 @@
+#!/bin/sh
+
+"$AMSBIN/ams" << eor
+
+Task GeometryOptimization
+
+GeometryOptimization
+    KeepIntermediateResults Yes
+End
+
+System
+    GeometryFile input.xyz
+End
+
+Engine ADF
+    Basis
+        Type TZP
+        Core None
+    End
+    XC
+        GGA PBE
+        Dispersion Grimme3 BJDAMP
+    End
+    NumericalQuality Good
+    Solvation
+        solv epsilon=1.844
+    End
+    Unrestricted Yes
+    SpinPolarization 1
+EndEngine
+
+eor
+

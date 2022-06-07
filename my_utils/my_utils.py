@@ -519,8 +519,8 @@ def write_to_db(args):
 
         energies = extract_energyxtb(logfile)
         structs = read(trajfile, index=":")
-        for struct, energy in zip(structs, energies):
-            id = db.reserve(name=str(trajfile))
+        for i,(struct, energy) in enumerate(zip(structs, energies)):
+            id = db.reserve(name=str(trajfile)+str(i))
             if id is None:
                 continue
             struct.calc = SinglePointCalculator(struct, energy=energy)
@@ -531,7 +531,7 @@ def write_to_db(args):
 
 def db_write_driver(output_dir=None, workers=6):
 
-    database_dir = "../generation_debug/ase_database.db"
+    database_dir = "ase_database.db"
 
     # Get traj paths for current gen
     p = Path(output_dir)
@@ -574,4 +574,4 @@ def extract_energyxtb(logfile=None):
 
 
 if __name__ == "__main__":
-    db_write_driver("../generation_debug")
+    db_write_driver("/home/magstr/generation_data/struct_test")

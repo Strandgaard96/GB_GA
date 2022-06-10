@@ -12,7 +12,7 @@ from typing import List
 from pathlib import Path
 import re
 
-from ase.io import read, write
+from ase.io import read, write, Trajectory
 from ase.db import connect
 from ase.calculators.singlepoint import SinglePointCalculator
 import concurrent.futures
@@ -528,10 +528,32 @@ def write_to_db(args):
 
     return
 
+def write_to_traj(args):
+    """
+
+    Args:
+        traj_dir Path:
+        structs List(xyz):
+
+    Returns:
+
+    """
+
+    print("In write_traj function")
+    traj_dir, trajfile = args
+    traj = Trajectory(traj_dir, mode='a')
+
+    logfile = trajfile.parent / "xtbopt.log"
+    energies = extract_energyxtb(logfile)
+    struct = read(trajfile, index="-1")
+    struct.calc = SinglePointCalculator(struct, energy=energies[-1])
+    traj.write(struct)
+    return
+
 
 def db_write_driver(output_dir=None, workers=6):
 
-    database_dir = "ase_database.db"
+    database_dir = "ase.traj"
 
     # Get traj paths for current gen
     p = Path(output_dir)
@@ -545,7 +567,7 @@ def db_write_driver(output_dir=None, workers=6):
         args = [(database_dir, trajs) for i, trajs in enumerate(trajs)]
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(write_to_db, args)
+            results = executor.map(write_to_traj, args)
     except Exception as e:
         print(f"Failed to write to database at {logfile}")
         print(e)

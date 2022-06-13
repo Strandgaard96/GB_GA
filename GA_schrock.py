@@ -28,7 +28,7 @@ from scoring.scoring import (
     rdkit_embed_scoring_NH3toN2,
     rdkit_embed_scoring_NH3plustoNH3,
 )
-from my_utils.my_utils import Generation, Population
+from my_utils.my_utils import Generation, Population, get_git_revision_short_hash
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import reweigh_scores_by_sa
 import GB_GA as ga
@@ -318,6 +318,7 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Variables for crossover module
+
     co.average_size = 50
     co.size_stdev = 10
 
@@ -335,6 +336,10 @@ def main():
             logging.StreamHandler(),  # For debugging. Can be removed on remote
         ],
     )
+
+    # Log current git commit
+    logging.info("Current git hash: %s",get_git_revision_short_hash())
+
     # Log the argparse set values
     logging.info("Input args: %r", args)
 
@@ -344,12 +349,10 @@ def main():
         "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2,
         "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3,
     }
-    # Resolve the chosen function object using its name:
-    scoring_func = funcs[args.func]
 
     # Get arguments as dict and add scoring function to dict.
     args_dict = vars(args)
-    args_dict["scoring_function"] = scoring_func
+    args_dict["scoring_function"] = funcs[args.func]
 
     # Create list of dicts for the distributed GAs
     GA_args = args_dict

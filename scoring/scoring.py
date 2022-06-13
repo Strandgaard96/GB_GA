@@ -309,6 +309,11 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
     if Mo_NH3plus_energy == 9999:
         return 9999, None, None, None
 
+    # Now we want to remove the extra conformers and only use the minimum one
+    discard_conf = [x for x in range(len(Mo_NH3_3d.GetConformers())) if x != minidx]
+    for elem in discard_conf:
+        Mo_NH3_3d.RemoveConformer(elem)
+
     with cd(output_dir):
         Mo_NH3_energy, Mo_NH3_3d_geom, minidx = xtb_pre_optimize(
             Mo_NH3_3d,

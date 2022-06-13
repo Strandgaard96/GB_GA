@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import List
 from pathlib import Path
 import re
+import subprocess
 
 from ase.io import read, write, Trajectory
 from ase.db import connect
@@ -593,6 +594,9 @@ def extract_energyxtb(logfile=None):
             if "energy" in line:
                 energy.append(float(re_energy.search(line).groups()[0]))
     return energy
+
+def get_git_revision_short_hash() -> str:
+    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
 
 
 if __name__ == "__main__":

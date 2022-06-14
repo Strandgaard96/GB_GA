@@ -16,8 +16,9 @@ from my_utils.my_utils import cd
 # Dict for mapping options to input string
 ORCA_COMMANDS = {
     "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF",
-    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF Opt",
-    "opt+freq": "",
+    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF OPT",
+    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF FREQ",
+    "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J  RIJCOSX MiniPrint KDIIS SOSCF",
 }
 
 with open(

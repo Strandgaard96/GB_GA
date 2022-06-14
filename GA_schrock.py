@@ -56,7 +56,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=4,
+        default=100,
         help="Sets the size of population pool.",
     )
     parser.add_argument(
@@ -133,6 +133,7 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--write_db", action="store_true")
+    parser.add_argument("--supress_amines", action="store_true")
     parser.add_argument(
         "--method",
         type=str,
@@ -234,7 +235,7 @@ def GA(args):
 
         # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
-        new_population.modify_population()
+        new_population.modify_population(supress_amines=args['supress_amines'])
 
         # Assign generation and population idx to the population
         new_population.generation_num = generation_num

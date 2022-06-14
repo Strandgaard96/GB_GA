@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 import py3Dmol
 from rdkit import Chem
+from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
 from tabulate import tabulate
 
@@ -256,7 +257,7 @@ class Population:
             setattr(molecule, "idx", (self.generation_num, i))
         self.size = len(self.molecules)
 
-    def modify_population(self):
+    def modify_population(self, supress_amines = False):
         for mol in self.molecules:
 
             # Check for primary amine
@@ -280,8 +281,28 @@ class Population:
                 mol.smiles = Chem.MolToSmiles(output_ligand)
 
             else:
-                cut_idx = random.choice(match)
-                mol.cut_idx = cut_idx[0]
+                if supress_amines:
+                    # Enable NH2 amine supressor.
+                    if len(match) > 1:
+                        # Replace other primary amines with hydrogen in the frag:
+                        output_ligand = AllChem.ReplaceSubstructs(
+                            mol.rdkit_mol,
+                            Chem.MolFromSmarts("[NX3;H2]"),
+                            Chem.MolFromSmarts("[H]"),
+                            replacementConnectionPoint=0,
+                        )[0]
+                        cut_idx = output_ligand.GetSubstructMatches(
+                            Chem.MolFromSmarts("[NX3;H2]")
+                        )
+                        mol.cut_idx = cut_idx[0][0]
+                        mol.rdkit_mol = output_ligand
+                        mol.smiles = Chem.MolToSmiles(output_ligand)
+                    else:
+                        cut_idx = random.choice(match)
+                        mol.cut_idx = cut_idx[0]
+                else:
+                    cut_idx = random.choice(match)
+                    mol.cut_idx = cut_idx[0]
 
     def get(self, prop):
         properties = []

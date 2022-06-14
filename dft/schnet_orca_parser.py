@@ -29,7 +29,7 @@ __all__ = [
 
 # Conversion from ppm to atomic units. Alpha is the fine structure constant and 1e6 are
 # the ppm
-ppm2au = 1.0 / (units.alpha ** 2 * 1e6)
+ppm2au = 1.0 / (units.alpha**2 * 1e6)
 
 
 class OrcaParserException(Exception):
@@ -392,7 +392,7 @@ class OrcaFormatter:
                 return None
         else:
             if self.skip_first is not None:
-                parsed = parsed[self.skip_first :]
+                parsed = parsed[self.skip_first:]
 
         if len(parsed) == 0:
             return None
@@ -683,11 +683,11 @@ class OrcaHessianFileParser(OrcaMainFileParser):
         super(OrcaHessianFileParser, self).__init__(properties)
 
 
-if __name__ == '__main__':
-    a = {'OrcaPropertyParser': OrcaPropertyParser}
+if __name__ == "__main__":
+    a = {"OrcaPropertyParser": OrcaPropertyParser}
 
     k = OrcaOutputParser(a)
 
-    p = OrcaParser('test.db', properties = ['energy'])
-    g = p._parse_molecule('/home/magstr/Documents/GB_GA/dft/schrock_dft_orca/orca.out')
-    p.parse_data(['/home/magstr/Documents/GB_GA/dft/schrock_dft_orca/orca.out'])
+    p = OrcaParser("test.db", properties=["energy"])
+    g = p._parse_molecule("/home/magstr/Documents/GB_GA/dft/schrock_dft_orca/orca.out")
+    p.parse_data(["/home/magstr/Documents/GB_GA/dft/schrock_dft_orca/orca.out"])

@@ -338,7 +338,7 @@ def main():
     )
 
     # Log current git commit
-    logging.info("Current git hash: %s",get_git_revision_short_hash())
+    logging.info("Current git hash: %s", get_git_revision_short_hash())
 
     # Log the argparse set values
     logging.info("Input args: %r", args)

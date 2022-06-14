@@ -22,7 +22,6 @@ from .auto import shell
 from scoring.make_structures import remove_NH3, remove_N2, mol_with_atom_index
 
 # Ase stuff for database functionality
-
 import concurrent.futures
 
 

@@ -520,14 +520,15 @@ def write_to_db(args):
 
         energies = extract_energyxtb(logfile)
         structs = read(trajfile, index=":")
-        for i,(struct, energy) in enumerate(zip(structs, energies)):
-            id = db.reserve(name=str(trajfile)+str(i))
+        for i, (struct, energy) in enumerate(zip(structs, energies)):
+            id = db.reserve(name=str(trajfile) + str(i))
             if id is None:
                 continue
             struct.calc = SinglePointCalculator(struct, energy=energy)
             db.write(struct, id=id, name=str(trajfile))
 
     return
+
 
 def write_to_traj(args):
     """
@@ -542,7 +543,7 @@ def write_to_traj(args):
 
     print("In write_traj function")
     traj_dir, trajfile = args
-    traj = Trajectory(traj_dir, mode='a')
+    traj = Trajectory(traj_dir, mode="a")
 
     logfile = trajfile.parent / "xtbopt.log"
     energies = extract_energyxtb(logfile)
@@ -595,8 +596,13 @@ def extract_energyxtb(logfile=None):
                 energy.append(float(re_energy.search(line).groups()[0]))
     return energy
 
+
 def get_git_revision_short_hash() -> str:
-    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).decode('ascii').strip()
+    return (
+        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+        .decode("ascii")
+        .strip()
+    )
 
 
 if __name__ == "__main__":

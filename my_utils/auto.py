@@ -14,7 +14,7 @@ from ase.visualize import view
 
 def shell(args, shell=False):
     """
-    Subprocess handler function
+    Subprocess handler function where output is needed
     Args:
         cmd (str): String to pass to bash shell
         shell (bool): Specifies whether run as bash shell or not
@@ -49,6 +49,40 @@ def shell(args, shell=False):
         f.write(output)
     with open(Path(key) / f"{logname}err.out", "w") as f:
         f.write(err)
+
+    return output, err
+
+
+def shell_pure(cmd, shell=False):
+    """
+    Subprocess handler function
+    Args:
+        cmd (str): String to pass to bash shell
+        shell (bool): Specifies whether run as bash shell or not
+    Returns:
+        output (str): Program output
+        err (str): Possible error messages
+    """
+    print(f"String passed to shell: {cmd}")
+    if shell:
+        p = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+    else:
+        cmd = cmd.split()
+        p = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+        )
+    output, err = p.communicate()
 
     return output, err
 

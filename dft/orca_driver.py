@@ -85,7 +85,7 @@ def get_arguments(arg_list=None):
         description="Run Orca calculation", fromfile_prefix_chars="+"
     )
     parser.add_argument(
-        "--dir",
+        "--calc_dir",
         type=Path,
         default=".",
         help="Path to folder containing xyz files",
@@ -128,26 +128,6 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--function", choices=FUNCTION_MAP.keys())
     return parser.parse_args(arg_list)
-
-
-def xyz_singlepoint(args):
-    """Future function that do singlpoints on GA objects"""
-
-    # Get how many max generations there are
-
-    # Load GA object
-    with open(generation_path / generation_no, "rb") as f:
-        gen = pickle.load(f)
-
-    # Loop over all the structures
-
-    # Create folder based on idx
-
-    # Create input file
-
-    # Submit bash script in folder
-
-    return
 
 
 def write_orca_sh(n_cores=24):
@@ -274,12 +254,37 @@ def GA_singlepoints(args):
 
 
 def folder_orca_driver(args):
+    """Future function that do DFT on structures in a folder"""
 
-    # Get paths to all
+    # Extract dirs
+    calc_dir = args.calc_dir
+    output_dir = args.output_dir
 
-    folder = args.dir
+    # Get all structures
+    paths = sorted(calc_dir.rglob("*.xyz"))
 
-    write_orca_input_file(structure_path=args.dir)
+    # Loop over folders
+    for path in paths:
+
+        # Get the key for the current structure
+        key = str(path.parent.name)
+
+        with cd(path.parent):
+            # Create input file
+            write_orca_input_file(
+                structure_path=path.name,
+                command=ORCA_COMMANDS["sp"],
+                charge=smi_dict[key]["charge"],
+                spin=smi_dict[key]["mul"],
+                n_cores=args.n_cores,
+            )
+
+            # Customize orca.sh to current job.
+            write_orca_sh(n_cores=args.n_cores)
+
+            cmd = "sbatch orca.sh"
+            # Submit bash script in folder
+            out, err = shell_pure(cmd, shell=True)
 
 
 if __name__ == "__main__":

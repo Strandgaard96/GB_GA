@@ -28,7 +28,7 @@ from scoring.scoring import (
     rdkit_embed_scoring_NH3toN2,
     rdkit_embed_scoring_NH3plustoNH3,
 )
-from my_utils.my_utils import Generation, Population, get_git_revision_short_hash
+from my_utils.my_utils import Generation, Population, Individual,get_git_revision_short_hash
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import reweigh_scores_by_sa
 import GB_GA as ga
@@ -375,3 +375,30 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+    # # Load the children population to compare SA scores
+    # import pickle
+    # with open("/home/magstr/generation_data/supress/GA04.pkl", "rb") as f:
+    #     gen = pickle.load(f)
+    #
+    # from rdkit import Chem
+    # initial_population = gen.children
+    # l = initial_population.get("pre_score")
+    # l.append(1)
+    # #ligand = Chem.MolFromSmiles('CC1=C(OC2CCCC2)C=C([C@H](C)NN)C1')
+    # ligand = Chem.MolFromSmiles('CC1=C(OC2CCCC2)C=C([C@H](C)NN)C1')
+    # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(Chem.AddHs(ligand)))
+    # cut_idx = [[0]]
+    # pop = Population()
+    # pop.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0], score=1))
+    # pop.setprop('pre_score',[1])
+    # pop.molecules.append(Individual(Chem.RemoveHs(gen.children.molecules[9].rdkit_mol), cut_idx=gen.children.molecules[9].cut_idx, score=gen.children.molecules[9].score))
+    # #initial_population.generation_num = 0
+    # #initial_population.assign_idx()
+    # pop.setprop("pre_score", [1,1])
+    # #initial_population.setprop("score", [1])
+    # neutralize_molecules(pop)
+    # reweigh_scores_by_sa(pop)
+    # print(pop.molecules[0].sa_score)
+    # print(pop.molecules[1].sa_score)

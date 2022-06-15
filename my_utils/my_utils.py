@@ -295,7 +295,7 @@ class Population:
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
                         mol.cut_idx = cut_idx[0][0]
-                        mol.rdkit_mol = output_ligand
+                        mol.rdkit_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
                         mol.smiles = Chem.MolToSmiles(output_ligand)
                     else:
                         cut_idx = random.choice(match)

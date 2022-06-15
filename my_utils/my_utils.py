@@ -257,7 +257,7 @@ class Population:
             setattr(molecule, "idx", (self.generation_num, i))
         self.size = len(self.molecules)
 
-    def modify_population(self, supress_amines = False):
+    def modify_population(self, supress_amines=False):
         for mol in self.molecules:
 
             # Check for primary amine
@@ -295,8 +295,9 @@ class Population:
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
                         mol.cut_idx = cut_idx[0][0]
-                        mol.rdkit_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
-                        mol.smiles = Chem.MolToSmiles(output_ligand)
+                        clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
+                        mol.rdkit_mol = clean_mol
+                        mol.smiles = Chem.MolToSmiles(clean_mol)
                     else:
                         cut_idx = random.choice(match)
                         mol.cut_idx = cut_idx[0]

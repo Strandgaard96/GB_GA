@@ -28,7 +28,12 @@ from scoring.scoring import (
     rdkit_embed_scoring_NH3toN2,
     rdkit_embed_scoring_NH3plustoNH3,
 )
-from my_utils.my_utils import Generation, Population, Individual,get_git_revision_short_hash
+from my_utils.my_utils import (
+    Generation,
+    Population,
+    Individual,
+    get_git_revision_short_hash,
+)
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import reweigh_scores_by_sa
 import GB_GA as ga
@@ -235,7 +240,7 @@ def GA(args):
 
         # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
-        new_population.modify_population(supress_amines=args['supress_amines'])
+        new_population.modify_population(supress_amines=args["supress_amines"])
 
         # Assign generation and population idx to the population
         new_population.generation_num = generation_num
@@ -375,25 +380,24 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-    # # Load the children population to compare SA scores
+    # Load the children population to compare SA scores
     # import pickle
-    # with open("/home/magstr/generation_data/supress/GA04.pkl", "rb") as f:
+    # with open("/home/magstr/generation_data/supress3/GA07.pkl", "rb") as f:
     #     gen = pickle.load(f)
     #
     # from rdkit import Chem
-    # initial_population = gen.children
+    # initial_population = gen.survivors
     # l = initial_population.get("pre_score")
     # l.append(1)
     # #ligand = Chem.MolFromSmiles('CC1=C(OC2CCCC2)C=C([C@H](C)NN)C1')
-    # ligand = Chem.MolFromSmiles('CC1=C(OC2CCCC2)C=C([C@H](C)NN)C1')
+    # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[26].rdkit_mol))
     # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(Chem.AddHs(ligand)))
     # cut_idx = [[0]]
     # pop = Population()
     # pop.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0], score=1))
     # pop.setprop('pre_score',[1])
-    # pop.molecules.append(Individual(Chem.RemoveHs(gen.children.molecules[9].rdkit_mol), cut_idx=gen.children.molecules[9].cut_idx, score=gen.children.molecules[9].score))
+    # tmp = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[26].rdkit_mol))
+    # pop.molecules.append(Individual(tmp, cut_idx=gen.children.molecules[9].cut_idx, score=gen.children.molecules[9].score))
     # #initial_population.generation_num = 0
     # #initial_population.assign_idx()
     # pop.setprop("pre_score", [1,1])

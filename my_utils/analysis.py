@@ -136,6 +136,16 @@ def conf_viewer(idx, confs, **kwargs):
     return draw_generation(mol, **kwargs)
 
 
+def conf_viewer_ga(idx, confs, **kwargs):
+    mol = "".join(confs[idx][2])
+    gen_idx = confs[idx][0]
+    score = confs[idx][1]
+
+    print(f"Generation idx: {gen_idx}, score: {score}")
+
+    return draw_generation(mol, gen_struct=True, **kwargs)
+
+
 def sort_ga(x):
     num = int(str(x).split(".pkl")[-2].split("GA")[-1])
     return num

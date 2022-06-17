@@ -291,12 +291,12 @@ class Population:
                             Chem.MolFromSmarts("[H]"),
                             replacementConnectionPoint=0,
                         )[0]
-                        cut_idx = output_ligand.GetSubstructMatches(
+                        clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
+                        mol.rdkit_mol = clean_mol
+                        cut_idx = clean_mol.GetSubstructMatches(
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
                         mol.cut_idx = cut_idx[0][0]
-                        clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
-                        mol.rdkit_mol = clean_mol
                         mol.smiles = Chem.MolToSmiles(clean_mol)
                     else:
                         cut_idx = random.choice(match)

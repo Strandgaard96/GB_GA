@@ -364,6 +364,7 @@ def create_prim_amine(input_ligand):
         prim_amine_index = output_ligand.GetSubstructMatches(
             Chem.MolFromSmarts("[NX3;H2]")
         )
+        clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
     return output_ligand, prim_amine_index
 
 

@@ -15,7 +15,7 @@ import copy
 
 
 def read_file(file_name):
-    """Read smiles from file"""
+    """Read smiles from file and return mol list"""
     mol_list = []
     with open(file_name, "r") as file:
         for smiles in file:

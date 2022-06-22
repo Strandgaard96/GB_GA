@@ -85,7 +85,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_tries",
         type=int,
-        default=1,
+        default=2,
         help="How many overall runs of the GA",
     )
     parser.add_argument(
@@ -97,7 +97,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--generations",
         type=int,
-        default=1,
+        default=0,
         help="How many times is the population optimized",
     )
     parser.add_argument(
@@ -367,7 +367,9 @@ def main():
     t0 = time.time()
 
     # Run the GA
-    generations = GA(GA_args)
+    for i in range(n_tries):
+        GA_args['output_dir'] = args_dict['output_dir']+f'{i}'
+        generations = GA(GA_args)
 
     # Final output handling and logging
     t1 = time.time()
@@ -382,27 +384,39 @@ if __name__ == "__main__":
     main()
     # Load the children population to compare SA scores
     # import pickle
-    # with open("/home/magstr/generation_data/supress3/GA07.pkl", "rb") as f:
-    #     gen = pickle.load(f)
     #
+    # with open("/home/magstr/generation_data/supress4/GA50.pkl", "rb") as f:
+    #     gen = pickle.load(f)
+    # #
     # from rdkit import Chem
+    #
     # initial_population = gen.survivors
     # l = initial_population.get("pre_score")
     # l.append(1)
-    # #ligand = Chem.MolFromSmiles('CC1=C(OC2CCCC2)C=C([C@H](C)NN)C1')
-    # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[26].rdkit_mol))
-    # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(Chem.AddHs(ligand)))
+    # ligand = Chem.MolFromSmiles("[H]NCCCNCN")
+    # # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[22].rdkit_mol))
+    # # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(ligand))
     # cut_idx = [[0]]
-    # pop = Population()
-    # pop.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0], score=1))
-    # pop.setprop('pre_score',[1])
-    # tmp = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[26].rdkit_mol))
-    # pop.molecules.append(Individual(tmp, cut_idx=gen.children.molecules[9].cut_idx, score=gen.children.molecules[9].score))
-    # #initial_population.generation_num = 0
-    # #initial_population.assign_idx()
-    # pop.setprop("pre_score", [1,1])
-    # #initial_population.setprop("score", [1])
-    # neutralize_molecules(pop)
-    # reweigh_scores_by_sa(pop)
+    # pop = gen.children
+    # pop2 = Population()
+    # for elem in gen.children.molecules:
+    #     pop2.molecules.append(
+    #         Individual(
+    #             elem.original_mol, cut_idx=elem.cut_idx, score=elem.score, idx=elem.idx
+    #         )
+    #     )
+    # # pop.molecules.append(Individual(gen.children.molecules[32].original_mol, cut_idx=cut_idx[0][0], score=1))
+    # # pop.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0], score=1))
+    # # pop.setprop('pre_score',[1,1])
+    # # pop.modify_population(supress_amines=True)
+    # # tmp = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[26].rdkit_mol))
+    # # pop.molecules.append(Individual(tmp, cut_idx=gen.children.molecules[9].cut_idx, score=gen.children.molecules[9].score))
+    # # #initial_population.generation_num = 0
+    # # #initial_population.assign_idx()
+    # # pop.setprop("pre_score", [1,1])
+    # # #initial_population.setprop("score", [1])
+    # pop2.modify_population(supress_amines=True)
+    # neutralize_molecules(pop2)
+    # reweigh_scores_by_sa(pop2)
     # print(pop.molecules[0].sa_score)
     # print(pop.molecules[1].sa_score)

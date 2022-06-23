@@ -62,6 +62,18 @@ def reweigh_scores_by_sa(population):
         else:
             individual.score = sa_score * individual.pre_score
 
+def get_sa(population):
+    """Reweighs scores with synthetic accessibility score
+    :param population: list of RDKit molecules to be re-weighted
+    :param scores: list of docking scores
+    :return: list of re-weighted docking scores
+    """
+    sa_scores = [
+        sa_target_score_clipped(individual.neutral_rdkit_mol)
+        for individual in population.molecules
+    ]
+    return sa_scores
+
 
 def readFragmentScores(name="fpscores"):
     import gzip

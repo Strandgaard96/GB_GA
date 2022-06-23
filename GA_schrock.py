@@ -35,7 +35,7 @@ from my_utils.my_utils import (
     get_git_revision_short_hash,
 )
 from sa.neutralize import neutralize_molecules
-from sa.sascorer import reweigh_scores_by_sa
+from sa.sascorer import reweigh_scores_by_sa, get_sa
 import GB_GA as ga
 
 # Julius filter functionality.
@@ -85,7 +85,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_tries",
         type=int,
-        default=2,
+        default=1,
         help="How many overall runs of the GA",
     )
     parser.add_argument(
@@ -173,7 +173,7 @@ def GA(args):
     # Create initial population and get initial score
     if args["debug"]:
         population = ga.make_initial_population_debug(
-            4, "data/ZINC_1000_amines.smi", rand=True
+            2, "data/ZINC_1000_amines.smi", rand=True
         )
     else:
         population = ga.make_initial_population(
@@ -191,12 +191,15 @@ def GA(args):
     population.setprop("structure", geometries)
     population.setprop("structure2", geometries2)
     population.setprop("min_conf", min_conf)
-
     population.setprop("score", energies)
+
+
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
-        neutralize_molecules(population)
-        reweigh_scores_by_sa(population)
+        population.sa_prep()
+        # Create temp population to calc sa scores on
+        sa_scores=get_sa(population)
+        population.set_sa(sa_scores)
 
     population.sortby("score")
 
@@ -265,10 +268,13 @@ def GA(args):
         new_population.setprop("min_conf", min_conf)
 
         new_population.setprop("score", energies)
+
         # Functionality to check synthetic accessibility
         if args["sa_screening"]:
-            neutralize_molecules(new_population)
-            reweigh_scores_by_sa(new_population)
+            new_population.sa_prep()
+            # Create temp population to calc sa scores on
+            sa_scores = get_sa(new_population)
+            new_population.set_sa(sa_scores)
 
         # Sort scores, possibly scaled by SA screening
         new_population.sortby("score")
@@ -324,7 +330,6 @@ def main():
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     # Variables for crossover module
-
     co.average_size = 50
     co.size_stdev = 10
 
@@ -368,7 +373,7 @@ def main():
 
     # Run the GA
     for i in range(n_tries):
-        GA_args['output_dir'] = args_dict['output_dir']+f'{i}'
+        GA_args['output_dir'] = args_dict['output_dir']+f'_{i}'
         generations = GA(GA_args)
 
     # Final output handling and logging

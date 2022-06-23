@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Module that contains mol manipulations and various resuable functionality classes.
 """
@@ -12,29 +11,31 @@ from typing import List
 from pathlib import Path
 import re
 import subprocess
-
 from ase.io import read, write, Trajectory
+
 from ase.db import connect
 from ase.calculators.singlepoint import SinglePointCalculator
 import concurrent.futures
-
 import numpy as np
+
 import pandas as pd
 import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
+import copy
 from tabulate import tabulate
-
 sys.path.insert(0, "../scoring")
-from make_structures import create_prim_amine
 
+from make_structures import create_prim_amine
+from sa.neutralize import read_neutralizers
+_neutralize_reactions = None
 
 class DotDict(UserDict):
     """dot.notation access to dictionary attributes
     Currently not in use as it clashed with Multiprocessing-Pool pickling"""
-
     __getattr__ = UserDict.get
+
     __setattr__ = UserDict.__setitem__
     __delattr__ = UserDict.__delitem__
 
@@ -42,7 +43,6 @@ class DotDict(UserDict):
 class cd:
     """Context manager for changing the current working directory dynamically.
     # See: https://book.pythontips.com/en/latest/context_managers.html"""
-
     def __init__(self, newPath):
         self.newPath = os.path.expanduser(newPath)
 
@@ -55,8 +55,6 @@ class cd:
         if traceback:
             print(sys.exc_info())
         os.chdir(self.savedPath)
-
-
 def draw_mol_with_highlights(mol, hit_ats, style=None):
     """Draw molecule in 3D with highlighted atoms.
 
@@ -102,9 +100,6 @@ def draw_mol_with_highlights(mol, hit_ats, style=None):
 # patt = Chem.MolFromSmarts('O[H]')
 # hit_ats = cyclosporine.GetSubstructMatches(patt)
 # draw_mol_with_highlights(cyclosporine, hit_ats)
-hartree2kcalmol = 627.5094740631
-
-
 def draw3d(
     mols,
     width=600,
@@ -209,21 +204,18 @@ class Individual:
     original_mol: Chem.rdchem.Mol = field(
         default_factory=Chem.rdchem.Mol, repr=False, compare=False
     )
+    rdkit_mol_sa: Chem.rdchem.Mol = field(default_factory=Chem.rdchem.Mol, repr=False, compare=False)
     cut_idx: int = field(default=None, repr=False, compare=False)
     idx: tuple = field(default=(None, None), repr=False, compare=False)
     smiles: str = field(init=False, compare=True, repr=True)
+    smiles_sa: str = field(init=False, compare=True, repr=True)
     score: float = field(default=None, repr=False, compare=False)
     normalized_fitness: float = field(default=None, repr=False, compare=False)
     energy: float = field(default=None, repr=False, compare=False)
     sa_score: float = field(default=None, repr=False, compare=False)
     structure: tuple = field(default=None, compare=False, repr=False)
-
     def __post_init__(self):
         self.smiles = Chem.MolToSmiles(self.rdkit_mol)
-
-    # def update(self, method='linear', from_min=-3, from_max=1, a=2, b=-2):
-    #     if self.energy and self.sa_score:
-    #         setattr(self, 'score', scaling_function(self.energy, method=method, from_min=from_min, from_max=from_max, a=a, b=b)*self.sa_score)
 
     def list_of_props(self):
         return [
@@ -256,6 +248,48 @@ class Population:
         for i, molecule in enumerate(self.molecules):
             setattr(molecule, "idx", (self.generation_num, i))
         self.size = len(self.molecules)
+
+    def sa_prep(self):
+        for mol in self.molecules:
+            output_ligand = AllChem.ReplaceSubstructs(
+                mol.rdkit_mol,
+                Chem.MolFromSmarts("[NX3;H2]"),
+                Chem.MolFromSmarts("[H]"),
+                replaceAll=True,
+                replacementConnectionPoint=0,
+            )[0]
+            res = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
+            mol.rdkit_mol_sa = res
+            mol.smiles_sa = Chem.MolToSmiles(res)
+
+        global _neutralize_reactions
+        if _neutralize_reactions is None:
+            _neutralize_reactions = read_neutralizers()
+
+        neutral_molecules = []
+        for ind in self.molecules:
+            c_mol = ind.rdkit_mol_sa
+            mol = copy.deepcopy(c_mol)
+            mol.UpdatePropertyCache()
+            Chem.rdmolops.FastFindRings(mol)
+            assert mol is not None
+            for reactant_mol, product_mol in _neutralize_reactions:
+                while mol.HasSubstructMatch(reactant_mol):
+                    rms = Chem.ReplaceSubstructs(mol, reactant_mol, product_mol)
+                    if rms[0] is not None:
+                        mol = rms[0]
+            mol.UpdatePropertyCache()
+            Chem.rdmolops.FastFindRings(mol)
+            ind.neutral_rdkit_mol = mol
+
+    def set_sa(self, sa_scores):
+        for individual, sa_score in zip(self.molecules, sa_scores):
+            individual.sa_score = sa_score
+            if individual.score > 5000:
+                continue
+            else:
+                individual.score = sa_score * individual.pre_score
+
 
     def modify_population(self, supress_amines=False):
         for mol in self.molecules:

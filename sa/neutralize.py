@@ -55,7 +55,7 @@ def neutralize_molecules(population):
 
     neutral_molecules = []
     for individual in population.molecules:
-        mol = copy.deepcopy(individual.rdkit_mol)
+        mol = copy.deepcopy(individual.rdkit_mol_sa)
         mol.UpdatePropertyCache()
         Chem.rdmolops.FastFindRings(mol)
         assert mol is not None

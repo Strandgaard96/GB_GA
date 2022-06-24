@@ -30,7 +30,6 @@ from scoring.scoring import (
 )
 from my_utils.my_utils import (
     Generation,
-    Population,
     Individual,
     get_git_revision_short_hash,
 )
@@ -97,7 +96,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--generations",
         type=int,
-        default=0,
+        default=1,
         help="How many times is the population optimized",
     )
     parser.add_argument(
@@ -193,12 +192,11 @@ def GA(args):
     population.setprop("min_conf", min_conf)
     population.setprop("score", energies)
 
-
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
         population.sa_prep()
         # Create temp population to calc sa scores on
-        sa_scores=get_sa(population)
+        sa_scores = get_sa(population)
         population.set_sa(sa_scores)
 
     population.sortby("score")
@@ -206,18 +204,15 @@ def GA(args):
     # Normalize the score of population infividuals to value between 0 and 1
     ga.calculate_normalized_fitness(population)
 
-    # Instantiate generation class for containing the generation results
-    gen = Generation(generation_num=0, children=population, survivors=population)
-
     # Save the generation as pickle file.
-    gen.save(directory=args["output_dir"], run_No=0)
-    gen.print()
+    population.save(directory=args["output_dir"], run_No=0)
+    population.print()
     with open(args["output_dir"] + "/GA0.out", "w") as f:
-        f.write(gen.print(pass_text=True))
+        f.write(population.print(population="molecules", pass_text=True))
         f.write("\n")
-        f.write(gen.print(population="children", pass_text=True))
+        f.write(population.print(population="new_molecules", pass_text=True))
         f.write("\n")
-        f.write(gen.summary())
+        f.write(population.summary())
 
     logging.info("Finished initial generation")
 
@@ -227,10 +222,6 @@ def GA(args):
         # Counter for tracking generation number
         generation_num = generation + 1
         logging.info("Starting generation %d", generation_num)
-
-        # I think this takes the population and reset some Individuals' attributes
-        # Such that they can be set in new generation.
-        population.clean_mutated_survival_and_parents()
 
         # Making new Children
         mating_pool = ga.make_mating_pool(population, args["mating_pool_size"])
@@ -250,7 +241,7 @@ def GA(args):
         new_population.assign_idx()
 
         # Sort population based on size
-        population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
+        # population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
         logging.info("Getting scores for new population")
@@ -281,8 +272,6 @@ def GA(args):
 
         # Select best Individuals from old and new population
         potential_survivors = copy.deepcopy(population.molecules)
-        for mol in potential_survivors:
-            mol.survival_idx = mol.idx
 
         # The calculated population is merged with current top population
         population = ga.sanitize(
@@ -297,63 +286,34 @@ def GA(args):
         # Normalize new scores
         ga.calculate_normalized_fitness(population)
 
-        # Create generation object from the result. And save for this generation
-        gen = Generation(
+        # Collect result molecules in class.
+        current_gen = Generation(
             generation_num=generation_num,
-            children=new_population,
-            survivors=population,
+            molecules=population.molecules,
+            new_molecules=new_population.molecules,
         )
         # Save data from current generation
         logging.info("Saving current generation")
-        gen.save(directory=args["output_dir"], run_No=generation_num)
+        current_gen.save(directory=args["output_dir"], run_No=generation_num)
 
         # Print gen table to output file
-        gen.print()
-        gen.summary()
+        current_gen.print()
+        current_gen.summary()
 
         # Print to individual generation files to keep track on the fly
         with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
-            f.write(gen.print(pass_text=True))
+            f.write(current_gen.print(population="molecules", pass_text=True))
             f.write("\n")
-            f.write(gen.print(population="children", pass_text=True))
+            f.write(current_gen.print(population="new_molecules", pass_text=True))
             f.write("\n")
-            f.write(gen.summary())
+            f.write(current_gen.summary())
 
-    return gen
+    return current_gen
 
 
 def main():
 
     args = get_arguments()
-
-    # Create output_dir
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-
-    # Variables for crossover module
-    co.average_size = 50
-    co.size_stdev = 10
-
-    # How many times to run the GA.
-    n_tries = args.n_tries
-
-    # Setup logger
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
-        handlers=[
-            logging.FileHandler(
-                os.path.join(args.output_dir, "printlog.txt"), mode="w"
-            ),
-            logging.StreamHandler(),  # For debugging. Can be removed on remote
-        ],
-    )
-
-    # Log current git commit
-    logging.info("Current git hash: %s", get_git_revision_short_hash())
-
-    # Log the argparse set values
-    logging.info("Input args: %r", args)
-
     # a dictionary mapping strings of function names to function objects:
     funcs = {
         "rdkit_embed_scoring": rdkit_embed_scoring,
@@ -368,17 +328,43 @@ def main():
     # Create list of dicts for the distributed GAs
     GA_args = args_dict
 
-    # Start the time
-    t0 = time.time()
+    # Variables for crossover module
+    co.average_size = 50
+    co.size_stdev = 10
+
+    # How many times to run the GA.
+    n_tries = args.n_tries
 
     # Run the GA
     for i in range(n_tries):
-        GA_args['output_dir'] = args_dict['output_dir']+f'_{i}'
+        # Start the time
+        t0 = time.time()
+        # Create output_dir
+        GA_args["output_dir"] = args_dict["output_dir"] + f"_{i}"
+        Path(GA_args["output_dir"]).mkdir(parents=True, exist_ok=True)
+
+        # Setup logger
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
+            handlers=[
+                logging.FileHandler(
+                    os.path.join(GA_args["output_dir"], "printlog.txt"), mode="w"
+                ),
+                logging.StreamHandler(),  # For debugging. Can be removed on remote
+            ],
+        )
+
+        # Log current git commit
+        logging.info("Current git hash: %s", get_git_revision_short_hash())
+
+        # Log the argparse set values
+        logging.info("Input args: %r", args)
         generations = GA(GA_args)
 
-    # Final output handling and logging
-    t1 = time.time()
-    logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
+        # Final output handling and logging
+        t1 = time.time()
+        logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 
     # Addded this to return to the commandline if running this driver
     # on the frontend.

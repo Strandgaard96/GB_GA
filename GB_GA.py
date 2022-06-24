@@ -9,7 +9,7 @@ import random
 from rdkit import Chem
 import crossover as co
 import mutate as mu
-from my_utils.my_utils import Individual, Population
+from my_utils.my_utils import Individual, Generation
 from scoring.make_structures import create_ligands, create_prim_amine
 import copy
 
@@ -36,7 +36,7 @@ def make_initial_population(population_size, file_name, rand=False):
         initial_population (Population)
     """
     mol_list = read_file(file_name)
-    initial_population = Population()
+    initial_population = Generation(generation_num=0)
 
     for i in range(population_size):
         if rand:
@@ -88,7 +88,7 @@ def make_initial_population(population_size, file_name, rand=False):
 def make_initial_population_debug(population_size, file_name, rand=False):
     """Function that runs localy and creates a small pop for debugging"""
     mol_list = read_file("data/ZINC_1000_amines.smi")
-    initial_population = Population()
+    initial_population = Generation(generation_num=0)
 
     smiles = ["CN", "CCN", "CCN", "CCN"]
     idx = [1, 2, 3, 4]
@@ -164,7 +164,7 @@ def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
                     rdkit_mol=mutated_child,
                 )
                 new_population.append(mutated_child)
-    return Population(molecules=new_population)
+    return Generation(molecules=new_population)
 
 
 def sanitize(molecules, population_size, prune_population):
@@ -178,7 +178,7 @@ def sanitize(molecules, population_size, prune_population):
     """
     if prune_population:
         smiles_list = []
-        new_population = Population()
+        new_population = Generation()
         for individual in molecules:
             copy_individual = copy.deepcopy(individual)
             if copy_individual.smiles not in smiles_list:
@@ -186,7 +186,7 @@ def sanitize(molecules, population_size, prune_population):
                 new_population.molecules.append(copy_individual)
     else:
         copy_population = copy.deepcopy(molecules)
-        new_population = Population(molecules=copy_population.molecules)
+        new_population = Generation(molecules=copy_population.molecules)
 
     new_population.prune(population_size)
 

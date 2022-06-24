@@ -30,7 +30,7 @@ from make_structures import (
     remove_NH3,
     remove_N2,
 )
-from my_utils.my_utils import Individual, Population
+from my_utils.my_utils import Individual, Generation
 
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698

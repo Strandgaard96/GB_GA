@@ -217,7 +217,7 @@ class Generation:
     def summary(self):
         nO_NaN = 0
         nO_9999 = 0
-        for ind in self.molecules:
+        for ind in self.new_molecules:
             tmp = ind.energy
             if np.isnan(tmp):
                 nO_NaN += 1
@@ -288,7 +288,7 @@ class Generation:
         for mol in self.molecules:
 
             # Check for primary amine
-            match = mol.rdkit_mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
+            match = mol.rdkit_mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!$(*N)]"))
             mol.original_mol = mol.rdkit_mol
 
             # Create primary amine if it doesnt have once. Otherwise, pas the cut idx

@@ -258,7 +258,6 @@ def folder_orca_driver(args):
 
     # Extract dirs
     calc_dir = args.calc_dir
-    output_dir = args.output_dir
 
     # Get all structures
     paths = sorted(calc_dir.rglob("*.xyz"))

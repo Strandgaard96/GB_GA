@@ -28,7 +28,7 @@ from tabulate import tabulate
 
 sys.path.insert(0, "../scoring")
 
-from make_structures import create_prim_amine
+from make_structures import create_prim_amine, mol_with_atom_index
 from sa.neutralize import read_neutralizers
 
 _neutralize_reactions = None
@@ -288,7 +288,9 @@ class Generation:
         for mol in self.molecules:
 
             # Check for primary amine
-            match = mol.rdkit_mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!$(*N)]"))
+            match = mol.rdkit_mol.GetSubstructMatches(
+                Chem.MolFromSmarts("[NX3;H2;!$(*N)]")
+            )
             mol.original_mol = mol.rdkit_mol
 
             # Create primary amine if it doesnt have once. Otherwise, pas the cut idx
@@ -309,6 +311,12 @@ class Generation:
 
             else:
                 if supress_amines:
+
+                    # Check for N-N bound amines
+                    nn_match = mol.rdkit_mol.GetSubstructMatches(
+                        Chem.MolFromSmarts("[NX3;H2;$(*N)]")
+                    )
+
                     # Enable NH2 amine supressor.
                     if len(match) > 1:
                         # Replace other primary amines with hydrogen in the frag:
@@ -317,6 +325,22 @@ class Generation:
                             Chem.MolFromSmarts("[NX3;H2]"),
                             Chem.MolFromSmarts("[H]"),
                             replacementConnectionPoint=0,
+                        )[0]
+                        clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
+                        mol.rdkit_mol = clean_mol
+                        cut_idx = clean_mol.GetSubstructMatches(
+                            Chem.MolFromSmarts("[NX3;H2]")
+                        )
+                        mol.cut_idx = cut_idx[0][0]
+                        mol.smiles = Chem.MolToSmiles(clean_mol)
+                    elif nn_match:
+                        # Replace other primary amines with hydrogen in the frag:
+                        output_ligand = AllChem.ReplaceSubstructs(
+                            mol.rdkit_mol,
+                            Chem.MolFromSmarts("[NX3;H2;$(*N)]"),
+                            Chem.MolFromSmarts("[H]"),
+                            replacementConnectionPoint=0,
+                            replaceAll=True
                         )[0]
                         clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
                         mol.rdkit_mol = clean_mol

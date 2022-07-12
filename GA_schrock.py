@@ -374,28 +374,15 @@ def main():
 if __name__ == "__main__":
     main()
     # Load the children population to compare SA scores
-    # import pickle
+    #import pickle
     #
-    # with open("/home/magstr/generation_data/supress4/GA50.pkl", "rb") as f:
+    #with open("/home/magstr/generation_data/prod2_0/GA50.pkl", "rb") as f:
     #     gen = pickle.load(f)
     # #
     # from rdkit import Chem
-    #
-    # initial_population = gen.survivors
-    # l = initial_population.get("pre_score")
-    # l.append(1)
-    # ligand = Chem.MolFromSmiles("[H]NCCCNCN")
-    # # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[22].rdkit_mol))
-    # # ligand = Chem.MolFromSmiles(Chem.MolToSmiles(ligand))
-    # cut_idx = [[0]]
-    # pop = gen.children
-    # pop2 = Population()
-    # for elem in gen.children.molecules:
-    #     pop2.molecules.append(
-    #         Individual(
-    #             elem.original_mol, cut_idx=elem.cut_idx, score=elem.score, idx=elem.idx
-    #         )
-    #     )
+
+    #gen.modify_population(supress_amines=True)
+
     # # pop.molecules.append(Individual(gen.children.molecules[32].original_mol, cut_idx=cut_idx[0][0], score=1))
     # # pop.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0], score=1))
     # # pop.setprop('pre_score',[1,1])
@@ -409,5 +396,3 @@ if __name__ == "__main__":
     # pop2.modify_population(supress_amines=True)
     # neutralize_molecules(pop2)
     # reweigh_scores_by_sa(pop2)
-    # print(pop.molecules[0].sa_score)
-    # print(pop.molecules[1].sa_score)

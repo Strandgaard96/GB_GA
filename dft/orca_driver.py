@@ -38,11 +38,15 @@ def get_inputfile(options, charge, spin, file):
         + "\n"
         + '%basis\nNewGTO Mo "SARC-ZORA-TZVP" end\nend\n'
     )
+    n_cores=options.pop('n_cores')
     header += "# Number of cores\n"
-    header += f"%pal nprocs {options.pop('n_cores')} end\n"
+    header += f"%pal nprocs {n_cores} end\n"
     header += "# RAM per core\n"
-    header += f"%maxcore {1024 * options.pop('memory')}" + 2 * "\n"
 
+    # Memory per core
+    memory = options.pop('memory')
+    mem_per_core = memory/n_cores
+    header += f"%maxcore {round(1024 * mem_per_core)}" + 2 * "\n"
     inputstr = header + 2 * "\n"
 
     # charge, spin, and coordinate section
@@ -59,9 +63,10 @@ def write_orca_input_file(
     charge=None,
     spin=None,
     n_cores=24,
+    memory=8
 ):
 
-    options = {"n_cores": n_cores, "memory": 8, "type": "sp"}
+    options = {"n_cores": n_cores, "memory": memory, "type": "sp"}
 
     # write input file
     inputstr = get_inputfile(options, charge=charge, spin=spin, file=structure_path)
@@ -93,13 +98,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--GA_dir",
         type=Path,
-        default=".",
+        default="/home/magstr/generation_data/prod1_0",
         help="Path to folder containing GA pickle files",
     )
     parser.add_argument(
         "--output_dir",
         type=Path,
-        default=".",
+        default="bla",
         help="Path to folder to put the DFT output folders",
     )
     parser.add_argument(
@@ -121,6 +126,18 @@ def get_arguments(arg_list=None):
         help="How many cores for each calc",
     )
     parser.add_argument(
+        "--memory",
+        type=int,
+        default=8,
+        help="How many GB requested for each calc",
+    )
+    parser.add_argument(
+        "--partition",
+        type=str,
+        default='xeon40',
+        help="Which partition to run on",
+    )
+    parser.add_argument(
         "--no_molecules",
         type=int,
         default=1,
@@ -130,16 +147,10 @@ def get_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def write_orca_sh(n_cores=24):
+def write_orca_sh(n_cores=24, mem="250G", partition='xeon40'):
 
     # Copy template orca file from template dir
     shutil.copy(source / "dft/template_files/ORCA/orca.sh", ".")
-
-    # Set node mem depending on n_core
-    if n_cores == 24:
-        mem = "250G"
-    elif n_cores == 40:
-        mem = "350G"
 
     with open("orca.sh", "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -147,7 +158,7 @@ def write_orca_sh(n_cores=24):
     with open("orca.sh", "w", encoding="utf-8") as f:
         for line in lines:
             if "--partition" in line:
-                f.writelines(f"#SBATCH --partition=xeon{n_cores}\n")
+                f.writelines(f"#SBATCH --partition={partition}\n")
             elif "#SBATCH -n" in line:
                 f.writelines(f"#SBATCH -n {n_cores}\n")
             elif "#SBATCH --mem" in line:
@@ -173,7 +184,7 @@ def GA_singlepoints(args):
         gen = pickle.load(f)
 
     # Loop over all the structures
-    for elem in gen.survivors.molecules[0 : args.no_molecules]:
+    for elem in gen.molecules[0 : args.no_molecules]:
 
         # TODO THE ORDERING OF THE KEYS MATTER HERE
         # Get scoring intermediates and charge/spin
@@ -217,14 +228,19 @@ def GA_singlepoints(args):
                 charge=smi_dict[key1]["charge"],
                 spin=smi_dict[key1]["mul"],
                 n_cores=args.n_cores,
+                memory=args.memory
             )
 
             # Customize orca.sh to current job.
-            write_orca_sh(n_cores=args.n_cores)
+            write_orca_sh(n_cores=args.n_cores, mem=args.memory, partition=args.partition)
 
             cmd = "sbatch orca.sh"
             # Submit bash script in folder
             out, err = shell_pure(cmd, shell=True)
+            with open(f"1job.err", "w") as f:
+                f.write(err)
+            with open(f"1job.out", "w") as f:
+                f.write(out)
 
         with cd(mol_dir2):
             # Create xtb input file from struct
@@ -241,14 +257,19 @@ def GA_singlepoints(args):
                 charge=smi_dict[key2]["charge"],
                 spin=smi_dict[key2]["mul"],
                 n_cores=args.n_cores,
+                memory=args.memory
             )
 
             # Customize orca.sh to current job.
-            write_orca_sh(n_cores=args.n_cores)
+            write_orca_sh(n_cores=args.n_cores, mem=args.memory, partition=args.partition)
 
             cmd = "sbatch orca.sh"
             # Submit bash script in folder
             out, err = shell_pure(cmd, shell=True)
+            with open(f"2job.err", "w") as f:
+                f.write(err)
+            with open(f"2job.out", "w") as f:
+                f.write(out)
 
     return
 
@@ -276,14 +297,20 @@ def folder_orca_driver(args):
                 charge=smi_dict[key]["charge"],
                 spin=smi_dict[key]["mul"],
                 n_cores=args.n_cores,
+                memory=args.memory
             )
 
             # Customize orca.sh to current job.
-            write_orca_sh(n_cores=args.n_cores)
+            write_orca_sh(n_cores=args.n_cores, mem=args.memory, partition=args.partitoin)
 
             cmd = "sbatch orca.sh"
+
             # Submit bash script in folder
             out, err = shell_pure(cmd, shell=True)
+            with open(f"job.err", "w") as f:
+                f.write(err)
+            with open(f"job.out", "w") as f:
+                f.write(out)
 
 
 if __name__ == "__main__":

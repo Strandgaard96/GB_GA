@@ -38,14 +38,14 @@ def get_inputfile(options, charge, spin, file):
         + "\n"
         + '%basis\nNewGTO Mo "SARC-ZORA-TZVP" end\nend\n'
     )
-    n_cores=options.pop('n_cores')
+    n_cores = options.pop("n_cores")
     header += "# Number of cores\n"
     header += f"%pal nprocs {n_cores} end\n"
     header += "# RAM per core\n"
 
     # Memory per core
-    memory = options.pop('memory')
-    mem_per_core = memory/n_cores
+    memory = options.pop("memory")
+    mem_per_core = memory / n_cores
     header += f"%maxcore {round(1024 * mem_per_core)}" + 2 * "\n"
     inputstr = header + 2 * "\n"
 
@@ -63,7 +63,7 @@ def write_orca_input_file(
     charge=None,
     spin=None,
     n_cores=24,
-    memory=8
+    memory=8,
 ):
 
     options = {"n_cores": n_cores, "memory": memory, "type": "sp"}
@@ -134,8 +134,14 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--partition",
         type=str,
-        default='xeon40',
+        default="xeon40",
         help="Which partition to run on",
+    )
+    parser.add_argument(
+        "--cluster",
+        type=str,
+        default="niflheim",
+        help="Which cluster the calc is running on",
     )
     parser.add_argument(
         "--no_molecules",
@@ -147,10 +153,17 @@ def get_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def write_orca_sh(n_cores=24, mem="250G", partition='xeon40', name='orca'):
+def write_orca_sh(
+    n_cores=24, mem="250G", partition="xeon40", name="orca", cluster="niflheim"
+):
 
     # Copy template orca file from template dir
-    shutil.copy(source / "dft/template_files/ORCA/orca.sh", ".")
+    if cluster == 'niflheim':
+        shutil.copy(source / "dft/template_files/ORCA/orca.sh", "./orca.sh")
+    elif cluster == 'steno':
+        shutil.copy(source / "dft/template_files/ORCA/orca_steno.sh", "./orca.sh")
+    else:
+        print('Invalid cluster')
 
     with open("orca.sh", "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -230,11 +243,16 @@ def GA_singlepoints(args):
                 charge=smi_dict[key1]["charge"],
                 spin=smi_dict[key1]["mul"],
                 n_cores=args.n_cores,
-                memory=args.memory
+                memory=args.memory,
             )
 
             # Customize orca.sh to current job.
-            write_orca_sh(n_cores=args.n_cores, mem=args.memory, partition=args.partition)
+            write_orca_sh(
+                n_cores=args.n_cores,
+                mem=args.memory,
+                partition=args.partition,
+                cluster=args.cluster,
+            )
 
             cmd = "sbatch orca.sh"
             # Submit bash script in folder
@@ -259,11 +277,13 @@ def GA_singlepoints(args):
                 charge=smi_dict[key2]["charge"],
                 spin=smi_dict[key2]["mul"],
                 n_cores=args.n_cores,
-                memory=args.memory
+                memory=args.memory,
             )
 
             # Customize orca.sh to current job.
-            write_orca_sh(n_cores=args.n_cores, mem=args.memory, partition=args.partition)
+            write_orca_sh(
+                n_cores=args.n_cores, mem=args.memory, partition=args.partition, cluster=args.cluster
+            )
 
             cmd = "sbatch orca.sh"
             # Submit bash script in folder
@@ -299,11 +319,16 @@ def folder_orca_driver(args):
                 charge=smi_dict[key]["charge"],
                 spin=smi_dict[key]["mul"],
                 n_cores=args.n_cores,
-                memory=args.memory
+                memory=args.memory,
             )
 
             # Customize orca.sh to current job.
-            write_orca_sh(n_cores=args.n_cores, mem=args.memory, partition=args.partitoin)
+            write_orca_sh(
+                n_cores=args.n_cores,
+                mem=args.memory,
+                partition=args.partition,
+                cluster=args.cluster,
+            )
 
             cmd = "sbatch orca.sh"
 

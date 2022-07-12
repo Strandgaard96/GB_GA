@@ -340,7 +340,7 @@ class Generation:
                             Chem.MolFromSmarts("[NX3;H2;$(*N)]"),
                             Chem.MolFromSmarts("[H]"),
                             replacementConnectionPoint=0,
-                            replaceAll=True
+                            replaceAll=True,
                         )[0]
                         clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
                         mol.rdkit_mol = clean_mol

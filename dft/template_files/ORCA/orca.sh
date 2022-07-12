@@ -10,7 +10,6 @@
 
 # Loading necessary modules
 module load ORCA
-module load OpenMPI
 
 # Initialize variable
 job=orca

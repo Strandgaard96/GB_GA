@@ -45,7 +45,7 @@
     "smi": "[NH3]",
     "charge": 0,
     "spin": 0,
-    "mul": 1
+    "mul": 2
   },
   "Mo_NH3+": {
     "smi": "[NH3]",

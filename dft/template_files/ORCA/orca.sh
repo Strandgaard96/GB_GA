@@ -40,16 +40,5 @@ cp $tdir/$job.gbw .
 cp $tdir/$job.engrad . 
 cp $tdir/$job_trj.xyz .
 cp $tdir/$job.xyz .
-cp $tdir/$job.loc .
-cp $tdir/$job.qro . 
-cp $tdir/$job.uno .
-cp $tdir/$job.unso .
 cp $tdir/$job.opt .
 cp $tdir/$job.densities .
-cp $tdir/$job.uco . 
-cp $tdir/$job.hess .
-cp $tdir/$job.cis . 
-cp $tdir/$job.dat . 
-cp $tdir/$job.mp2nat . 
-cp $tdir/$job_property.txt $SLURM_SUBMIT_DIR
-cp $tdir/*spin* $SLURM_SUBMIT_DIR

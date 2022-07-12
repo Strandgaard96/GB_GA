@@ -257,8 +257,8 @@ def GA(args):
         new_population.setprop("structure", geometries)
         new_population.setprop("structure2", geometries2)
         new_population.setprop("min_conf", min_conf)
-
         new_population.setprop("score", energies)
+        new_population.save(directory=args["output_dir"], run_No=generation_num)
 
         # Functionality to check synthetic accessibility
         if args["sa_screening"]:
@@ -280,7 +280,6 @@ def GA(args):
             args["prune_population"],
         )
 
-        # Population now contains survivors after sanitation.
         population.generation_num = generation_num
 
         # Normalize new scores
@@ -374,14 +373,14 @@ def main():
 if __name__ == "__main__":
     main()
     # Load the children population to compare SA scores
-    #import pickle
+    # import pickle
     #
-    #with open("/home/magstr/generation_data/prod2_0/GA50.pkl", "rb") as f:
+    # with open("/home/magstr/generation_data/prod2_0/GA50.pkl", "rb") as f:
     #     gen = pickle.load(f)
     # #
     # from rdkit import Chem
 
-    #gen.modify_population(supress_amines=True)
+    # gen.modify_population(supress_amines=True)
 
     # # pop.molecules.append(Individual(gen.children.molecules[32].original_mol, cut_idx=cut_idx[0][0], score=1))
     # # pop.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0], score=1))

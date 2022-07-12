@@ -1,4 +1,4 @@
-!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF
+!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint KDIIS SOSCF
 %cpcm epsilon 1.844
 end
 %basis

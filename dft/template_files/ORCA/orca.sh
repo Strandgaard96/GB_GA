@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --mail-type=ALL
+#SBATCH --job-name=orca
 #SBATCH --mail-user=magstr@dtu.dk  # The default value is the submitting user.
 #SBATCH --partition=xeon40
 #SBATCH -N 1      # Minimum of 2 nodes

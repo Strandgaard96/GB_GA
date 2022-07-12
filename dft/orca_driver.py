@@ -147,7 +147,7 @@ def get_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def write_orca_sh(n_cores=24, mem="250G", partition='xeon40'):
+def write_orca_sh(n_cores=24, mem="250G", partition='xeon40', name='orca'):
 
     # Copy template orca file from template dir
     shutil.copy(source / "dft/template_files/ORCA/orca.sh", ".")
@@ -162,7 +162,9 @@ def write_orca_sh(n_cores=24, mem="250G", partition='xeon40'):
             elif "#SBATCH -n" in line:
                 f.writelines(f"#SBATCH -n {n_cores}\n")
             elif "#SBATCH --mem" in line:
-                f.writelines(f"#SBATCH --mem={mem}\n")
+                f.writelines(f"#SBATCH --mem={mem}GB\n")
+            elif "#SBATCH --job_name" in line:
+                f.writelines(f"#SBATCH --job-name={name}\n")
             else:
                 f.writelines(line)
 

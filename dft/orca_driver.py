@@ -219,16 +219,20 @@ def GA_singlepoints(args):
         idx = idx.replace(",", "_").replace(" ", "")
 
         # Create folders based on idx and intermediates
-        mol_dir1 = output_dir / f"{idx}_{key1}"
-        mol_dir1.mkdir(exist_ok=True)
+        mol_dir1 = output_dir / f"{idx}"/key1
+        mol_dir1.mkdir(exist_ok=True,parents=True)
 
         # Create folders based on idx and intermediates
-        mol_dir2 = output_dir / f"{idx}_{key2}"
-        mol_dir2.mkdir(exist_ok=True)
+        mol_dir2 = output_dir / f"{idx}"/key2
+        mol_dir2.mkdir(exist_ok=True, parents=True)
 
         # xyzfile ame
         xyzfile = "struct.xyz"
         with cd(mol_dir1):
+
+            # Save indvidual object for easier processing later
+            elem.save(directory='.')
+
             # Create xtb input file from struct
             with open(xyzfile, "w+") as f:
                 if elem.structure:

@@ -120,6 +120,11 @@ class Individual:
             self.smiles,
         ]
 
+    def save(self, directory='.'):
+        filename = os.path.join(directory, f"ind.pkl")
+        with open(filename, "ab+") as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
 
 @dataclass(order=True)
 class Generation:
@@ -310,9 +315,9 @@ class Generation:
                     print("Could not create primary amine, setting methyl as ligand")
                     output_ligand = Chem.MolFromSmiles("CN")
                     cut_idx = [[1]]
-                mol.rdkit_mol = output_ligand
+                mol.rdkit_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
                 mol.cut_idx = cut_idx[0][0]
-                mol.smiles = Chem.MolToSmiles(output_ligand)
+                mol.smiles = Chem.MolToSmiles(mol.rdkit_mol)
 
             else:
                 if supress_amines:

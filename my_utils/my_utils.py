@@ -146,6 +146,11 @@ class Generation:
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
+    def save_debug(self, directory=None, run_No=0):
+        filename = os.path.join(directory, f"GA{run_No:02d}_debug.pkl")
+        with open(filename, "ab+") as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
     def get(self, prop):
         properties = []
         for molecule in self.molecules:

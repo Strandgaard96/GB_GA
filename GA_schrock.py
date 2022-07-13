@@ -258,7 +258,7 @@ def GA(args):
         new_population.setprop("structure2", geometries2)
         new_population.setprop("min_conf", min_conf)
         new_population.setprop("score", energies)
-        new_population.save(directory=args["output_dir"], run_No=generation_num)
+        new_population.save_debug(directory=args["output_dir"], run_No=generation_num)
 
         # Functionality to check synthetic accessibility
         if args["sa_screening"]:

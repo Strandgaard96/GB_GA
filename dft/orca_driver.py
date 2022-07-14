@@ -55,6 +55,30 @@ def get_inputfile(options, charge, spin, file):
 
     return inputstr
 
+def get_inputfile_simple(options, charge, spin, file):
+    """Write Orca header"""
+
+    header = "# ORCA input" + 2 * "\n"
+
+    header += ORCA_COMMANDS[options.pop("type")] + "\n"
+    header += "%cpcm epsilon 1.844 end" + "\n"
+    n_cores = options.pop("n_cores")
+    header += "# Number of cores\n"
+    header += f"%pal nprocs {n_cores} end\n"
+    header += "# RAM per core\n"
+
+    # Memory per core
+    memory = options.pop("memory")
+    mem_per_core = memory / n_cores
+    header += f"%maxcore {round(1024 * mem_per_core)}" + 2 * "\n"
+    inputstr = header + 2 * "\n"
+
+    # charge, spin, and coordinate section
+    inputstr += f"* xyzfile {charge} {spin} {file}\n"
+    inputstr += "\n"  # magic line
+
+    return inputstr
+
 
 def write_orca_input_file(
     orca_file="orca.inp",
@@ -187,6 +211,9 @@ def GA_singlepoints(args):
 
     # Extract dirs
     GA_dir = args.GA_dir
+
+    # Create output folder
+    args.output_dir.mkdir(exist_ok=True)
     output_dir = args.output_dir
 
     # Get how many max generations there are
@@ -346,18 +373,63 @@ def folder_orca_driver(args):
             with open(f"job.out", "w") as f:
                 f.write(out)
 
+def parts_opts(args):
+    """Future function that do DFT on structures in a folder"""
+
+    # Extract dirs
+    calc_dir = args.calc_dir
+
+    # Get all structures
+    paths = sorted(calc_dir.rglob("*.xyz"))
+
+    # Loop over folders
+    for path in paths:
+
+        with cd(path.parent):
+            # Get the charge ans spin from default.in file
+            with open("default.in", "r") as f:
+                data = f.readlines()
+
+            charge = data[0].split("=")[-1].split("\n")[0]
+            spin = data[1].split("=")[-1].split("\n")[0]
+            # Create input file
+            write_orca_input_file(
+                structure_path=path.name,
+                command=ORCA_COMMANDS["opt"],
+                charge=charge,
+                spin=spin,
+                n_cores=args.n_cores,
+                memory=args.memory,
+            )
+
+            # Customize orca.sh to current job.
+            write_orca_sh(
+                n_cores=args.n_cores,
+                mem=args.memory,
+                partition=args.partition,
+                cluster=args.cluster,
+            )
+
+            cmd = "sbatch orca.sh"
+
+            # Submit bash script in folder
+            out, err = shell_pure(cmd, shell=True)
+            with open(f"job.err", "w") as f:
+                f.write(err)
+            with open(f"job.out", "w") as f:
+                f.write(out)
+
+
 
 if __name__ == "__main__":
 
     FUNCTION_MAP = {
         "folder_orca_driver": folder_orca_driver,
         "GA_singlepoints": GA_singlepoints,
+        "parts_opts": parts_opts,
     }
     args = get_arguments()
     func = FUNCTION_MAP[args.function]
-
-    # Create output folder
-    args.output_dir.mkdir(exist_ok=True)
 
     # Run chosen function
     func(args)

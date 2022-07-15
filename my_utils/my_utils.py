@@ -28,7 +28,12 @@ from tabulate import tabulate
 
 sys.path.insert(0, "../scoring")
 
-from make_structures import create_prim_amine, mol_with_atom_index
+from make_structures import (
+    create_prim_amine,
+    create_prim_amine_revised,
+    mol_with_atom_index,
+    atom_remover,
+)
 from sa.neutralize import read_neutralizers
 
 _neutralize_reactions = None
@@ -156,6 +161,11 @@ class Generation:
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
+    def save_debug2(self, directory=None, run_No=0):
+        filename = os.path.join(directory, f"GA{run_No:02d}_debug2.pkl")
+        with open(filename, "ab+") as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
     def get(self, prop):
         properties = []
         for molecule in self.molecules:
@@ -253,18 +263,24 @@ class Generation:
         df.columns = columns
         return df
 
+    def update_property_cache(self):
+        for mol in self.molecules:
+            Chem.GetSymmSSSR(mol.rdkit_mol)
+            mol.rdkit_mol.UpdatePropertyCache()
+
     def sa_prep(self):
         for mol in self.molecules:
-            output_ligand = AllChem.ReplaceSubstructs(
-                mol.rdkit_mol,
-                Chem.MolFromSmarts("[NX3;H2]"),
-                Chem.MolFromSmarts("[H]"),
-                replaceAll=True,
-                replacementConnectionPoint=0,
-            )[0]
-            res = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
-            mol.rdkit_mol_sa = res
-            mol.smiles_sa = Chem.MolToSmiles(res)
+
+            prim_match = Chem.MolFromSmarts("[NX3;H2]")
+
+            # Substructure match the NH3
+            ms = [x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)]
+            removed_mol = random.choice(ms)
+            prim_amine_index = removed_mol.GetSubstructMatches(
+                Chem.MolFromSmarts("[NX3;H2]")
+            )
+            mol.rdkit_mol_sa = removed_mol
+            mol.smiles_sa = Chem.MolToSmiles(removed_mol)
 
         global _neutralize_reactions
         if _neutralize_reactions is None:
@@ -296,7 +312,6 @@ class Generation:
 
     def modify_population(self, supress_amines=False):
         for mol in self.molecules:
-
             # Check for primary amine
             match = mol.rdkit_mol.GetSubstructMatches(
                 Chem.MolFromSmarts("[NX3;H2;!$(*N)]")
@@ -306,7 +321,8 @@ class Generation:
             # Create primary amine if it doesnt have once. Otherwise, pas the cut idx
             if not match:
                 try:
-                    output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
+                    output_ligand, cut_idx = create_prim_amine_revised(mol.rdkit_mol)
+                    # output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
                     # Handle if None is returned
                     if not output_ligand:
                         output_ligand = Chem.MolFromSmiles("CCCCCN")
@@ -315,9 +331,12 @@ class Generation:
                     print("Could not create primary amine, setting methyl as ligand")
                     output_ligand = Chem.MolFromSmiles("CN")
                     cut_idx = [[1]]
+                print(cut_idx)
                 mol.rdkit_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
                 mol.cut_idx = cut_idx[0][0]
-                mol.smiles = Chem.MolToSmiles(mol.rdkit_mol)
+                mol.smiles = Chem.MolToSmiles(
+                    Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
+                )
 
             else:
                 if supress_amines:
@@ -329,36 +348,37 @@ class Generation:
 
                     # Enable NH2 amine supressor.
                     if len(match) > 1:
-                        # Replace other primary amines with hydrogen in the frag:
-                        output_ligand = AllChem.ReplaceSubstructs(
-                            mol.rdkit_mol,
-                            Chem.MolFromSmarts("[NX3;H2]"),
-                            Chem.MolFromSmarts("[H]"),
-                            replacementConnectionPoint=0,
-                        )[0]
-                        clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
-                        mol.rdkit_mol = clean_mol
-                        cut_idx = clean_mol.GetSubstructMatches(
+
+                        # Substructure match the NH3
+                        prim_match = Chem.MolFromSmarts("[NX3;H2]")
+                        # Substructure match the NH3
+                        ms = [
+                            x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)
+                        ]
+                        removed_mol = random.choice(ms)
+                        prim_amine_index = removed_mol.GetSubstructMatches(
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
-                        mol.cut_idx = cut_idx[0][0]
-                        mol.smiles = Chem.MolToSmiles(clean_mol)
+                        mol.rdkit_mol = removed_mol
+                        mol.cut_idx = prim_amine_index[0][0]
+                        mol.smiles = Chem.MolToSmiles(removed_mol)
+
                     elif nn_match:
                         # Replace other primary amines with hydrogen in the frag:
-                        output_ligand = AllChem.ReplaceSubstructs(
-                            mol.rdkit_mol,
-                            Chem.MolFromSmarts("[NX3;H2;$(*N)]"),
-                            Chem.MolFromSmarts("[H]"),
-                            replacementConnectionPoint=0,
-                            replaceAll=True,
-                        )[0]
-                        clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
-                        mol.rdkit_mol = clean_mol
-                        cut_idx = clean_mol.GetSubstructMatches(
+                        prim_match = Chem.MolFromSmarts("[NX3;H2;$(*N)]")
+
+                        # Substructure match the NH3
+                        ms = [
+                            x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)
+                        ]
+                        removed_mol = random.choice(ms)
+                        prim_amine_index = removed_mol.GetSubstructMatches(
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
-                        mol.cut_idx = cut_idx[0][0]
-                        mol.smiles = Chem.MolToSmiles(clean_mol)
+                        mol.rdkit_mol = removed_mol
+                        mol.cut_idx = prim_amine_index[0][0]
+                        mol.smiles = Chem.MolToSmiles(removed_mol)
+
                     else:
                         cut_idx = random.choice(match)
                         mol.cut_idx = cut_idx[0]
@@ -429,7 +449,6 @@ def db_write_driver(output_dir=None, workers=6):
 
     trajs = p.rglob(f"0*/*/*traj*")
 
-    # TODO paralellize the writing to database
     print("Printing optimized structures to database")
     try:
 

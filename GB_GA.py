@@ -10,7 +10,11 @@ from rdkit import Chem
 import crossover as co
 import mutate as mu
 from my_utils.my_utils import Individual, Generation
-from scoring.make_structures import create_ligands, create_prim_amine
+from scoring.make_structures import (
+    create_ligands,
+    create_prim_amine,
+    create_prim_amine_revised,
+)
 import copy
 
 
@@ -53,9 +57,9 @@ def make_initial_population(population_size, file_name, rand=False):
 
             # Check for prim amine
             match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
-            if len(match) == 0:
+            if not match:
                 print(f"There are no primary amines to cut so creating new")
-                ligand, cut_idx = create_prim_amine(mol)
+                ligand, cut_idx = create_prim_amine_revised(mol)
                 # If we cannot split, simply add methyl as ligand
                 if not cut_idx:
                     ligand = Chem.MolFromSmiles("CN")
@@ -72,7 +76,7 @@ def make_initial_population(population_size, file_name, rand=False):
             # Check for primary amine first
             match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
             if len(match) == 0:
-                ligand, cut_idx = create_prim_amine(mol)
+                ligand, cut_idx = create_prim_amine_revised(mol)
                 initial_population.molecules.append(
                     Individual(ligand, cut_idx=cut_idx), original_mol=mol
                 )

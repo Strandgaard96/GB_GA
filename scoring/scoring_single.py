@@ -3,8 +3,7 @@
 Module handling the driver for scoring single ligand candidates.
 Contains various global variables that should be available to the scoring
 function at all times
-Todo:
-    *
+
 """
 import os
 import sys
@@ -115,7 +114,6 @@ def rdkit_embed_scoring(
     for elem in discard_conf:
         Mo_N2_NH3_3d.RemoveConformer(elem)
 
-    # TODO Add ability to easily change scoring function
     Mo_NH3_3d = remove_N2(Mo_N2_NH3_3d)
     Mo_NH3_3d = Chem.AddHs(Mo_NH3_3d)
 

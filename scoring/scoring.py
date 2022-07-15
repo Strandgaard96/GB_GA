@@ -3,8 +3,7 @@
 Module handling the driver for scoring ligand candidates.
 Contains various global variables that should be available to the scoring
 function at all times
-Todo:
-    *
+
 """
 import os
 import sys

@@ -62,7 +62,7 @@ def slurm_scoring(sc_function, population, scoring_args):
 
         trajs = sorted(p.rglob(f"{gen_no}*/*/*traj*"))
         logfiles = [p.parent / "xtbopt.log" for p in trajs]
-        # TODO paralellize the writing to database
+
         print("Printing optimized structures to database")
         try:
             # Write to database

@@ -18,6 +18,7 @@ from pathlib import Path
 import sys
 from copy import deepcopy
 import logging
+import pickle
 
 # Homemade stuff from Julius mostly
 import crossover as co
@@ -192,6 +193,8 @@ def GA(args):
     population.setprop("min_conf", min_conf)
     population.setprop("score", energies)
 
+    population.update_property_cache()
+
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
         population.sa_prep()
@@ -232,6 +235,10 @@ def GA(args):
             molecule_filter=molecule_filter,
         )
 
+        # with open("debug/GA01_debug.pkl", "rb") as f:
+        #    new_population = pickle.load(f)
+        new_population.save_debug(directory=args["output_dir"], run_No=generation_num)
+
         # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
         new_population.modify_population(supress_amines=args["supress_amines"])
@@ -239,9 +246,6 @@ def GA(args):
         # Assign generation and population idx to the population
         new_population.generation_num = generation_num
         new_population.assign_idx()
-
-        # Sort population based on size
-        # population.molecules.sort(key=lambda x: x.rdkit_mol.GetNumAtoms(), reverse=True)
 
         # Calculate new scores based on new population
         logging.info("Getting scores for new population")
@@ -258,7 +262,7 @@ def GA(args):
         new_population.setprop("structure2", geometries2)
         new_population.setprop("min_conf", min_conf)
         new_population.setprop("score", energies)
-        new_population.save_debug(directory=args["output_dir"], run_No=generation_num)
+        new_population.save_debug2(directory=args["output_dir"], run_No=generation_num)
 
         # Functionality to check synthetic accessibility
         if args["sa_screening"]:
@@ -372,26 +376,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # Load the children population to compare SA scores
-    # import pickle
-    #
-    # with open("/home/magstr/generation_data/prod2_0/GA50.pkl", "rb") as f:
-    #     gen = pickle.load(f)
-    # #
-    # from rdkit import Chem
-
-    # gen.modify_population(supress_amines=True)
-
-    # # pop.molecules.append(Individual(gen.children.molecules[32].original_mol, cut_idx=cut_idx[0][0], score=1))
-    # # pop.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0], score=1))
-    # # pop.setprop('pre_score',[1,1])
-    # # pop.modify_population(supress_amines=True)
-    # # tmp = Chem.MolFromSmiles(Chem.MolToSmiles(gen.children.molecules[26].rdkit_mol))
-    # # pop.molecules.append(Individual(tmp, cut_idx=gen.children.molecules[9].cut_idx, score=gen.children.molecules[9].score))
-    # # #initial_population.generation_num = 0
-    # # #initial_population.assign_idx()
-    # # pop.setprop("pre_score", [1,1])
-    # # #initial_population.setprop("score", [1])
-    # pop2.modify_population(supress_amines=True)
-    # neutralize_molecules(pop2)
-    # reweigh_scores_by_sa(pop2)

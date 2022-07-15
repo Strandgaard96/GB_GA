@@ -55,6 +55,7 @@ def get_inputfile(options, charge, spin, file):
 
     return inputstr
 
+
 def get_inputfile_simple(options, charge, spin, file):
     """Write Orca header"""
 
@@ -246,11 +247,11 @@ def GA_singlepoints(args):
         idx = idx.replace(",", "_").replace(" ", "")
 
         # Create folders based on idx and intermediates
-        mol_dir1 = output_dir / f"{idx}"/key1
-        mol_dir1.mkdir(exist_ok=True,parents=True)
+        mol_dir1 = output_dir / f"{idx}" / key1
+        mol_dir1.mkdir(exist_ok=True, parents=True)
 
         # Create folders based on idx and intermediates
-        mol_dir2 = output_dir / f"{idx}"/key2
+        mol_dir2 = output_dir / f"{idx}" / key2
         mol_dir2.mkdir(exist_ok=True, parents=True)
 
         # xyzfile ame
@@ -258,7 +259,7 @@ def GA_singlepoints(args):
         with cd(mol_dir1):
 
             # Save indvidual object for easier processing later
-            elem.save(directory='.')
+            elem.save(directory=".")
 
             # Create xtb input file from struct
             with open(xyzfile, "w+") as f:
@@ -373,6 +374,7 @@ def folder_orca_driver(args):
             with open(f"job.out", "w") as f:
                 f.write(out)
 
+
 def parts_opts(args):
     """Future function that do DFT on structures in a folder"""
 
@@ -418,7 +420,6 @@ def parts_opts(args):
                 f.write(err)
             with open(f"job.out", "w") as f:
                 f.write(out)
-
 
 
 if __name__ == "__main__":

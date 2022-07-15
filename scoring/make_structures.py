@@ -92,6 +92,29 @@ def replaceAtom(mol, indexAtom, indexNeighbor, atom_type="Br"):
     return emol.GetMol()
 
 
+def addAtom(mol, indexAtom, atom_type="N"):
+    """Replace an atom with another type"""
+
+    emol = Chem.EditableMol(mol)
+    idx = emol.AddAtom(Chem.Atom(atom_type))
+    emol.AddBond(indexAtom, idx, order=Chem.rdchem.BondType.SINGLE)
+    return emol.GetMol(), idx
+
+
+def atom_remover(mol, pattern=None):
+    matches = mol.GetSubstructMatches(pattern)
+    if not matches:
+        yield Chem.Mol(mol)
+    for match in matches:
+        res = Chem.RWMol(mol)
+        res.BeginBatchEdit()
+        for aid in match:
+            res.RemoveAtom(aid)
+        res.CommitBatchEdit()
+        Chem.SanitizeMol(res)
+        yield res.GetMol()
+
+
 def connect_ligand(core, ligand, NH3_flag=True):
     """
     Function that takes two mol objects at creates a core with ligand.
@@ -270,8 +293,6 @@ def create_prim_amine(input_ligand):
             f"{Chem.MolToSmiles(Chem.RemoveHs(input_ligand))} constains no amines to split on"
         )
 
-    # TODO perhaps randomly scramble the matches list and maybe prefer tertiary amine split
-
     # Shuffle list of matches
     l = list(matches)
     random.shuffle(l)
@@ -279,7 +300,7 @@ def create_prim_amine(input_ligand):
     # Randomly select one of the amines.
     for match in l:
 
-        # Get the neigbouring bonds to the selected amine
+        # Get the atom object for the mathing atom
         atom = input_ligand.GetAtomWithIdx(match[0])
 
         # Create list of tuples that contain the amine idx and idx of each of the three
@@ -366,6 +387,140 @@ def create_prim_amine(input_ligand):
         )
         clean_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
     return output_ligand, prim_amine_index
+
+
+def create_prim_amine_revised(input_ligand):
+    """
+    A function that takes a ligand and splits on a nitrogen bond, and then gives
+    a ligand out that has an NH2 and a cut_idx that specifies the location of the primary
+    amine and where to cut when putting ligand putting on the Mo core
+    Args:
+        input_ligand (mol): A regular ligand with no dummy atoms.
+
+    Returns:
+        output_ligand (mol): Modified ligand with an added primary amine
+        prim_amine_index[0] tuple(int): idx of the primary amine
+    """
+
+    # Initialize dummy mol
+    dummy = Chem.MolFromSmiles("*")
+
+    # Match Secondary or Tertiary amines
+    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0]"))
+    if not matches:
+        raise Exception(
+            f"{Chem.MolToSmiles(Chem.RemoveHs(input_ligand))} constains no amines to split on"
+        )
+
+    # Check if all the amines are in a ring.
+    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0;!R]"))
+    if not matches:
+        print(
+            "There are no non-ring amines, checking for methyl groups instead to use as"
+            "attachment points"
+        )
+
+        methyl_matches = input_ligand.GetSubstructMatches(
+            Chem.MolFromSmarts("[CX4;H3]")
+        )
+        # Shuffle list of matches
+        m_list = list(methyl_matches)
+        random.shuffle(m_list)
+        for elem in m_list:
+            # Add a nitrogen atom to the methyl and return
+            atom = input_ligand.GetAtomWithIdx(elem[0])
+            mol, idx = addAtom(input_ligand, elem[0])
+            if mol:
+                mol.UpdatePropertyCache()
+                return mol, [[idx]]
+
+    # Shuffle list of amine matches
+    l = list(matches)
+    random.shuffle(l)
+
+    # Loop throgh matching amines and find one that works
+    indices = []
+    for match in l:
+
+        # Get the atom object for the mathing atom
+        atom = input_ligand.GetAtomWithIdx(match[0])
+
+        # Create list of tuples that contain the amine idx and idx of each of the three
+        # neighbors that are not another amine.
+        indices = [
+            (match[0], x.GetIdx())
+            for x in atom.GetNeighbors()
+            if (
+                ((x.GetAtomicNum() != 7))
+                and not input_ligand.GetBondBetweenAtoms(
+                    match[0], x.GetIdx()
+                ).IsInRing()
+            )
+        ]
+
+        if indices:
+            break
+
+    try:
+        atoms = random.choice(indices)
+    except IndexError as e:
+        print("Oh no, found no valid cut points")
+        return None, None
+    bond = [input_ligand.GetBondBetweenAtoms(*atoms).GetIdx()]
+
+    # Get the fragments from breaking the amine bonds.
+    # OBS! If the fragments connected to the tertiary amine, are connected
+    # then the resulting ligand will have multiple dummy locations which will break
+    # the workflow
+    frag = Chem.FragmentOnBonds(
+        input_ligand, bond, addDummies=True, dummyLabels=[(1, 1)]
+    )
+    frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
+
+    # Select the fragments that are not the amine the ligand was cut from.
+    # If there is only one fragment, it can break so i added the temporary
+    # If statement
+    # TODO: handle this better
+    if len(frags) == 1:
+        ligand = [frags[0]]
+    else:
+        ligand = [
+            struct
+            for struct in frags
+            if not struct.HasSubstructMatch(Chem.MolFromSmarts("[1*]N"))
+        ]
+
+    # As this function is also run outside paralellization, an error here will break
+    # the whole driver. This statement ensures that something is returned at least
+    # If the list is empty.
+    if not ligand:
+        return None, None
+
+    # Put primary amine on the dummy location for the ligand just created.
+    # Currently only the first ligand is selected.
+    N_mol = Chem.MolFromSmiles("N")
+    lig = AllChem.ReplaceSubstructs(
+        ligand[0], dummy, N_mol, replacementConnectionPoint=0, replaceAll=True
+    )[0]
+
+    # Get idx where to cut and we just return of of them.
+    prim_amine_index = lig.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
+    if len(prim_amine_index) > 1:
+        print(
+            f"There are several primary amines to cut at with idxs: {prim_amine_index}"
+            f"removing some"
+        )
+        # Substructure match the NH3
+        prim_match = Chem.MolFromSmarts("[NX3;H2]")
+        # Substructure match the NH3
+        ms = [x for x in atom_remover(lig, pattern=prim_match)]
+        lig = random.choice(ms)
+        prim_amine_index = lig.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
+
+        # Need this to prevent errors later. See: https://github.com/rdkit/rdkit/issues/1596
+        lig.UpdatePropertyCache()
+
+    return lig, prim_amine_index
 
 
 def create_dummy_ligand(ligand, cut_idx=None):

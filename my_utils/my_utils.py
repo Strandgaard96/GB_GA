@@ -265,6 +265,8 @@ class Generation:
 
     def update_property_cache(self):
         for mol in self.molecules:
+
+            # Done to prevent ringinfo error
             Chem.GetSymmSSSR(mol.rdkit_mol)
             mol.rdkit_mol.UpdatePropertyCache()
 
@@ -367,17 +369,14 @@ class Generation:
                         # Replace other primary amines with hydrogen in the frag:
                         prim_match = Chem.MolFromSmarts("[NX3;H2;$(*N)]")
 
-                        # Substructure match the NH3
-                        ms = [
-                            x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)
-                        ]
-                        removed_mol = random.choice(ms)
-                        prim_amine_index = removed_mol.GetSubstructMatches(
+                        rm = AllChem.DeleteSubstructs(mol.rdkit_mol, prim_match)
+
+                        prim_amine_index = rm.GetSubstructMatches(
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
-                        mol.rdkit_mol = removed_mol
+                        mol.rdkit_mol = rm
                         mol.cut_idx = prim_amine_index[0][0]
-                        mol.smiles = Chem.MolToSmiles(removed_mol)
+                        mol.smiles = Chem.MolToSmiles(rm)
 
                     else:
                         cut_idx = random.choice(match)

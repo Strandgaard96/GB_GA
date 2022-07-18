@@ -2,14 +2,12 @@
 """
 Written by Jan H. Jensen 2018
 """
-from rdkit import Chem
-from rdkit.Chem import AllChem
-
 import random
-import numpy as np
-from rdkit.Chem.rdMolDescriptors import CalcNumRotatableBonds
 
-from rdkit import rdBase
+import numpy as np
+from rdkit import Chem, rdBase
+from rdkit.Chem import AllChem
+from rdkit.Chem.rdMolDescriptors import CalcNumRotatableBonds
 
 rdBase.DisableLog("rdApp.error")
 

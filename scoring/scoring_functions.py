@@ -4,19 +4,19 @@ Module that contains submitit scoring functions. These submit multiple
 scoring calculation jobs.
 """
 
-from rdkit import Chem
-from rdkit import rdBase
-from rdkit.Chem import rdFMCS
-
-# rdBase.DisableLog("rdApp.error")
-
-import numpy as np
 import os
 import shutil
 import time
-import submitit
 from pathlib import Path
-from my_utils.my_xtb_utils import write_to_db, extract_energyxtb
+
+import numpy as np
+import submitit
+from rdkit import Chem, rdBase
+from rdkit.Chem import rdFMCS
+
+from my_utils.my_xtb_utils import extract_energyxtb, write_to_db
+
+# rdBase.DisableLog("rdApp.error")
 
 
 def slurm_scoring(sc_function, population, scoring_args):

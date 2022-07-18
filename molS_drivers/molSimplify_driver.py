@@ -9,28 +9,33 @@ Example:
 
 """
 
+import argparse
+import concurrent.futures
+import glob
+import json
+import os
 import pathlib
-import sys, os
-from pathlib import Path
-import json, shutil, argparse, glob, time, pickle
-from multiprocessing import Pool
+import pickle
+import shutil
+import sys
+import time
 from contextlib import suppress
+from multiprocessing import Pool
+from pathlib import Path
 
 from rdkit import Chem
 from rdkit.Chem import Draw
+
+from my_utils.auto import get_paths_custom, get_paths_molsimplify, shell
 from my_utils.my_utils import cd
 from my_utils.my_xtb_utils import run_xtb, xtb_optimize_schrock
-from my_utils.auto import shell, get_paths_custom, get_paths_molsimplify
+from scoring import scoring_functions as sc
 from scoring.make_structures import (
-    create_dummy_ligand,
     connect_ligand,
+    create_dummy_ligand,
     embed_rdkit,
     mol_with_atom_index,
 )
-from scoring import scoring_functions as sc
-
-import concurrent.futures
-
 
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)

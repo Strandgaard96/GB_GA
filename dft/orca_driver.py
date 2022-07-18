@@ -1,12 +1,14 @@
-import re
-import subprocess
-import sys, os
-import numpy as np
-from pathlib import Path
-import shutil
 import argparse
-import pickle
 import json
+import os
+import pickle
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+import numpy as np
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
@@ -229,7 +231,7 @@ def GA_singlepoints(args):
     # Loop over all the structures
     for elem in gen.molecules[0 : args.no_molecules]:
 
-        # TODO THE ORDERING OF THE KEYS MATTER HERE
+        # THE ORDERING OF THE KEYS MATTER HERE
         # Get scoring intermediates and charge/spin
         scoring = args.scoring_function
         if scoring == "rdkit_embed_scoring":

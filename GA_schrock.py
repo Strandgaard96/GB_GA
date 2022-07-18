@@ -9,37 +9,32 @@ Example:
 
 """
 
-import pathlib
-import time
 import argparse
-import os
 import copy
-from pathlib import Path
-import sys
-from copy import deepcopy
 import logging
+import os
+import pathlib
 import pickle
+import sys
+import time
+from copy import deepcopy
+from pathlib import Path
 
 # Homemade stuff from Julius mostly
 import crossover as co
-from scoring import scoring_functions as sc
-
-from scoring.scoring import (
-    rdkit_embed_scoring,
-    rdkit_embed_scoring_NH3toN2,
-    rdkit_embed_scoring_NH3plustoNH3,
-)
-from my_utils.my_utils import (
-    Generation,
-    Individual,
-    get_git_revision_short_hash,
-)
-from sa.neutralize import neutralize_molecules
-from sa.sascorer import reweigh_scores_by_sa, get_sa
-import GB_GA as ga
 
 # Julius filter functionality.
 import filters
+import GB_GA as ga
+from my_utils.my_utils import Generation, Individual, get_git_revision_short_hash
+from sa.neutralize import neutralize_molecules
+from sa.sascorer import get_sa, reweigh_scores_by_sa
+from scoring import scoring_functions as sc
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3plustoNH3,
+    rdkit_embed_scoring_NH3toN2,
+)
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 

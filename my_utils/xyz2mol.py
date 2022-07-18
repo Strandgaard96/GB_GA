@@ -14,22 +14,20 @@ Implementation by Jan H. Jensen, based on the paper
 import copy
 import itertools
 
-from rdkit.Chem import rdmolops
-from rdkit.Chem import rdchem
+from rdkit.Chem import rdchem, rdmolops
 
 try:
     from rdkit.Chem import rdEHTTools  # requires RDKit 2019.9.1 or later
 except ImportError:
     rdEHTTools = None
 
+import sys
 from collections import defaultdict
 
-import numpy as np
 import networkx as nx
-
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdmolops
-import sys
 
 global __ATOM_LIST__
 __ATOM_LIST__ = [

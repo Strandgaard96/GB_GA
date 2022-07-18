@@ -3,19 +3,20 @@ Written by Jan H. Jensen 2018.
 Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_baselines/tree/master/graph_ga
 """
 
-import numpy as np
+import copy
 import random
 
+import numpy as np
 from rdkit import Chem
+
 import crossover as co
 import mutate as mu
-from my_utils.my_utils import Individual, Generation
+from my_utils.my_utils import Generation, Individual
 from scoring.make_structures import (
     create_ligands,
     create_prim_amine,
     create_prim_amine_revised,
 )
-import copy
 
 
 def read_file(file_name):

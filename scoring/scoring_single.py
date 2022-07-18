@@ -5,10 +5,10 @@ Contains various global variables that should be available to the scoring
 function at all times
 
 """
-import os
-import sys
 import json
+import os
 import pickle
+import sys
 
 from rdkit import Chem
 
@@ -16,20 +16,20 @@ catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from my_utils.my_xtb_utils_single import xtb_pre_optimize
-from my_utils.my_utils import cd
 from make_structures import (
     connect_ligand,
+    connectMols,
+    create_dummy_ligand,
     create_ligands,
     create_prim_amine,
     create_primaryamine_ligand,
     embed_rdkit,
-    create_dummy_ligand,
-    connectMols,
-    remove_NH3,
     remove_N2,
+    remove_NH3,
 )
-from my_utils.my_utils import Individual, Generation
+
+from my_utils.my_utils import Generation, Individual, cd
+from my_utils.my_xtb_utils_single import xtb_pre_optimize
 
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698

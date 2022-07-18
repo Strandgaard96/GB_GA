@@ -1,17 +1,18 @@
 # improts
-import sys
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-import re
-from pathlib import Path
-from glob import glob
 import pickle
+import re
 import shutil
+import sys
+from glob import glob
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import py3Dmol
 from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
-import py3Dmol
 
 
 def draw_generation(

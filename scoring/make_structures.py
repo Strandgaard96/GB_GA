@@ -7,15 +7,13 @@ Todo:
     *
 """
 
+import os
 import random
 import sys
-import os
 from io import StringIO
 
-from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import Draw
-from rdkit import RDLogger
+from rdkit import Chem, RDLogger
+from rdkit.Chem import AllChem, Draw
 
 # Options to visualise molecules
 from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage

@@ -17,16 +17,16 @@
 #
 
 
+import math
+import os.path as op
+import pickle
+from collections import defaultdict
+from typing import List
+
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
-import pickle
-from typing import List
+
 from modifiers import gaussian_modifier_clipped
-
-import math
-from collections import defaultdict
-
-import os.path as op
 
 _fscores = None
 

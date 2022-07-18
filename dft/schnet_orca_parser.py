@@ -5,12 +5,13 @@ the ORCA code package. Containes several predefined parsers.
 """
 import logging
 import os
-import numpy as np
-from ase import Atoms, units
-from tqdm import tqdm
 
+import numpy as np
 import schnetpack as spk
+from ase import Atoms, units
+from ase.io import write
 from schnetpack import Properties
+from tqdm import tqdm
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
@@ -29,7 +30,7 @@ __all__ = [
 
 # Conversion from ppm to atomic units. Alpha is the fine structure constant and 1e6 are
 # the ppm
-ppm2au = 1.0 / (units.alpha**2 * 1e6)
+ppm2au = 1.0
 
 
 class OrcaParserException(Exception):
@@ -185,6 +186,7 @@ class OrcaParser:
             elif p == "atoms":
                 atypes, coords = main_properties[p]
                 atoms = Atoms(atypes, coords)
+                write("test.xyz", atoms)
             else:
                 properties[p] = main_properties[p].astype(np.float32)
 
@@ -365,7 +367,7 @@ class OrcaFormatter:
         datatype="vector",
         converter=float,
         skip_first=None,
-        unit=None,
+        unit=1,
         default=None,
     ):
         self.position = position
@@ -392,7 +394,7 @@ class OrcaFormatter:
                 return None
         else:
             if self.skip_first is not None:
-                parsed = parsed[self.skip_first:]
+                parsed = parsed[self.skip_first :]
 
         if len(parsed) == 0:
             return None
@@ -606,7 +608,7 @@ class OrcaMainFileParser(OrcaOutputParser):
     }
 
     stops = {
-        "atoms": "CARTESIAN COORDINATES (A.U.)",
+        "atoms": "CARTESIAN COORDINATES (ANGSTROEM)",
         Properties.forces: "Difference to translation invariance",
         Properties.energy: None,
         Properties.dipole_moment: None,
@@ -617,7 +619,7 @@ class OrcaMainFileParser(OrcaOutputParser):
     formatters = {
         "atoms": (
             OrcaFormatter(0, converter=str),
-            OrcaFormatter(1, stop=4, unit=1.0 / units.Bohr),
+            OrcaFormatter(1, stop=4, unit=1.0),
         ),
         Properties.energy: OrcaFormatter(4),
         Properties.forces: OrcaFormatter(3, stop=6, unit=-1.0),
@@ -691,3 +693,4 @@ if __name__ == "__main__":
     p = OrcaParser("test.db", properties=["energy"])
     g = p._parse_molecule("/home/magstr/Documents/GB_GA/dft/schrock_dft_orca/orca.out")
     p.parse_data(["/home/magstr/Documents/GB_GA/dft/schrock_dft_orca/orca.out"])
+    print("test")

@@ -5,10 +5,10 @@ Contains various global variables that should be available to the scoring
 function at all times
 
 """
-import os
-import sys
 import json
+import os
 import pickle
+import sys
 from pathlib import Path
 
 from rdkit import Chem
@@ -17,20 +17,20 @@ catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from my_utils.my_xtb_utils import xtb_pre_optimize
-from my_utils.my_utils import cd
 from make_structures import (
     connect_ligand,
+    connectMols,
+    create_dummy_ligand,
     create_ligands,
     create_prim_amine,
     embed_rdkit,
-    create_dummy_ligand,
-    connectMols,
-    remove_NH3,
-    remove_N2,
     mol_with_atom_index,
+    remove_N2,
+    remove_NH3,
 )
-from my_utils.my_utils import Individual, Generation
+
+from my_utils.my_utils import Generation, Individual, cd
+from my_utils.my_xtb_utils import xtb_pre_optimize
 
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698
@@ -358,7 +358,7 @@ if __name__ == "__main__":
     #    b = pickle.load(handle)
 
     file_noMo = "/home/magstr/Documents/GB_GA/050_017_Mo_N2_NH3/conf003/xtbopt_noMo.xyz"
-    from my_utils.xyz2mol import read_xyz_file, xyz2mol, xyz2AC
+    from my_utils.xyz2mol import read_xyz_file, xyz2AC, xyz2mol
 
     # Testing HIPT ligand
     smi = "CC(C)c1cc(C(C)C)c(-c2cc(N)cc(-c3c(C(C)C)cc(C(C)C)cc3C(C)C)c2)c(C(C)C)c1"

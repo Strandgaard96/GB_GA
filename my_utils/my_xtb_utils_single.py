@@ -1,30 +1,29 @@
-from rdkit import Chem
-from rdkit.Chem import AllChem, rdmolops
-
-from .xyz2mol import read_xyz_file, xyz2mol, xyz2AC
-from .auto import shell
-from scoring.make_structures import remove_NH3, remove_N2, mol_with_atom_index
-
+import concurrent.futures
+import json
+import logging
 import os
 import random
-import numpy as np
+import re
 import shutil
 import string
 import subprocess
-import logging
-import json
 import sys
-import re
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+from ase.calculators.singlepoint import SinglePointCalculator
 
 # Ase stuff for database functionality
 from ase.db import connect
 from ase.io import read, write
-from ase.calculators.singlepoint import SinglePointCalculator
+from rdkit import Chem
+from rdkit.Chem import AllChem, rdmolops
 
-import concurrent.futures
+from scoring.make_structures import mol_with_atom_index, remove_N2, remove_NH3
 
+from .auto import shell
+from .xyz2mol import read_xyz_file, xyz2AC, xyz2mol
 
 file = "templates/core_noHS.mol"
 core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)

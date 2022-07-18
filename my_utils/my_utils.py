@@ -1,39 +1,40 @@
 """
 Module that contains mol manipulations and various resuable functionality classes.
 """
+import concurrent.futures
+import copy
+import os
 import pickle
 import random
-import shutil
-from collections import UserDict
-import os, sys
-from dataclasses import dataclass, field
-from typing import List
-from pathlib import Path
 import re
+import shutil
 import subprocess
-from ase.io import read, write, Trajectory
+import sys
+from collections import UserDict
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List
 
-from ase.db import connect
-from ase.calculators.singlepoint import SinglePointCalculator
-import concurrent.futures
 import numpy as np
-
 import pandas as pd
 import py3Dmol
+from ase.calculators.singlepoint import SinglePointCalculator
+from ase.db import connect
+from ase.io import Trajectory, read, write
 from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import Draw
-import copy
+from rdkit.Chem import AllChem, Draw
 from tabulate import tabulate
 
+# Needed for when debugging
 sys.path.insert(0, "../scoring")
 
 from make_structures import (
+    atom_remover,
     create_prim_amine,
     create_prim_amine_revised,
     mol_with_atom_index,
-    atom_remover,
 )
+
 from sa.neutralize import read_neutralizers
 
 _neutralize_reactions = None

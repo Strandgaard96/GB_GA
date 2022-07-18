@@ -2,8 +2,8 @@
 
 import copy
 import json
-from typing import List, Tuple
 from pathlib import Path
+from typing import List, Tuple
 
 import numpy as np
 from rdkit import Chem

@@ -1,14 +1,15 @@
-import sys
 import os
-import numpy as np
-import matplotlib.pyplot as plt
-import re
-from pathlib import Path
-from glob import glob
 import pickle
+import re
 import shutil
 import subprocess
-from ase.io import read, write, Trajectory
+import sys
+from glob import glob
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+from ase.io import Trajectory, read, write
 from ase.visualize import view
 
 

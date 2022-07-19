@@ -27,8 +27,7 @@ from tabulate import tabulate
 
 # Needed for when debugging
 sys.path.insert(0, "../scoring")
-
-from make_structures import (
+from scoring.make_structures import (
     atom_remover,
     create_prim_amine,
     create_prim_amine_revised,

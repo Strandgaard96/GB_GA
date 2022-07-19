@@ -221,6 +221,8 @@ def GA(args):
         generation_num = generation + 1
         logging.info("Starting generation %d", generation_num)
 
+        population.update_property_cache()
+
         # Making new Children
         mating_pool = ga.make_mating_pool(population, args["mating_pool_size"])
         new_population = ga.reproduce(

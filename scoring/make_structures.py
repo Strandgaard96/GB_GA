@@ -536,9 +536,6 @@ def create_dummy_ligand(ligand, cut_idx=None):
     # Initialize dummy mol
     dummy = Chem.MolFromSmiles("*")
 
-    # Create explicit hydrogens
-    ligand = Chem.AddHs(ligand)
-
     # Get the neigbouring bonds to the amine given by cut_idx
     atom = ligand.GetAtomWithIdx(cut_idx)
 

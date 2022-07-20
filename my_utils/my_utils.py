@@ -333,7 +333,6 @@ class Generation:
                     print("Could not create primary amine, setting methyl as ligand")
                     output_ligand = Chem.MolFromSmiles("CN")
                     cut_idx = [[1]]
-                print(cut_idx)
                 mol.rdkit_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
                 mol.cut_idx = cut_idx[0][0]
                 mol.smiles = Chem.MolToSmiles(

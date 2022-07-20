@@ -181,6 +181,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
     # Create ligand based on a primary amine
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     Mo_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
+    Mo_NH3 = Chem.AddHs(Mo_NH3)
 
     # Embed catalyst
     Mo_NH3_3d = embed_rdkit(
@@ -367,11 +368,20 @@ if __name__ == "__main__":
     HIPT_ind = Individual(HIPT, cut_idx=cut_idx)
 
     # Current dir:
-    gen = Path("debug/33422997_32_submitted.pkl")
+    gen = Path("/home/magstr/generation_data/prod_new3_0/GA50.pkl")
 
     # 370399_submitted.pkl
     with open(gen, "rb") as f:
         gen0 = pickle.load(f)
-    # ind = gen0.args[0]
+    ind = gen0.molecules[0]
 
-    rdkit_embed_scoring_NH3toN2(ind, n_confs=1, ncpus=3)
+    def unpack_args(scoring_args):
+        ncpus = scoring_args["cpus_per_task"]
+        n_confs = scoring_args["n_confs"]
+        cleanup = scoring_args["cleanup"]
+        output_dir = scoring_args["output_dir"]
+        method = scoring_args["method"]
+        return ncpus, n_confs, cleanup, output_dir, method
+    dic = {'cpus_per_task':3,'n_confs':1,'cleanup':False,'output_dir':'debug','method':'2'}
+
+    rdkit_embed_scoring_NH3toN2(ind, dic)

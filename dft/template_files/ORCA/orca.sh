@@ -10,7 +10,7 @@
 
 # Loading necessary modules
 module load foss
-module load ORCA
+module --ignore_cache load ORCA
 
 # Initialize variable
 job=orca

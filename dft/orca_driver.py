@@ -15,9 +15,9 @@ from my_utils.my_utils import cd
 
 # Dict for mapping options to input string
 ORCA_COMMANDS = {
-    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF",
-    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF OPT",
-    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J def2/J MiniPrint KDIIS SOSCF FREQ",
+    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF",
+    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF OPT",
+    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF FREQ",
     "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J  RIJCOSX MiniPrint KDIIS SOSCF",
 }
 
@@ -158,12 +158,12 @@ def write_orca_sh(
 ):
 
     # Copy template orca file from template dir
-    if cluster == 'niflheim':
+    if cluster == "niflheim":
         shutil.copy(source / "dft/template_files/ORCA/orca.sh", "./orca.sh")
-    elif cluster == 'steno':
+    elif cluster == "steno":
         shutil.copy(source / "dft/template_files/ORCA/orca_steno.sh", "./orca.sh")
     else:
-        print('Invalid cluster')
+        print("Invalid cluster")
 
     with open("orca.sh", "r", encoding="utf-8") as f:
         lines = f.readlines()
@@ -282,7 +282,10 @@ def GA_singlepoints(args):
 
             # Customize orca.sh to current job.
             write_orca_sh(
-                n_cores=args.n_cores, mem=args.memory, partition=args.partition, cluster=args.cluster
+                n_cores=args.n_cores,
+                mem=args.memory,
+                partition=args.partition,
+                cluster=args.cluster,
             )
 
             cmd = "sbatch orca.sh"

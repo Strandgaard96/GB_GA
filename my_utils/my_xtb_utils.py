@@ -298,54 +298,28 @@ def xtb_pre_optimize(
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             results2 = executor.map(run_xtb, args)
 
-    # Store the log file
-    for elem in conf_paths:
-        shutil.copy(
-            os.path.join(elem, "xtbopt.log"), os.path.join(elem, "constrained_opt.log")
-        )
-
-    # Perform final relaxation
-    # cmd = cmd.replace("--input ./xcontrol.inp", "")
+        # Store the log file
+        for elem in conf_paths:
+            shutil.copy(
+                os.path.join(elem, "xtbopt.log"),
+                os.path.join(elem, "constrained_opt.log"),
+            )
 
     # Constrain only N reactants and Mo
-    make_input_constrain_file(
-        mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=True
+    results3 = opt_semifull(
+        cmd, conf_paths, cpus_per_worker, method, mol, workers, xyz_files
     )
 
-    args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i], f"gfn{method}")
-        for i, xyz_file in enumerate(xyz_files)
-    ]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        results3 = executor.map(run_xtb, args)
-
-    # Store the log file
-    for elem in conf_paths:
-        shutil.copy(
-            os.path.join(elem, "xtbopt.log"), os.path.join(elem, "Mo_gascon.log")
+    mo_bond = False
+    if mo_bond:
+        results4 = opt_MoN_bond(
+            cmd, conf_paths, cpus_per_worker, method, mol, workers, xyz_files
         )
 
-    # Constrain everything else than Mo and N-stuff
-    make_input_constrain_file(
-        mol,
-        core=Chem.MolFromSmiles("[Mo]"),
-        path=conf_paths,
-        NH3=True,
-        N2=True,
-        Mo_bond=True,
-    )
-    args = [
-        (xyz_file, cmd, cpus_per_worker, conf_paths[i], f"gfn{method}")
-        for i, xyz_file in enumerate(xyz_files)
-    ]
-    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        results4 = executor.map(run_xtb, args)
-
     print("Finished all optimizations")
-
     energies = []
     geometries = []
-    for e, g in results4:
+    for e, g in results3:
         energies.append(e)
         geometries.append(g)
 
@@ -376,6 +350,43 @@ def xtb_pre_optimize(
         return energies, geometries, minidx
 
     return energies[minidx], final_geom, minidx.item()
+
+
+def opt_semifull(cmd, conf_paths, cpus_per_worker, method, mol, workers, xyz_files):
+    make_input_constrain_file(
+        mol, core=Chem.MolFromSmiles("[Mo]"), path=conf_paths, NH3=True, N2=True
+    )
+    args = [
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], f"gfn{method}")
+        for i, xyz_file in enumerate(xyz_files)
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results3 = executor.map(run_xtb, args)
+    # Store the log file
+    for elem in conf_paths:
+        shutil.copy(
+            os.path.join(elem, "xtbopt.log"), os.path.join(elem, "Mo_gascon.log")
+        )
+    return results3
+
+
+def opt_MoN_bond(cmd, conf_paths, cpus_per_worker, method, mol, workers, xyz_files):
+    # Constrain everything else than Mo and N-stuff
+    make_input_constrain_file(
+        mol,
+        core=Chem.MolFromSmiles("[Mo]"),
+        path=conf_paths,
+        NH3=True,
+        N2=True,
+        Mo_bond=True,
+    )
+    args = [
+        (xyz_file, cmd, cpus_per_worker, conf_paths[i], f"gfn{method}")
+        for i, xyz_file in enumerate(xyz_files)
+    ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        results4 = executor.map(run_xtb, args)
+    return results4
 
 
 def post_process(bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinates):

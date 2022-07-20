@@ -120,7 +120,7 @@ class Individual:
             self.smiles,
         ]
 
-    def save(self, directory='.'):
+    def save(self, directory="."):
         filename = os.path.join(directory, f"ind.pkl")
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)

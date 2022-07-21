@@ -13,7 +13,7 @@ import numpy as np
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 from my_utils.auto import shell_pure
-from my_utils.my_utils import cd
+from my_utils.classes import cd
 
 # Dict for mapping options to input string
 ORCA_COMMANDS = {
@@ -220,7 +220,7 @@ def GA_singlepoints(args):
     output_dir = args.output_dir
 
     # Get how many max generations there are
-    generation_no = len(sorted(GA_dir.glob("GA*.pkl"))) - 1
+    generation_no = len(sorted(GA_dir.glob("GA*[!debug].pkl"))) - 1
 
     # Possibly add option to select specific generation
 

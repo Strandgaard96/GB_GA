@@ -28,7 +28,7 @@ from make_structures import (
     remove_NH3,
 )
 
-from my_utils.my_utils import Generation, Individual, cd
+from my_utils.classes import cd, Individual, Generation
 from my_utils.my_xtb_utils_single import xtb_pre_optimize
 
 hartree2kcalmol = 627.5094740631

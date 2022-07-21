@@ -3,8 +3,6 @@
 Module that performs the handling mol ligands. Conversion between
 x-amines to dummy atoms and subsequent placement on Mo core
 
-Todo:
-    *
 """
 
 import os

@@ -25,7 +25,8 @@ import crossover as co
 # Julius filter functionality.
 import filters
 import GB_GA as ga
-from my_utils.my_utils import Generation, Individual, get_git_revision_short_hash
+from my_utils.my_utils import get_git_revision_short_hash
+from my_utils.classes import Individual, Generation
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import get_sa, reweigh_scores_by_sa
 from scoring import scoring_functions as sc

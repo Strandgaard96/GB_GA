@@ -27,7 +27,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 
 from my_utils.auto import get_paths_custom, get_paths_molsimplify, shell
-from my_utils.my_utils import cd
+from my_utils.classes import cd
 from my_utils.my_xtb_utils import run_xtb, xtb_optimize_schrock
 from scoring import scoring_functions as sc
 from scoring.make_structures import (

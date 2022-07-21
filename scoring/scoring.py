@@ -30,7 +30,7 @@ from make_structures import (
 )
 
 sys.path.insert(0, "../my_utils")
-from my_utils.my_utils import Generation, Individual, cd
+from my_utils.classes import cd, Individual, Generation
 from my_utils.my_xtb_utils import xtb_pre_optimize
 
 hartree2kcalmol = 627.5094740631
@@ -383,6 +383,13 @@ if __name__ == "__main__":
         output_dir = scoring_args["output_dir"]
         method = scoring_args["method"]
         return ncpus, n_confs, cleanup, output_dir, method
-    dic = {'cpus_per_task':3,'n_confs':1,'cleanup':False,'output_dir':'debug','method':'2'}
+
+    dic = {
+        "cpus_per_task": 3,
+        "n_confs": 1,
+        "cleanup": False,
+        "output_dir": "debug",
+        "method": "2",
+    }
 
     rdkit_embed_scoring_NH3toN2(ind, dic)

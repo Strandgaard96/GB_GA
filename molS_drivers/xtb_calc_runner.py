@@ -3,6 +3,8 @@ import os
 import sys
 from pathlib import Path
 
+import my_utils.classes
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from my_utils import auto, my_utils, my_xtb_utils
@@ -21,7 +23,7 @@ if __name__ == "__main__":
     print(f"Optimizing at following locations: {paths}")
     for elem in paths:
         print(f"Processing {elem}")
-        with my_utils.cd(elem.parent):
+        with my_utils.classes.cd(elem.parent):
 
             # Get spin and charge
             with open("default.in", "r") as f:

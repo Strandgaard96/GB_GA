@@ -6,7 +6,9 @@ import re
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List
 
 import numpy as np
 
@@ -34,7 +36,7 @@ def get_inputfile(options, charge, spin, file):
 
     header = "# ORCA input" + 2 * "\n"
 
-    header += ORCA_COMMANDS[options.pop("type")] + "\n"
+    header += ORCA_COMMANDS[options.pop("type_calc")] + "\n"
     header += (
         "%cpcm epsilon 1.844 end"
         + "\n"
@@ -179,7 +181,7 @@ def get_arguments(arg_list=None):
     parser.add_argument("--function", choices=FUNCTION_MAP.keys())
     parser.add_argument(
         "--type_calc",
-        dest="type",
+        dest="type_calc",
         choices=list(ORCA_COMMANDS.keys()),
         required=True,
         help="""Choose top line for input file""",
@@ -227,7 +229,7 @@ def GA_singlepoints(args):
     output_dir = args.output_dir
 
     # Get how many max generations there are
-    generation_no = len(sorted(GA_dir.glob("GA*[!debug].pkl"))) - 1
+    generation_no = len(sorted(GA_dir.glob("GA[0-9][0-9].pkl"))) - 1
 
     # Possibly add option to select specific generation
 

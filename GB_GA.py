@@ -11,11 +11,8 @@ from rdkit import Chem
 
 import crossover as co
 import mutate as mu
-from my_utils.classes import Individual, Generation
-from scoring.make_structures import (
-    create_ligands,
-    create_prim_amine_revised,
-)
+from my_utils.classes import Generation, Individual
+from scoring.make_structures import create_ligands, create_prim_amine_revised
 
 
 def read_file(file_name):
@@ -94,7 +91,7 @@ def make_initial_population_debug(population_size, file_name, rand=False):
     mol_list = read_file("data/ZINC_1000_amines.smi")
     initial_population = Generation(generation_num=0)
 
-    smiles = ["CN", "CCN", "CCN", "CCN"]
+    smiles = ["CCCCC", "CCC", "CCN", "CCN"]
     idx = [1, 2, 3, 4]
 
     for i in range(population_size):
@@ -105,33 +102,6 @@ def make_initial_population_debug(population_size, file_name, rand=False):
     initial_population.generation_num = 0
     initial_population.assign_idx()
     return initial_population
-
-
-# TODO convert to class method
-def calculate_normalized_fitness(population):
-    """
-    Args:
-        population (Population):
-
-    Returns:
-        None
-    """
-
-    # onvert to high and low scores.
-    scores = population.get("score")
-    scores = [-s for s in scores]
-
-    min_score = np.nanmin(scores)
-    shifted_scores = [0 if np.isnan(score) else score - min_score for score in scores]
-    sum_scores = sum(shifted_scores)
-    if sum_scores == 0:
-        print(
-            "WARNING: Shifted scores are zero. Normalized fitness is therefore dividing with "
-            "zero, could be because the population only contains one individual"
-        )
-
-    for individual, shifted_score in zip(population.molecules, shifted_scores):
-        individual.normalized_fitness = shifted_score / sum_scores
 
 
 def make_mating_pool(population, mating_pool_size):

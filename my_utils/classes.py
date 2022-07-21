@@ -8,15 +8,22 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from tabulate import tabulate
 
 from sa.neutralize import read_neutralizers
+from sa.sascorer import sa_target_score_clipped
 from scoring.make_structures import atom_remover, create_prim_amine_revised
 
 _neutralize_reactions = None
+
+file = "templates/core_noHS.mol"
+core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
+"""Mol: 
+mol object of the Mo core with dummy atoms instead of ligands
+"""
+
 
 class cd:
     """Context manager for changing the current working directory dynamically.
@@ -94,18 +101,8 @@ class Generation:
             setattr(molecule, "idx", (self.generation_num, i))
         self.size = len(self.molecules)
 
-    def save(self, directory=None, run_No=0):
-        filename = os.path.join(directory, f"GA{run_No:02d}.pkl")
-        with open(filename, "ab+") as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-
-    def save_debug(self, directory=None, run_No=0):
-        filename = os.path.join(directory, f"GA{run_No:02d}_debug.pkl")
-        with open(filename, "ab+") as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-
-    def save_debug2(self, directory=None, run_No=0):
-        filename = os.path.join(directory, f"GA{run_No:02d}_debug2.pkl")
+    def save(self, directory=None, name="GA.pkl"):
+        filename = os.path.join(directory, name)
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
@@ -135,6 +132,20 @@ class Generation:
                 key=lambda x: float("inf") if np.isnan(x.score) else x.score,
                 reverse=reverse,
             )
+
+    def set_results(self, results):
+        "Extract the scoring results, results is a list og length = populations size"
+        energies = [res[0] for res in results]
+        geometries = [res[1] for res in results]
+        geometries2 = [res[2] for res in results]
+        min_conf = [res[3] for res in results]
+
+        self.setprop("energy", energies)
+        self.setprop("pre_score", energies)
+        self.setprop("structure", geometries)
+        self.setprop("structure2", geometries2)
+        self.setprop("min_conf", min_conf)
+        self.setprop("score", energies)
 
     def prune(self, population_size):
         self.sortby("score", reverse=False)
@@ -177,7 +188,7 @@ class Generation:
             )
             return txt
 
-    def summary(self):
+    def print_fails(self):
         nO_NaN = 0
         nO_9999 = 0
         for ind in self.new_molecules:
@@ -212,47 +223,6 @@ class Generation:
             # Done to prevent ringinfo error
             Chem.GetSymmSSSR(mol.rdkit_mol)
             mol.rdkit_mol.UpdatePropertyCache()
-
-    def sa_prep(self):
-        for mol in self.molecules:
-            prim_match = Chem.MolFromSmarts("[NX3;H2]")
-
-            # Substructure match the NH3
-            ms = [x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)]
-            removed_mol = random.choice(ms)
-            prim_amine_index = removed_mol.GetSubstructMatches(
-                Chem.MolFromSmarts("[NX3;H2]")
-            )
-            mol.rdkit_mol_sa = removed_mol
-            mol.smiles_sa = Chem.MolToSmiles(removed_mol)
-
-        global _neutralize_reactions
-        if _neutralize_reactions is None:
-            _neutralize_reactions = read_neutralizers()
-
-        neutral_molecules = []
-        for ind in self.molecules:
-            c_mol = ind.rdkit_mol_sa
-            mol = copy.deepcopy(c_mol)
-            mol.UpdatePropertyCache()
-            Chem.rdmolops.FastFindRings(mol)
-            assert mol is not None
-            for reactant_mol, product_mol in _neutralize_reactions:
-                while mol.HasSubstructMatch(reactant_mol):
-                    rms = Chem.ReplaceSubstructs(mol, reactant_mol, product_mol)
-                    if rms[0] is not None:
-                        mol = rms[0]
-            mol.UpdatePropertyCache()
-            Chem.rdmolops.FastFindRings(mol)
-            ind.neutral_rdkit_mol = mol
-
-    def set_sa(self, sa_scores):
-        for individual, sa_score in zip(self.molecules, sa_scores):
-            individual.sa_score = sa_score
-            if individual.score > 5000:
-                continue
-            else:
-                individual.score = sa_score * individual.pre_score
 
     def modify_population(self, supress_amines=False):
         for mol in self.molecules:
@@ -321,3 +291,74 @@ class Generation:
                         mol.rdkit_mol = rm
                         mol.cut_idx = prim_amine_index[0][0]
                         mol.smiles = Chem.MolToSmiles(rm)
+
+    ### SA functionality
+    def sa_prep(self):
+        for mol in self.molecules:
+            prim_match = Chem.MolFromSmarts("[NX3;H2]")
+
+            # Substructure match the NH3
+            ms = [x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)]
+            removed_mol = random.choice(ms)
+            prim_amine_index = removed_mol.GetSubstructMatches(
+                Chem.MolFromSmarts("[NX3;H2]")
+            )
+            mol.rdkit_mol_sa = removed_mol
+            mol.smiles_sa = Chem.MolToSmiles(removed_mol)
+
+        global _neutralize_reactions
+        if _neutralize_reactions is None:
+            _neutralize_reactions = read_neutralizers()
+
+        neutral_molecules = []
+        for ind in self.molecules:
+            c_mol = ind.rdkit_mol_sa
+            mol = copy.deepcopy(c_mol)
+            mol.UpdatePropertyCache()
+            Chem.rdmolops.FastFindRings(mol)
+            assert mol is not None
+            for reactant_mol, product_mol in _neutralize_reactions:
+                while mol.HasSubstructMatch(reactant_mol):
+                    rms = Chem.ReplaceSubstructs(mol, reactant_mol, product_mol)
+                    if rms[0] is not None:
+                        mol = rms[0]
+            mol.UpdatePropertyCache()
+            Chem.rdmolops.FastFindRings(mol)
+            ind.neutral_rdkit_mol = mol
+
+    def get_sa(self):
+        # Prep molecules
+        self.sa_prep()
+        # Get the scores
+        sa_scores = [
+            sa_target_score_clipped(ind.neutral_rdkit_mol) for ind in self.molecules
+        ]
+        self.set_sa(sa_scores)
+
+    def calculate_normalized_fitness(self):
+
+        # onvert to high and low scores.
+        scores = self.get("score")
+        scores = [-s for s in scores]
+
+        min_score = np.nanmin(scores)
+        shifted_scores = [
+            0 if np.isnan(score) else score - min_score for score in scores
+        ]
+        sum_scores = sum(shifted_scores)
+        if sum_scores == 0:
+            print(
+                "WARNING: Shifted scores are zero. Normalized fitness is therefore dividing with "
+                "zero, could be because the population only contains one individual"
+            )
+
+        for individual, shifted_score in zip(self.molecules, shifted_scores):
+            individual.normalized_fitness = shifted_score / sum_scores
+
+    def set_sa(self, sa_scores):
+        for individual, sa_score in zip(self.molecules, sa_scores):
+            individual.sa_score = sa_score
+            if individual.score > 5000:
+                continue
+            else:
+                individual.score = sa_score * individual.pre_score

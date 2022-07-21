@@ -13,7 +13,6 @@ from pathlib import Path
 
 import numpy as np
 from ase.calculators.singlepoint import SinglePointCalculator
-
 # Ase stuff for database functionality
 from ase.db import connect
 from ase.io import read, write

@@ -7,7 +7,7 @@ import my_utils.classes
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from my_utils import auto, my_utils, my_xtb_utils
+from my_utils import auto, utils, xtb_utils
 
 if __name__ == "__main__":
 

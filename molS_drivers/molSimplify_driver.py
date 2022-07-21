@@ -28,14 +28,10 @@ from rdkit.Chem import Draw
 
 from my_utils.auto import get_paths_custom, get_paths_molsimplify, shell
 from my_utils.classes import cd
-from my_utils.my_xtb_utils import run_xtb, xtb_optimize_schrock
+from my_utils.xtb_utils import run_xtb, xtb_optimize_schrock
 from scoring import scoring_functions as sc
-from scoring.make_structures import (
-    connect_ligand,
-    create_dummy_ligand,
-    embed_rdkit,
-    mol_with_atom_index,
-)
+from scoring.make_structures import (connect_ligand, create_dummy_ligand,
+                                     embed_rdkit, mol_with_atom_index)
 
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)

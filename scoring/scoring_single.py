@@ -16,19 +16,12 @@ catalyst_dir = os.path.dirname(__file__)
 sys.path.append(catalyst_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from make_structures import (
-    connect_ligand,
-    connectMols,
-    create_dummy_ligand,
-    create_ligands,
-    create_prim_amine,
-    create_primaryamine_ligand,
-    embed_rdkit,
-    remove_N2,
-    remove_NH3,
-)
+from make_structures import (connect_ligand, connectMols, create_dummy_ligand,
+                             create_ligands, create_prim_amine,
+                             create_primaryamine_ligand, embed_rdkit,
+                             remove_N2, remove_NH3)
 
-from my_utils.classes import cd, Individual, Generation
+from my_utils.classes import Generation, Individual, cd
 from my_utils.my_xtb_utils_single import xtb_pre_optimize
 
 hartree2kcalmol = 627.5094740631

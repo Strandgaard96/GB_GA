@@ -14,7 +14,7 @@ import submitit
 from rdkit import Chem, rdBase
 from rdkit.Chem import rdFMCS
 
-from my_utils.my_xtb_utils import extract_energyxtb, write_to_db
+from my_utils.xtb_utils import extract_energyxtb, write_to_db
 
 # rdBase.DisableLog("rdApp.error")
 

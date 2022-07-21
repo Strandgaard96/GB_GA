@@ -63,7 +63,7 @@ def reweigh_scores_by_sa(population):
             individual.score = sa_score * individual.pre_score
 
 
-def get_sa(population):
+def get_sa_scores(population):
     """Reweighs scores with synthetic accessibility score
     :param population: list of RDKit molecules to be re-weighted
     :param scores: list of docking scores

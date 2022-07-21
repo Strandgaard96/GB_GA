@@ -21,20 +21,17 @@ from copy import deepcopy
 from pathlib import Path
 
 import crossover as co
-
 # Julius filter functionality.
 import filters
 import GB_GA as ga
-from my_utils.my_utils import get_git_revision_short_hash
-from my_utils.classes import Individual, Generation
+from my_utils.classes import Generation, Individual
+from my_utils.utils import get_git_revision_short_hash
 from sa.neutralize import neutralize_molecules
-from sa.sascorer import get_sa, reweigh_scores_by_sa
+from sa.sascorer import get_sa_scores, reweigh_scores_by_sa
 from scoring import scoring_functions as sc
-from scoring.scoring import (
-    rdkit_embed_scoring,
-    rdkit_embed_scoring_NH3plustoNH3,
-    rdkit_embed_scoring_NH3toN2,
-)
+from scoring.scoring import (rdkit_embed_scoring,
+                             rdkit_embed_scoring_NH3plustoNH3,
+                             rdkit_embed_scoring_NH3toN2)
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 
@@ -140,9 +137,7 @@ def get_arguments(arg_list=None):
         default="2",
         help="gfn method to use",
     )
-    parser.add_argument(
-        "--bond_opt",action="store_true"
-    )
+    parser.add_argument("--bond_opt", action="store_true")
     parser.add_argument("--cleanup", action="store_true")
     parser.add_argument(
         "--scoring_func",
@@ -154,6 +149,25 @@ def get_arguments(arg_list=None):
         ],
         required=True,
         help="""Choose one of the specified scoring functions to be run.""",
+    )
+    # XTB specific params
+    parser.add_argument(
+        "--opt",
+        type=str,
+        default="tight",
+        help="",
+    )
+    parser.add_argument(
+        "--gbsa",
+        type=str,
+        default="benzene",
+        help="",
+    )
+    parser.add_argument(
+        "--input",
+        type=str,
+        default="./xcontrol.inp",
+        help="",
     )
     return parser.parse_args(arg_list)
 
@@ -179,41 +193,26 @@ def GA(args):
         )
 
     results = sc.slurm_scoring(args["scoring_function"], population, args)
-    energies = [res[0] for res in results]
-    geometries = [res[1] for res in results]
-    geometries2 = [res[2] for res in results]
-    min_conf = [res[3] for res in results]
 
-    population.setprop("energy", energies)
-    population.setprop("pre_score", energies)
-    population.setprop("structure", geometries)
-    population.setprop("structure2", geometries2)
-    population.setprop("min_conf", min_conf)
-    population.setprop("score", energies)
-
+    # Set results and do some rdkit hack
+    population.set_results(results)
     population.update_property_cache()
 
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
-        population.sa_prep()
-        # Create temp population to calc sa scores on
-        sa_scores = get_sa(population)
-        population.set_sa(sa_scores)
+        population.get_sa()
 
     population.sortby("score")
 
     # Normalize the score of population infividuals to value between 0 and 1
-    ga.calculate_normalized_fitness(population)
+    population.calculate_normalized_fitness()
 
     # Save the generation as pickle file.
-    population.save(directory=args["output_dir"], run_No=0)
+    population.save(directory=args["output_dir"], name="GA00.pkl")
     population.print()
     with open(args["output_dir"] + "/GA0.out", "w") as f:
-        f.write(population.print(population="molecules", pass_text=True))
-        f.write("\n")
-        f.write(population.print(population="new_molecules", pass_text=True))
-        f.write("\n")
-        f.write(population.summary())
+        f.write(population.print(population="molecules", pass_text=True) + "\n")
+        f.write(population.print_fails())
 
     logging.info("Finished initial generation")
 
@@ -228,16 +227,23 @@ def GA(args):
 
         # Making new Children
         mating_pool = ga.make_mating_pool(population, args["mating_pool_size"])
-        new_population = ga.reproduce(
-            mating_pool,
-            args["population_size"],
-            args["mutation_rate"],
-            molecule_filter=molecule_filter,
-        )
 
-        # with open("debug/GA01_debug.pkl", "rb") as f:
-        #    new_population = pickle.load(f)
-        new_population.save_debug(directory=args["output_dir"], run_No=generation_num)
+        if args["debug"]:
+            new_population = Generation(
+                generation_num=generation_num,
+                molecules=population.molecules,
+            )
+        else:
+            new_population = ga.reproduce(
+                mating_pool,
+                args["population_size"],
+                args["mutation_rate"],
+                molecule_filter=molecule_filter,
+            )
+
+        new_population.save(
+            directory=args["output_dir"], name=f"GA{generation_num:02d}_debug.pkl"
+        )
 
         # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
@@ -251,32 +257,19 @@ def GA(args):
         logging.info("Getting scores for new population")
         results = sc.slurm_scoring(args["scoring_function"], new_population, args)
 
-        energies = [res[0] for res in results]
-        geometries = [res[1] for res in results]
-        geometries2 = [res[2] for res in results]
-        min_conf = [res[3] for res in results]
-
-        new_population.setprop("energy", energies)
-        new_population.setprop("pre_score", energies)
-        new_population.setprop("structure", geometries)
-        new_population.setprop("structure2", geometries2)
-        new_population.setprop("min_conf", min_conf)
-        new_population.setprop("score", energies)
-        new_population.save_debug2(directory=args["output_dir"], run_No=generation_num)
+        new_population.set_results(results)
+        new_population.save(
+            directory=args["output_dir"], name=f"GA{generation_num:02d}_debug2.pkl"
+        )
 
         # Functionality to check synthetic accessibility
         if args["sa_screening"]:
-            new_population.sa_prep()
-            # Create temp population to calc sa scores on
-            sa_scores = get_sa(new_population)
-            new_population.set_sa(sa_scores)
+            new_population.get_sa()
 
         # Sort scores, possibly scaled by SA screening
         new_population.sortby("score")
 
-        # Select best Individuals from old and new population
         potential_survivors = copy.deepcopy(population.molecules)
-
         # The calculated population is merged with current top population
         population = ga.sanitize(
             potential_survivors + new_population.molecules,
@@ -287,7 +280,7 @@ def GA(args):
         population.generation_num = generation_num
 
         # Normalize new scores
-        ga.calculate_normalized_fitness(population)
+        population.calculate_normalized_fitness()
 
         # Collect result molecules in class.
         current_gen = Generation(
@@ -297,19 +290,21 @@ def GA(args):
         )
         # Save data from current generation
         logging.info("Saving current generation")
-        current_gen.save(directory=args["output_dir"], run_No=generation_num)
+        current_gen.save(
+            directory=args["output_dir"], name=f"GA{generation_num:02d}.pkl"
+        )
 
         # Print gen table to output file
         current_gen.print()
-        current_gen.summary()
+        current_gen.print_fails()
 
         # Print to individual generation files to keep track on the fly
         with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
-            f.write(current_gen.print(population="molecules", pass_text=True))
-            f.write("\n")
-            f.write(current_gen.print(population="new_molecules", pass_text=True))
-            f.write("\n")
-            f.write(current_gen.summary())
+            f.write(current_gen.print(population="molecules", pass_text=True) + "\n")
+            f.write(
+                current_gen.print(population="new_molecules", pass_text=True) + "\n"
+            )
+            f.write(current_gen.print_fails())
 
     return current_gen
 
@@ -335,11 +330,9 @@ def main():
     co.average_size = 50
     co.size_stdev = 10
 
-    # How many times to run the GA.
-    n_tries = args.n_tries
-
     # Run the GA
-    for i in range(n_tries):
+    for i in range(args.n_tries):
+
         # Start the time
         t0 = time.time()
         # Create output_dir

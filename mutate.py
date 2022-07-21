@@ -141,7 +141,7 @@ def mutate(mol, mutation_rate, filter):
         for m in new_mol_trial:
             m = m[0]
             # print Chem.MolToSmiles(mol),mol_OK(mol)
-            if co.mol_OK(m, filter) and co.ring_OK(m) and co.tert_amine_OK(m):
+            if co.mol_OK(m, filter) and co.ring_OK(m) and (co.tert_amine_OK(m) or co.primary_secondary_amine_OK(m)):
                 new_mols.append(m)
 
         if len(new_mols) > 0:

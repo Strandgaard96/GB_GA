@@ -140,6 +140,9 @@ def get_arguments(arg_list=None):
         default="2",
         help="gfn method to use",
     )
+    parser.add_argument(
+        "--bond_opt",action="store_true"
+    )
     parser.add_argument("--cleanup", action="store_true")
     parser.add_argument(
         "--scoring_func",

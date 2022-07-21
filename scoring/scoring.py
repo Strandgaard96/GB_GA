@@ -157,6 +157,7 @@ def rdkit_embed_scoring(ligand, scoring_args):
             numThreads=ncpus,
             cleanup=cleanup,
             method=method,
+            bond_opt=scoring_args["bond_opt"]
         )
         print("Mo energy:", Mo_NH3_energy)
 
@@ -207,6 +208,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
             cleanup=cleanup,
             bare=True,
             method=method,
+            bond_opt=scoring_args["bond_opt"]
         )
         print("catalyst energy:", Mo_NH3_energy)
 

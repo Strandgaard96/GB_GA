@@ -226,6 +226,7 @@ def xtb_pre_optimize(
     numThreads=1,
     xyzcoordinates=True,
     bare=False,
+    bond_opt=False,
     database_dir="/groups/kemi/magstr/GB_GA/database/ase_database.db",
 ):
     # check mol input
@@ -309,9 +310,8 @@ def xtb_pre_optimize(
         cmd, conf_paths, cpus_per_worker, method, mol, workers, xyz_files
     )
 
-    mo_bond = False
-    if mo_bond:
-        results4 = opt_MoN_bond(
+    if bond_opt:
+        results3 = opt_MoN_bond(
             cmd, conf_paths, cpus_per_worker, method, mol, workers, xyz_files
         )
 

@@ -272,7 +272,6 @@ class Generation:
 
     def sa_prep(self):
         for mol in self.molecules:
-
             prim_match = Chem.MolFromSmarts("[NX3;H2]")
 
             # Substructure match the NH3

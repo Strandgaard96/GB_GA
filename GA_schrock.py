@@ -20,7 +20,6 @@ import time
 from copy import deepcopy
 from pathlib import Path
 
-# Homemade stuff from Julius mostly
 import crossover as co
 
 # Julius filter functionality.

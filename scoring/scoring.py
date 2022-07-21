@@ -13,8 +13,8 @@ from pathlib import Path
 
 from rdkit import Chem
 
-catalyst_dir = os.path.dirname(__file__)
-sys.path.append(catalyst_dir)
+scoring_dir = os.path.dirname(__file__)
+sys.path.append(scoring_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from make_structures import (
@@ -29,6 +29,7 @@ from make_structures import (
     remove_NH3,
 )
 
+sys.path.insert(0, "../my_utils")
 from my_utils.my_utils import Generation, Individual, cd
 from my_utils.my_xtb_utils import xtb_pre_optimize
 

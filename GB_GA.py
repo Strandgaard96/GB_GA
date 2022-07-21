@@ -14,7 +14,6 @@ import mutate as mu
 from my_utils.classes import Individual, Generation
 from scoring.make_structures import (
     create_ligands,
-    create_prim_amine,
     create_prim_amine_revised,
 )
 

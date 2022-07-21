@@ -22,7 +22,7 @@ from make_structures import (
     connectMols,
     create_dummy_ligand,
     create_ligands,
-    create_prim_amine,
+    create_prim_amine_revised,
     embed_rdkit,
     mol_with_atom_index,
     remove_N2,

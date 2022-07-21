@@ -17,10 +17,10 @@ from my_utils.classes import cd
 
 # Dict for mapping options to input string
 ORCA_COMMANDS = {
-    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF",
-    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF OPT",
-    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF FREQ",
-    "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J  RIJCOSX MiniPrint KDIIS SOSCF",
+    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF",
+    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF OPT",
+    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF FREQ",
+    "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",
 }
 
 with open(
@@ -63,7 +63,7 @@ def get_inputfile_simple(options, charge, spin, file):
 
     header = "# ORCA input" + 2 * "\n"
 
-    header += ORCA_COMMANDS[options.pop("type")] + "\n"
+    header += ORCA_COMMANDS[options.pop("type_calc")] + "\n"
     header += "%cpcm epsilon 1.844 end" + "\n"
     n_cores = options.pop("n_cores")
     header += "# Number of cores\n"
@@ -86,14 +86,14 @@ def get_inputfile_simple(options, charge, spin, file):
 def write_orca_input_file(
     orca_file="orca.inp",
     structure_path=None,
-    command=ORCA_COMMANDS["sp"],
+    type_calc="sp",
     charge=None,
     spin=None,
     n_cores=24,
     memory=8,
 ):
 
-    options = {"n_cores": n_cores, "memory": memory, "type": "sp"}
+    options = {"n_cores": n_cores, "memory": memory, "type_calc": type_calc}
 
     # write input file
     inputstr = get_inputfile(options, charge=charge, spin=spin, file=structure_path)
@@ -177,6 +177,13 @@ def get_arguments(arg_list=None):
         help="How many of the top molecules to do DFT on",
     )
     parser.add_argument("--function", choices=FUNCTION_MAP.keys())
+    parser.add_argument(
+        "--type_calc",
+        dest="type",
+        choices=list(ORCA_COMMANDS.keys()),
+        required=True,
+        help="""Choose top line for input file""",
+    )
     return parser.parse_args(arg_list)
 
 
@@ -273,7 +280,7 @@ def GA_singlepoints(args):
             # Create input file
             write_orca_input_file(
                 structure_path=xyzfile,
-                command=ORCA_COMMANDS["sp"],
+                type_calc=args.type_calc,
                 charge=smi_dict[key1]["charge"],
                 spin=smi_dict[key1]["mul"],
                 n_cores=args.n_cores,
@@ -307,7 +314,7 @@ def GA_singlepoints(args):
             # Create input file
             write_orca_input_file(
                 structure_path=xyzfile,
-                command=ORCA_COMMANDS["sp"],
+                type_calc=args.type_calc,
                 charge=smi_dict[key2]["charge"],
                 spin=smi_dict[key2]["mul"],
                 n_cores=args.n_cores,
@@ -352,7 +359,7 @@ def folder_orca_driver(args):
             # Create input file
             write_orca_input_file(
                 structure_path=path.name,
-                command=ORCA_COMMANDS["sp"],
+                type_calc=args.type_calc,
                 charge=smi_dict[key]["charge"],
                 spin=smi_dict[key]["mul"],
                 n_cores=args.n_cores,
@@ -399,7 +406,7 @@ def parts_opts(args):
             # Create input file
             write_orca_input_file(
                 structure_path=path.name,
-                command=ORCA_COMMANDS["opt"],
+                type_calc=args.type_calc,
                 charge=charge,
                 spin=spin,
                 n_cores=args.n_cores,

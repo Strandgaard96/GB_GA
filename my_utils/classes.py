@@ -16,6 +16,7 @@ from tabulate import tabulate
 from sa.neutralize import read_neutralizers
 from scoring.make_structures import atom_remover, create_prim_amine_revised
 
+_neutralize_reactions = None
 
 class cd:
     """Context manager for changing the current working directory dynamically.

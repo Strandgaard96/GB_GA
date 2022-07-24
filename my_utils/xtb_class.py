@@ -13,11 +13,15 @@ from my_utils.xtb_utils import check_bonds, run_xtb
 
 
 class XTB_optimizer:
+    """Base XTB optimizer class"""
+
     def __init__(self):
+
+        # Initialize default xtb values
         self.method = "ff"
         self.workers = 1
+        # Xtb runner function
         self.xtb_runner = run_xtb
-
         # xtb options
         self.XTB_OPTIONS = {
             "opt": "tight",
@@ -36,6 +40,14 @@ class XTB_optimizer:
         commands = {k: v for k, v in option_dict.items() if k in options}
         for key, value in commands.items():
             self.cmd += f" --{key} {value}"
+
+    def optimize(self, args):
+        """Do paralell optimization of all the entries in args"""
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=self.workers
+        ) as executor:
+            results = executor.map(self.xtb_runner, args)
+        return results
 
     @staticmethod
     def _write_xtb_input_files(fragment, name, destination="."):
@@ -63,13 +75,6 @@ class XTB_optimizer:
                     _file.write(line)
             file_paths.append(file_path)
         return file_paths, conf_paths
-
-    def optimize(self, args):
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=self.workers
-        ) as executor:
-            results = executor.map(self.xtb_runner, args)
-        return results
 
 
 class XTB_optimize_schrock(XTB_optimizer):

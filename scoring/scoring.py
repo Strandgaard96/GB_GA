@@ -17,10 +17,17 @@ scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from make_structures import (connect_ligand, connectMols, create_dummy_ligand,
-                             create_ligands, create_prim_amine_revised,
-                             embed_rdkit, mol_with_atom_index, remove_N2,
-                             remove_NH3)
+from make_structures import (
+    connect_ligand,
+    connectMols,
+    create_dummy_ligand,
+    create_ligands,
+    create_prim_amine_revised,
+    embed_rdkit,
+    mol_with_atom_index,
+    remove_N2,
+    remove_NH3,
+)
 
 from my_utils.classes import Generation, Individual, cd
 from my_utils.xtb_class import XTB_optimize_schrock
@@ -166,8 +173,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         mol=Mo_NH3,
         core=core_NH3[0],
         numConfs=scoring_args["n_confs"],
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
     )
 
     with cd(scoring_args["output_dir"]):
@@ -180,7 +185,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
 
         # Perform calculation
         Mo_NH3_energy, Mo_NH3_3d_geom, minidx = optimizer.optimize_schrock()
-        print("catalyst energy:", Mo_NH3_energy)
 
     # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
     if Mo_NH3_energy == 9999:
@@ -212,8 +216,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         mol=Mo_N2,
         core=Mo_3d,
         numConfs=1,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
     )
 
     with cd(scoring_args["output_dir"]):
@@ -226,7 +228,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
 
         # Perform calculation
         Mo_N2_energy, Mo_N2_3d_geom, minidx = optimizer.optimize_schrock()
-        print("Mo energy:", Mo_N2_energy)
 
     if Mo_N2_energy == 9999:
         return 9999, None, None, None

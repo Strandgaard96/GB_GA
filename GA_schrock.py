@@ -21,6 +21,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import crossover as co
+
 # Julius filter functionality.
 import filters
 import GB_GA as ga
@@ -29,9 +30,11 @@ from my_utils.utils import get_git_revision_short_hash
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import get_sa_scores, reweigh_scores_by_sa
 from scoring import scoring_functions as sc
-from scoring.scoring import (rdkit_embed_scoring,
-                             rdkit_embed_scoring_NH3plustoNH3,
-                             rdkit_embed_scoring_NH3toN2)
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3plustoNH3,
+    rdkit_embed_scoring_NH3toN2,
+)
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 
@@ -169,6 +172,18 @@ def get_arguments(arg_list=None):
         default="./xcontrol.inp",
         help="",
     )
+    parser.add_argument(
+        "--size_stdev",
+        type=int,
+        default="10",
+        help="",
+    )
+    parser.add_argument(
+        "--average_size",
+        type=int,
+        default=50,
+        help="",
+    )
     return parser.parse_args(arg_list)
 
 
@@ -225,7 +240,7 @@ def GA(args):
 
         population.update_property_cache()
 
-        # Making new Children
+        # Get mating pool
         mating_pool = ga.make_mating_pool(population, args["mating_pool_size"])
 
         if args["debug"]:
@@ -327,8 +342,8 @@ def main():
     GA_args = args_dict
 
     # Variables for crossover module
-    co.average_size = 50
-    co.size_stdev = 10
+    co.average_size = args.average_size
+    co.size_stdev = args.size_stdev
 
     # Run the GA
     for i in range(args.n_tries):

@@ -325,6 +325,7 @@ def xtb_optimize_schrock(
 
     return energies, geometries
 
+
 if __name__ == "__main__":
     # Debugging
     struct = ".xyz"

@@ -12,6 +12,7 @@ from io import StringIO
 
 from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, Draw
+
 # Options to visualise molecules
 from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
 
@@ -444,8 +445,8 @@ def embed_rdkit(
     coreConfId=-1,
     randomseed=2342,
     numThreads=1,
-    force_constant=1e3,
-    pruneRmsThresh=1,
+    force_constant=1e12,
+    pruneRmsThresh=0.1,
 ):
     """Embedding driver function
 

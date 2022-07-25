@@ -428,12 +428,12 @@ def create_dummy_ligand(ligand, cut_idx=None):
     frag = Chem.FragmentOnBonds(ligand, bond, addDummies=True, dummyLabels=[(1, 1)])
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
-    # Pattern for NH2+dummy
-    smart = "[1*][N]([H])([H])"
+    # Pattern for N connected to dummy
+    smart = "[NX3;H2][1*]"
     patt = Chem.MolFromSmarts(smart)
 
     # Get the ligand that is not NH2
-    ligands = [struct for struct in frags if len(struct.GetSubstructMatches(patt)) == 0]
+    ligands = [struct for struct in frags if not struct.GetSubstructMatches(patt)]
 
     return ligands[0]
 

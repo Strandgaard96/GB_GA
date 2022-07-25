@@ -211,9 +211,6 @@ class XTB_optimize_schrock(XTB_optimizer):
         self.copy_logfile(conf_paths, name="Mo_gascon.log")
 
         if self.options.get("bond_opt", False):
-            results3 = opt_MoN_bond(
-                cmd, conf_paths, cpus_per_worker, method, mol, workers, xyz_files
-            )
 
             self._make_input_constrain_file(
                 self.mol,
@@ -226,7 +223,7 @@ class XTB_optimize_schrock(XTB_optimizer):
             args = [
                 (
                     xyz_file,
-                    cmd,
+                    self.cmd,
                     cpus_per_worker,
                     conf_paths[i],
                     f"gfn{self.options['method']}",

@@ -238,7 +238,7 @@ class Generation:
                     output_ligand, cut_idx = create_prim_amine_revised(mol.rdkit_mol)
                     # output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
                     # Handle if None is returned
-                    if not output_ligand:
+                    if not (output_ligand or cut_idx):
                         output_ligand = Chem.MolFromSmiles("CCCCCN")
                         cut_idx = [[1]]
                 except Exception as e:

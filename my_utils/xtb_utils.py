@@ -31,23 +31,6 @@ mol object of the Mo core with dummy atoms instead of ligands
 """
 
 
-def write_to_db(database_dir=None, logfiles=None, trajfile=None):
-
-    with connect(database_dir) as db:
-        for i, (traj, logfile) in enumerate(zip(trajfile, logfiles)):
-
-            energies = extract_energyxtb(logfile)
-            structs = read(traj, index=":")
-            for struct, energy in zip(structs, energies):
-                id = db.reserve(name=str(traj) + str(i))
-                if id is None:
-                    continue
-                struct.calc = SinglePointCalculator(struct, energy=energy)
-                db.write(struct, id=id, name=str(traj))
-
-    return
-
-
 def run_xtb(args):
     xyz_file, xtb_cmd, numThreads, conf_path, logname = args
     print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
@@ -68,7 +51,12 @@ def run_xtb(args):
         cwd=cwd,
     )
 
-    output, err = popen.communicate()
+    # Hardcoded wait time. Prevent an unfinished conformer from ruining the whole batch.
+    try:
+        output, err = popen.communicate(timeout=8*60)
+    except subprocess.TimeoutExpired:
+        popen.kill()
+        output, err = popen.communicate()
 
     with open(Path(conf_path) / f"{logname}job.out", "w") as f:
         f.write(output)
@@ -76,6 +64,23 @@ def run_xtb(args):
         f.write(err)
     results = read_results(output, err)
     return results
+
+
+def write_to_db(database_dir=None, logfiles=None, trajfile=None):
+
+    with connect(database_dir) as db:
+        for i, (traj, logfile) in enumerate(zip(trajfile, logfiles)):
+
+            energies = extract_energyxtb(logfile)
+            structs = read(traj, index=":")
+            for struct, energy in zip(structs, energies):
+                id = db.reserve(name=str(traj) + str(i))
+                if id is None:
+                    continue
+                struct.calc = SinglePointCalculator(struct, energy=energy)
+                db.write(struct, id=id, name=str(traj))
+
+    return
 
 
 def extract_energyxtb(logfile=None):

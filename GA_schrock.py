@@ -260,9 +260,15 @@ def GA(args):
             directory=args["output_dir"], name=f"GA{generation_num:02d}_debug.pkl"
         )
 
+        with open(
+            "/home/magstr/generation_data/prod_new14_large_0/GA01_debug.pkl", "rb"
+        ) as f:
+            gen = pickle.load(f)
+
         # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
-        new_population.modify_population(supress_amines=args["supress_amines"])
+        gen.modify_population(supress_amines=True)
+        # new_population.modify_population(supress_amines=args["supress_amines"])
 
         # Assign generation and population idx to the population
         new_population.generation_num = generation_num

@@ -111,7 +111,7 @@ def atom_remover(mol, pattern=None):
         yield res.GetMol()
 
 
-def connect_ligand(core, ligand, NH3_flag=True):
+def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
     """
     Function that takes two mol objects at creates a core with ligand.
     Args:
@@ -144,6 +144,9 @@ def connect_ligand(core, ligand, NH3_flag=True):
 
     if NH3_flag:
         match = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo][NH3]"))
+        mol.GetAtomWithIdx(match[1]).SetFormalCharge(1)
+    if N2_flag:
+        match = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]N#N"))
         mol.GetAtomWithIdx(match[1]).SetFormalCharge(1)
 
     # Sanitation ensures that it is a reasonable molecule.
@@ -290,8 +293,7 @@ def create_prim_amine_revised(input_ligand):
     matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0;!R]"))
     if not matches:
         print(
-            "There are no non-ring amines, checking for methyl groups instead to use as"
-            "attachment points"
+            "There are no non-ring amines, checking for methyl groups instead to use as attachment points"
         )
 
         methyl_matches = input_ligand.GetSubstructMatches(

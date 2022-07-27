@@ -95,28 +95,24 @@ def rdkit_embed_scoring(ligand, scoring_args):
 
     # Create ligand based on a primary amine
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
-    Mo_N2_NH3 = connect_ligand(core_N2_NH3[0], ligand_cut, NH3_flag=True)
+    Mo_N2_NH3 = connect_ligand(core_N2_NH3[0], ligand_cut, NH3_flag=True, N2_flag=True)
+    Mo_N2_NH3 = Chem.AddHs(Mo_N2_NH3)
 
     # Embed catalyst
     Mo_N2_NH3_3d = embed_rdkit(
-        mol=Mo_N2_NH3,
-        core=core_N2_NH3[0],
-        numConfs=n_confs,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
+        mol=Mo_N2_NH3, core=core_N2_NH3[0], numConfs=scoring_args["n_confs"]
     )
 
-    with cd(output_dir):
+    with cd(scoring_args["output_dir"]):
 
         # Instantiate optimizer class
-        optimizer = XTB_optimize()
-
-        # Set the xtb options
-        optimizer.set_options(scoring_args)
+        scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_N2_NH3"
+        scoring_args["charge"] = smi_dict["Mo_N2_NH3"]["charge"]
+        scoring_args["uhf"] = smi_dict["Mo_N2_NH3"]["spin"]
+        optimizer = XTB_optimize_schrock(mol=Mo_N2_NH3_3d, scoring_options=scoring_args)
 
         # Perform calculation
         Mo_N2_NH3_energy, Mo_N2_NH3_3d_geom, minidx = optimizer.optimize_schrock()
-        print("catalyst energy:", Mo_N2_NH3_energy)
 
     # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
     if Mo_N2_NH3_energy == 9999:
@@ -130,20 +126,16 @@ def rdkit_embed_scoring(ligand, scoring_args):
     Mo_NH3_3d = remove_N2(Mo_N2_NH3_3d)
     Mo_NH3_3d = Chem.AddHs(Mo_NH3_3d)
 
-    with cd(output_dir):
-        Mo_NH3_energy, Mo_NH3_3d_geom, minidx = xtb_pre_optimize(
-            Mo_NH3_3d,
-            gbsa="benzene",
-            charge=smi_dict["Mo_NH3"]["charge"],
-            spin=smi_dict["Mo_NH3"]["spin"],
-            opt_level="tight",
-            name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            numThreads=ncpus,
-            cleanup=cleanup,
-            method=method,
-            bond_opt=scoring_args["bond_opt"],
-        )
-        print("Mo energy:", Mo_NH3_energy)
+    with cd(scoring_args["output_dir"]):
+
+        # Instantiate optimizer class
+        scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3"
+        scoring_args["charge"] = smi_dict["Mo_NH3"]["charge"]
+        scoring_args["uhf"] = smi_dict["Mo_NH3"]["spin"]
+        optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
+
+        # Perform calculation
+        Mo_NH3_energy, Mo_NH3_3d_geom, minidx = optimizer.optimize_schrock()
 
     if Mo_NH3_energy == 9999:
         return 9999, None, None, None
@@ -241,8 +233,8 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
 
 
 def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
+
     idx = ligand.idx
-    ncpus, n_confs, cleanup, output_dir, method = unpack_args(scoring_args)
 
     # Unpack gas energies
     NH3_ENERGY, N2_ENERGY, CP_RED_ENERGY = GAS_ENERGIES[scoring_args["method"]]
@@ -250,32 +242,25 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
     # Create ligand based on a primary amine
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     Mo_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
+    Mo_NH3 = Chem.AddHs(Mo_NH3)
 
     # Embed catalyst
     Mo_NH3_3d = embed_rdkit(
         mol=Mo_NH3,
         core=core_NH3[0],
-        numConfs=n_confs,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
+        numConfs=scoring_args["n_confs"],
     )
 
-    with cd(output_dir):
+    with cd(scoring_args["output_dir"]):
 
-        # Optimization
-        Mo_NH3plus_energy, Mo_NH3plus_3d_geom, minidx = xtb_pre_optimize(
-            Mo_NH3_3d,
-            gbsa="benzene",
-            charge=smi_dict["Mo_NH3+"]["charge"],
-            spin=smi_dict["Mo_NH3+"]["spin"],
-            opt_level="tight",
-            name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3+",
-            numThreads=ncpus,
-            cleanup=cleanup,
-            bare=True,
-            method=method,
-        )
-        print("catalyst energy:", Mo_NH3plus_energy)
+        # Instantiate optimizer class
+        scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3+"
+        scoring_args["charge"] = smi_dict["Mo_NH3+"]["charge"]
+        scoring_args["uhf"] = smi_dict["Mo_NH3+"]["spin"]
+        optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
+
+        # Perform calculation
+        Mo_NH3plus_energy, Mo_NH3plus_3d_geom, minidx = optimizer.optimize_schrock()
 
     # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
     if Mo_NH3plus_energy == 9999:
@@ -286,19 +271,16 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
     for elem in discard_conf:
         Mo_NH3_3d.RemoveConformer(elem)
 
-    with cd(output_dir):
-        Mo_NH3_energy, Mo_NH3_3d_geom, minidx = xtb_pre_optimize(
-            Mo_NH3_3d,
-            gbsa="benzene",
-            charge=smi_dict["Mo_NH3"]["charge"],
-            spin=smi_dict["Mo_NH3"]["spin"],
-            opt_level="tight",
-            name=f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3",
-            numThreads=ncpus,
-            cleanup=cleanup,
-            method=method,
-        )
-        print("Mo energy:", Mo_NH3_energy)
+    with cd(scoring_args["output_dir"]):
+
+        # Instantiate optimizer class
+        scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3"
+        scoring_args["charge"] = smi_dict["Mo_NH3"]["charge"]
+        scoring_args["uhf"] = smi_dict["Mo_NH3"]["spin"]
+        optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
+
+        # Perform calculation
+        Mo_NH3_energy, Mo_NH3_3d_geom, minidx = optimizer.optimize_schrock()
 
     if Mo_NH3_energy == 9999:
         return 9999, None, None, None
@@ -314,12 +296,12 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
 if __name__ == "__main__":
 
     # Current dir:
-    gen = Path("/home/magstr/generation_data/prod_new7_0/GA50.pkl")
+    gen = Path("/home/magstr/generation_data/prod_new15_large_0/GA50.pkl")
 
     # 370399_submitted.pkl
     with open(gen, "rb") as f:
         gen0 = pickle.load(f)
-    ind = gen0.molecules[0]
+    ind = gen0.new_molecules[10]
 
     dic = {
         "cpus_per_task": 3,
@@ -332,5 +314,8 @@ if __name__ == "__main__":
     # METHYL SIMPLE
     ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"), cut_idx=1, idx=(0, 0))
 
-    res = rdkit_embed_scoring_NH3toN2(ind, dic)
+    # The three scoring functions
+    #res = rdkit_embed_scoring_NH3toN2(ind, dic)
+    #res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
+    #res = rdkit_embed_scoring(ind, dic)
     print("YOU MAAAADE IT")

@@ -53,7 +53,7 @@ def run_xtb(args):
 
     # Hardcoded wait time. Prevent an unfinished conformer from ruining the whole batch.
     try:
-        output, err = popen.communicate(timeout=8*60)
+        output, err = popen.communicate(timeout=8 * 60)
     except subprocess.TimeoutExpired:
         popen.kill()
         output, err = popen.communicate()

@@ -2,7 +2,6 @@ import copy
 import os
 import pickle
 import random
-import sys
 from dataclasses import dataclass, field
 from typing import List
 
@@ -16,39 +15,21 @@ from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
 from scoring.make_structures import (
     atom_remover,
+    single_atom_remover,
     create_prim_amine_revised,
-    mol_with_atom_index,
 )
 
 _neutralize_reactions = None
 
-file = "templates/core_noHS.mol"
-core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
-"""Mol: 
-mol object of the Mo core with dummy atoms instead of ligands
-"""
-
-
-class cd:
-    """Context manager for changing the current working directory dynamically.
-    # See: https://book.pythontips.com/en/latest/context_managers.html"""
-
-    def __init__(self, newPath):
-        self.newPath = os.path.expanduser(newPath)
-
-    def __enter__(self):
-        self.savedPath = os.getcwd()
-        os.chdir(self.newPath)
-
-    def __exit__(self, etype, value, traceback):
-        # Print traceback if anything happens
-        if traceback:
-            print(sys.exc_info())
-        os.chdir(self.savedPath)
-
 
 @dataclass
 class Individual:
+    """Dataclass for holding molecules with attributes
+
+    The central objects of the GA. The moles themselves plus
+    various attributes and debugging fields are set.
+    """
+
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
     original_mol: Chem.rdchem.Mol = field(
         default_factory=Chem.rdchem.Mol, repr=False, compare=False
@@ -80,6 +61,7 @@ class Individual:
         ]
 
     def save(self, directory="."):
+        """Dump ind object into file"""
         filename = os.path.join(directory, f"ind.pkl")
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
@@ -87,9 +69,15 @@ class Individual:
 
 @dataclass(order=True)
 class Generation:
-    generation_num: int = field(init=True, default=None)
+    """Dataclass holding the Individuals in each generation
+
+    Contains functionality to get and set props from Individuals and
+    display vaious scoring results
+    """
+
     molecules: List[Individual] = field(repr=True, default_factory=list)
     new_molecules: List[Individual] = field(repr=False, default_factory=list)
+    generation_num: int = field(init=True, default=None)
     size: int = field(default=None, init=True, repr=True)
 
     def __post_init__(self):
@@ -101,22 +89,26 @@ class Generation:
         )
 
     def assign_idx(self):
+        """Set idx on each molecule"""
         for i, molecule in enumerate(self.molecules):
             setattr(molecule, "idx", (self.generation_num, i))
         self.size = len(self.molecules)
 
     def save(self, directory=None, name="GA.pkl"):
+        """Save instance to file for later retrieval"""
         filename = os.path.join(directory, name)
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
     def get(self, prop):
+        """Get property from molecules"""
         properties = []
         for molecule in self.molecules:
             properties.append(getattr(molecule, prop))
         return properties
 
     def setprop(self, prop, list_of_values):
+        """Set property for molecules"""
         for molecule, value in zip(self.molecules, list_of_values):
             setattr(molecule, prop, value)
 
@@ -126,6 +118,7 @@ class Generation:
                 getattr(molecule, prop).append(value)
 
     def sortby(self, prop, reverse=True):
+        """Sort molecule based on score"""
         if reverse:
             self.molecules.sort(
                 key=lambda x: float("inf") if np.isnan(x.score) else x.score,
@@ -138,7 +131,9 @@ class Generation:
             )
 
     def set_results(self, results):
-        "Extract the scoring results, results is a list og length = populations size"
+        """Extract the scoring results and set the properties on the
+        Individual objects.
+        """
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]
         geometries2 = [res[2] for res in results]
@@ -152,11 +147,13 @@ class Generation:
         self.setprop("score", energies)
 
     def prune(self, population_size):
+        """Sort by score and take the best scoring molecules"""
         self.sortby("score", reverse=False)
         self.molecules = self.molecules[:population_size]
         self.size = len(self.molecules)
 
     def print(self, population="molecules", pass_text=None):
+        """Print nice table of output"""
         table = []
         if population == "molecules":
             population = self.molecules
@@ -193,6 +190,7 @@ class Generation:
             return txt
 
     def print_fails(self):
+        """Log how many calcs in population failed"""
         nO_NaN = 0
         nO_9999 = 0
         for ind in self.new_molecules:
@@ -212,6 +210,7 @@ class Generation:
         self,
         columns=["score", "energy", "sa_score", "rdkit_mol"],
     ):
+        """Get dataframe of population"""
         df = pd.DataFrame(
             list(map(list, zip(*[self.get(prop) for prop in columns]))),
             index=pd.MultiIndex.from_tuples(
@@ -222,6 +221,7 @@ class Generation:
         return df
 
     def update_property_cache(self):
+        """Update rdkit data to prevent errors"""
         for mol in self.molecules:
 
             # Done to prevent ringinfo error
@@ -229,18 +229,30 @@ class Generation:
             mol.rdkit_mol.UpdatePropertyCache()
 
     def modify_population(self, supress_amines=False):
+        """Molecule mol modifier function
+
+        Preps molecules in population for scoring. Ensures that there is one
+        primary amine attachment point
+
+        supresss_amines: Decides whether primary amines other than the
+        attachment point are changed to hydrogen.
+        """
+
+        # Loop over molecules in popualtion
         for mol in self.molecules:
+
             # Check for primary amine
             match = mol.rdkit_mol.GetSubstructMatches(
                 Chem.MolFromSmarts("[NX3;H2;!$(*n);!$(*N)]")
             )
+            # Set current mol for future debugging
             mol.original_mol = mol.rdkit_mol
 
-            # Create primary amine if it doesnt have once. Otherwise, pas the cut idx
+            # Create primary amine if it doesnt have one.
             if not match:
                 try:
                     output_ligand, cut_idx = create_prim_amine_revised(mol.rdkit_mol)
-                    # output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
+
                     # Handle if None is returned
                     if not (output_ligand or cut_idx):
                         output_ligand = Chem.MolFromSmiles("CCCCCN")
@@ -249,6 +261,8 @@ class Generation:
                     print("Could not create primary amine, setting methyl as ligand")
                     output_ligand = Chem.MolFromSmiles("CN")
                     cut_idx = [[1]]
+
+                # rdkit hack to ensure smiles look ok
                 mol.rdkit_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
                 mol.cut_idx = cut_idx[0][0]
                 mol.smiles = Chem.MolToSmiles(
@@ -259,6 +273,7 @@ class Generation:
                 cut_idx = random.choice(match)
                 mol.cut_idx = cut_idx[0]
 
+                # Remove additional primary amine groups to prevent XTB exploit
                 if supress_amines:
 
                     # Check for N-N bound amines
@@ -266,12 +281,14 @@ class Generation:
                         Chem.MolFromSmarts("[NX3;H2;$(*N),$(*n)]")
                     )
 
-                    # Enable NH2 amine supressor.
+                    # Enable NH2 amine supressor if there are multiple
+                    # primary amines
                     if len(match) > 1:
 
                         # Substructure match the NH3
                         prim_match = Chem.MolFromSmarts("[NX3;H2]")
-                        # Substructure match the NH3
+
+                        # Remove the primary amines
                         ms = [
                             x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)
                         ]
@@ -284,11 +301,9 @@ class Generation:
                         mol.smiles = Chem.MolToSmiles(removed_mol)
 
                     elif nn_match:
-                        # Replace other primary amines with hydrogen in the frag:
+                        # Replace tricky primary amines in the frag:
                         prim_match = Chem.MolFromSmarts("[NX3;H2;$(*N),$(*n)]")
-
                         rm = AllChem.DeleteSubstructs(mol.rdkit_mol, prim_match)
-
                         prim_amine_index = rm.GetSubstructMatches(
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
@@ -301,12 +316,8 @@ class Generation:
         for mol in self.molecules:
             prim_match = Chem.MolFromSmarts("[NX3;H2]")
 
-            # Substructure match the NH3
-            ms = [x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)]
-            removed_mol = random.choice(ms)
-            prim_amine_index = removed_mol.GetSubstructMatches(
-                Chem.MolFromSmarts("[NX3;H2]")
-            )
+            # Remove the cut idx amine to prevent it hogging the SA score
+            removed_mol = single_atom_remover(mol.rdkit_mol, mol.cut_idx)
             mol.rdkit_mol_sa = removed_mol
             mol.smiles_sa = Chem.MolToSmiles(removed_mol)
 
@@ -331,15 +342,20 @@ class Generation:
             ind.neutral_rdkit_mol = mol
 
     def get_sa(self):
-        # Prep molecules
+        """Get the SA score of the population"""
+
+        # Neutralize and prep molecules
         self.sa_prep()
+
         # Get the scores
         sa_scores = [
             sa_target_score_clipped(ind.neutral_rdkit_mol) for ind in self.molecules
         ]
+        # Set the scores
         self.set_sa(sa_scores)
 
     def calculate_normalized_fitness(self):
+        """Normalize the scores to get probabilities for mating selection"""
 
         # onvert to high and low scores.
         scores = self.get("score")
@@ -360,9 +376,11 @@ class Generation:
             individual.normalized_fitness = shifted_score / sum_scores
 
     def set_sa(self, sa_scores):
+        """Set sa score. If score is high, then score is not modified"""
         for individual, sa_score in zip(self.molecules, sa_scores):
             individual.sa_score = sa_score
             if individual.score > 5000:
                 continue
             else:
+                # Scale the score with the sa_score (which is max 1)
                 individual.score = sa_score * individual.pre_score

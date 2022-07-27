@@ -56,48 +56,9 @@ def hartree2kJmol(hartree):
     return hartree * 2625.50
 
 
-def write_to_db(args):
-    """
-
-    Args:
-        database_dir Path:
-        structs List(xyz):
-
-    Returns:
-
-    """
-
-    print("In write_db function")
-    database_dir, trajfile = args
-
-    logfile = trajfile.parent / "xtbopt.log"
-
-    with connect(database_dir) as db:
-
-        energies = extract_energyxtb(logfile)
-        structs = read(trajfile, index=":")
-        for i, (struct, energy) in enumerate(zip(structs, energies)):
-            id = db.reserve(name=str(trajfile) + str(i))
-            if id is None:
-                continue
-            struct.calc = SinglePointCalculator(struct, energy=energy)
-            db.write(struct, id=id, name=str(trajfile))
-
-    return
-
-
 def write_to_traj(args):
-    """
+    """Write xtblog files to traj file"""
 
-    Args:
-        traj_dir Path:
-        structs List(xyz):
-
-    Returns:
-
-    """
-
-    print("In write_traj function")
     traj_dir, trajfile = args
     traj = Trajectory(traj_dir, mode="a")
 
@@ -106,10 +67,12 @@ def write_to_traj(args):
     struct = read(trajfile, index="-1")
     struct.calc = SinglePointCalculator(struct, energy=energies[-1])
     traj.write(struct)
+
     return
 
 
 def db_write_driver(output_dir=None, workers=6):
+    """Paralellize writing to db, not very robust"""
 
     database_dir = "ase.traj"
 
@@ -133,11 +96,30 @@ def db_write_driver(output_dir=None, workers=6):
 
 
 def get_git_revision_short_hash() -> str:
+    """Get the git hash of current commit for each GA run"""
     return (
         subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
         .decode("ascii")
         .strip()
     )
+
+
+class cd:
+    """Context manager for changing the current working directory dynamically.
+    # See: https://book.pythontips.com/en/latest/context_managers.html"""
+
+    def __init__(self, newPath):
+        self.newPath = os.path.expanduser(newPath)
+
+    def __enter__(self):
+        self.savedPath = os.getcwd()
+        os.chdir(self.newPath)
+
+    def __exit__(self, etype, value, traceback):
+        # Print traceback if anything happens
+        if traceback:
+            print(sys.exc_info())
+        os.chdir(self.savedPath)
 
 
 if __name__ == "__main__":

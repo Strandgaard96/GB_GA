@@ -16,8 +16,6 @@ from rdkit.Chem import AllChem, Draw
 # Options to visualise molecules
 from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
 
-IPythonConsole.drawOptions.addAtomIndices = True
-
 
 def mol_with_atom_index(mol):
     """Visualize mol object with atom indices"""
@@ -31,6 +29,7 @@ def mol_with_atom_index(mol):
 
 
 def remove_NH3(mol):
+    """Remove NH3 group on mol"""
 
     # Substructure match the NH3
     NH3_match = Chem.MolFromSmarts("[NH3]")
@@ -41,6 +40,7 @@ def remove_NH3(mol):
 
 
 def remove_N2(mol):
+    """Remove N2 group on mol"""
 
     # Substructure match the N2
     NH2_match = Chem.MolFromSmarts("N#N")
@@ -50,6 +50,7 @@ def remove_N2(mol):
 
 
 def remove_dummy(mol):
+    """Remove dummy atom from mol"""
 
     dum_match = Chem.MolFromSmiles("*")
     removed_mol = Chem.DeleteSubstructs(mol, dum_match)
@@ -89,7 +90,7 @@ def replaceAtom(mol, indexAtom, indexNeighbor, atom_type="Br"):
 
 
 def addAtom(mol, indexAtom, atom_type="N"):
-    """Replace an atom with another type"""
+    """Add atom and connect to indexAtom with single bond"""
 
     emol = Chem.EditableMol(mol)
     idx = emol.AddAtom(Chem.Atom(atom_type))
@@ -98,6 +99,17 @@ def addAtom(mol, indexAtom, atom_type="N"):
 
 
 def atom_remover(mol, pattern=None):
+    """
+    Generator function that removes a substructures and yields all the n structures
+    where each structure has one of the substructures removed.
+
+    Args:
+        mol (Chem.rdchem.Mol): The mol to remove substruct on
+        pattern (Chem.rdchem.Mol): mol object to remove from the input mol
+
+    Yields:
+        Chem.rdchem.Mol: The ouput mol with 1 removed substructure
+    """
     matches = mol.GetSubstructMatches(pattern)
     if not matches:
         yield Chem.Mol(mol)
@@ -111,23 +123,45 @@ def atom_remover(mol, pattern=None):
         yield res.GetMol()
 
 
+def single_atom_remover(mol, idx):
+    """
+    Function that removes an atom at specified idx
+
+    Args:
+        mol (Chem.rdchem.Mol): The mol to remove substruct on
+        pattern (Chem.rdchem.Mol): mol object to remove from the input mol
+
+    Returns:
+        Chem.rdchem.Mol: The ouput mol with the atom removed
+    """
+    res = Chem.RWMol(mol)
+    res.BeginBatchEdit()
+    res.RemoveAtom(idx)
+    res.CommitBatchEdit()
+    Chem.SanitizeMol(res)
+    return res.GetMol()
+
+
 def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
     """
     Function that takes two mol objects at creates a core with ligand.
     Args:
-        core (Mol): The core to put ligand on. With dummy atoms at
+        core (Chem.rdchem.Mol): The core to put ligand on. With dummy atoms at
             ligand positions.
-        ligand (Mol): The ligand to put on core with dummy atom where
+        ligand (Chem.rdchem.Mol): The ligand to put on core with dummy atom where
             N from the core should be.
         NH3_flag (bool): Flag to mark if the core has a NH3 on it.
             Then the charge is set to ensure non-faulty sanitation.
+        N2_flag (bool): Flag to mark if the core has a N2 on it.
+            Then the charge is set to ensure non-faulty sanitation.
     Returns:
-        mol (Mol): mol object with the ligand put on the core.
+        mol (Chem.rdchem.Mol): mol object with the ligand put on the core
     """
 
     # mol object for dummy atom to replace on the core
     dummy = Chem.MolFromSmiles("*")
 
+    # Get idx of the dummy(idx) and the connecting atom(neigh_idx)
     idx, neigh_idx = getAttachmentVector(ligand)
 
     # Remove dummy
@@ -187,96 +221,19 @@ def connectMols(core, NH3_flag=True):
     return mol
 
 
-def create_ligands(ligand):
-    """
-    Takes mol object and splits into fragments that can bind to a tertiary
-    amine on the Mo core.
-    Args:
-        ligand (mol):
-
-    Returns:
-        ligands List(mol):
-
-    """
-    # TODO AllChem.ReplaceCore() could be used here instead
-
-    # A smile indicating the dummy atoms on the core
-    dummy = Chem.MolFromSmiles("*")
-
-    # Create explicit hydrogens and sterechemistry i dont know what does.
-    ligand = Chem.AddHs(ligand)
-
-    # Look for teriary amines in the input ligand.
-    tert_amines = ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H0;D3]"))
-    if len(tert_amines) == 0:
-        raise Exception(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(ligand))} constains no tertiary amine."
-        )
-
-    # Loop over found amines
-    for amine in tert_amines:
-
-        # Get the neigbouring bonds to the amine
-        atom = ligand.GetAtomWithIdx(amine[0])
-
-        # Create list of tuples that contain the amine idx and idx of each of the three
-        # neighbors.
-        indices = [(amine[0], x.GetIdx()) for x in atom.GetNeighbors()]
-
-        # Get the bonds to the neighbors.
-        bonds = []
-        for atoms in indices:
-            bonds.append(ligand.GetBondBetweenAtoms(atoms[0], atoms[1]).GetIdx())
-
-        # Get the fragments from breaking the amine bonds. If the fragments connected to the tertiary
-        # amine, are connected, you only carve out the N and get three dummy locations
-        frag = Chem.FragmentOnBonds(
-            ligand, bonds, addDummies=True, dummyLabels=[(1, 1), (1, 1), (1, 1)]
-        )
-        frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
-
-        # Initilize dummy pattern
-        patt = Chem.MolFromSmarts("[1*]")
-
-        # Get list of ligands with only one dummy atom.
-        # this also excludes the remaining tertiary amin which will have 3 dummies
-        ligands = [
-            struct for struct in frags if len(struct.GetSubstructMatches(patt)) == 1
-        ]
-
-        # Initialize primary amine
-        NH2_mol = Chem.MolFromSmiles("[NH2]")
-
-        # If all N ligands give a viable ligand, we have to
-        # randomly choose one of them
-        ligand = random.choice(ligands)
-
-        # Replace the dummy on the ligand with a primary amine.
-        ligand = AllChem.ReplaceSubstructs(
-            ligand, dummy, NH2_mol, replacementConnectionPoint=0
-        )[0]
-
-        # Little hack to remove the dot (open bond) on NH2 when visualizing the new ligand.
-        lig = Chem.MolFromSmiles(Chem.MolToSmiles(ligand))
-
-        # If there is a valid ligand break the for loop
-        if ligands:
-            break
-
-    return lig
-
-
 def create_prim_amine_revised(input_ligand):
     """
     A function that takes a ligand and splits on a nitrogen bond, and then gives
     a ligand out that has an NH2 and a cut_idx that specifies the location of the primary
-    amine and where to cut when putting ligand putting on the Mo core
+    amine.
+
     Args:
-        input_ligand (mol): A regular ligand with no dummy atoms.
+        input_ligand (Chem.rdchem.Mol): Ligand to modify
 
     Returns:
-        output_ligand (mol): Modified ligand with an added primary amine
-        prim_amine_index[0] tuple(int): idx of the primary amine
+        lig (Chem.rdchem.Mol): Modified ligand with preferably only one primary amine attachment
+            point.
+        prim_amine_index tuple(tuple(int)): idx of a primary amine
     """
 
     # Initialize dummy mol
@@ -334,14 +291,17 @@ def create_prim_amine_revised(input_ligand):
             )
         ]
 
+        # Break loop of a valid match is found
         if indices:
             break
 
+    # If not indices were found None is returned
     try:
         atoms = random.choice(indices)
     except IndexError as e:
         print("Oh no, found no valid cut points")
         return None, None
+    # Get the bond idx of the chosen match
     bond = [input_ligand.GetBondBetweenAtoms(*atoms).GetIdx()]
 
     # Get the fragments from breaking the amine bonds.
@@ -353,9 +313,9 @@ def create_prim_amine_revised(input_ligand):
     )
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
-    # Select the fragments that are not the amine the ligand was cut from.
+    # Select the fragment that was cut from amine.
     # If there is only one fragment, it can break so i added the temporary
-    # If statement
+    # ff statement
     # TODO: handle this better
     if len(frags) == 1:
         ligand = [frags[0]]
@@ -386,11 +346,14 @@ def create_prim_amine_revised(input_ligand):
             f"There are several primary amines to cut at with idxs: {prim_amine_index}"
             f"removing some"
         )
-        # Substructure match the NH3
+        # Substructure match primary amine
         prim_match = Chem.MolFromSmarts("[NX3;H2]")
-        # Substructure match the NH3
+
+        # Remove the primary amines and chose on of the structures
         ms = [x for x in atom_remover(lig, pattern=prim_match)]
         lig = random.choice(ms)
+
+        # Get the idx of the remaining amine
         prim_amine_index = lig.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
 
         # Need this to prevent errors later. See: https://github.com/rdkit/rdkit/issues/1596
@@ -401,13 +364,14 @@ def create_prim_amine_revised(input_ligand):
 
 def create_dummy_ligand(ligand, cut_idx=None):
     """
-    Takes mol object and splits it based on a primary amine such that the frags can connect to
-    the tertiary amine on the Mo core.
+    Cut atom from ligand and put dummy idx
+
     Args:
-        cut_idx tuple(int):
-        ligand (mol):
+        ligand (mol): ligand to remove atom from
+        cut_idx (int): index of atom to remove
+
     Returns:
-        ligands List(mol) :
+        ligands (Chem.rdchem.Mol) : ligand with dummy atom
     """
     # TODO AllChem.ReplaceCore() could be used here instead
 
@@ -417,7 +381,7 @@ def create_dummy_ligand(ligand, cut_idx=None):
     # Get the neigbouring bonds to the amine given by cut_idx
     atom = ligand.GetAtomWithIdx(cut_idx)
 
-    # Create list of tuples that contain the amine idx a    nd idx of neighbor.
+    # Create list of tuples that contain the amine idx and idx of neighbor.
     indices = [
         (cut_idx, x.GetIdx()) for x in atom.GetNeighbors() if x.GetAtomicNum() != 1
     ][0]
@@ -463,7 +427,7 @@ def embed_rdkit(
         pruneRmsThresh (int): Embedding parameter
 
     Returns:
-
+        mol (Chem.rdchem.Mol): Embedded mol object
     """
 
     # Match the core+ligand to the Mo core.
@@ -495,7 +459,10 @@ def embed_rdkit(
     Chem.SanitizeMol(mol)
 
     cids = list(cids)
-    if len(cids) == 0:
+
+    # If embedding failed, retry with other parameters.
+    # ignoreSmoothingFailures removed the majority of embedding errors for me
+    if not cids:
         # Retry with a different random seed
         cids = AllChem.EmbedMultipleConfs(
             mol=mol,
@@ -509,7 +476,7 @@ def embed_rdkit(
             ignoreSmoothingFailures=True,
         )
         Chem.SanitizeMol(mol)
-        if len(cids) == 0:
+        if not cids:
             print(coordMap, Chem.MolToSmiles(mol))
             raise ValueError("Could not embed molecule")
 
@@ -517,63 +484,9 @@ def embed_rdkit(
     algMap = [(j, i) for i, j in enumerate(match)]
     for cid in cids:
         rms = AllChem.AlignMol(mol, core, prbCid=cid, atomMap=algMap)
+
     return mol
 
 
 if __name__ == "__main__":
-
-    mol = Chem.MolFromMolFile(
-        "/home/magstr/Documents/nitrogenase/schrock/diagrams_schrock/dft/cycle_restart/Mo/ams.results/traj.mol",
-        sanitize=False,
-        removeHs=False,
-    )
-
-    mol.UpdatePropertyCache()
-    # My own struct:
-    file = "../templates/core_dummy.sdf"
-    core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)[0]
-
-    trial_3d = embed_rdkit(
-        mol,
-        core,
-        numConfs=2,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
-    )
-
-    # Driver code for testing and debugging constrained embedd.
-
-    file_name = "../data/ZINC_first_1000.smi"
-    with open(file_name, "r") as file:
-        data = file.readlines()
-        cat = Chem.MolFromSmiles(data[2])
-
-    # catalysts = connect_cat_2d(ts_dummy, cat)
-
-    # My own struct:
-    file = "../templates/core_dummy.sdf"
-    core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-
-    # Take the input ligand and split it based on a primary amine
-    ligands = create_ligands(cat)
-    catalysts = connect_ligand(core[0], ligands)
-
-    if len(catalysts) > 1:
-        print(
-            f"{Chem.MolToSmiles(Chem.RemoveHs(cat))} contains more than one possible ligand"
-        )
-    catalyst = catalysts[0]
-
-    # Embed TS
-    ts3d = ConstrainedEmbedMultipleConfsMultipleFrags(
-        mol=catalyst,
-        core=core[0],
-        numConfs=2,
-        pruneRmsThresh=0.1,
-        force_constant=1e12,
-    )
-
-    with open("test_embedd.mol", "w+") as f:
-        f.write(Chem.MolToMolBlock(ts3d))
-
-    print("Done with example")
+    print("Hello, nothing here :)")

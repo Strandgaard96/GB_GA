@@ -1,4 +1,4 @@
-# improts
+# imports
 import os
 import pickle
 import re
@@ -147,11 +147,6 @@ def conf_viewer_ga(idx, confs, **kwargs):
     return draw_generation(mol, gen_struct=True, **kwargs)
 
 
-def sort_ga(x):
-    num = int(str(x).split(".pkl")[-2].split("GA")[-1])
-    return num
-
-
 # Two functions for human sorting
 # https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside
 def atoi(text):
@@ -165,10 +160,6 @@ def natural_keys(text):
     (See Toothy's implementation in the comments)
     """
     return [atoi(c) for c in re.split(r"(\d+)", text)]
-
-
-def main():
-    return
 
 
 if __name__ == "__main__":

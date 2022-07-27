@@ -8,8 +8,13 @@ from pathlib import Path
 import numpy as np
 from rdkit import Chem
 
-from my_utils.classes import core
 from my_utils.xtb_utils import check_bonds, run_xtb
+
+file = "templates/core_noHS.mol"
+core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
+"""Mol: 
+mol object of the Mo core with dummy atoms instead of ligands
+"""
 
 
 class XTB_optimizer:
@@ -20,7 +25,7 @@ class XTB_optimizer:
         # Initialize default xtb values
         self.method = "ff"
         self.workers = 1
-        # Xtb runner function
+        # xtb runner function
         self.xtb_runner = run_xtb
         # xtb options
         self.XTB_OPTIONS = {
@@ -34,8 +39,12 @@ class XTB_optimizer:
         self.cmd = cmd
 
     def add_options_to_cmd(self, option_dict):
+        """From passed dict get xtb options if it has the appropriate
+        keys and add to xtb string command"""
 
+        # XTB options to check for
         options = ["gbsa", "spin", "charge", "uhf", "input", "opt"]
+
         # Get commandline options
         commands = {k: v for k, v in option_dict.items() if k in options}
         for key, value in commands.items():
@@ -51,6 +60,8 @@ class XTB_optimizer:
 
     @staticmethod
     def _write_xtb_input_files(fragment, name, destination="."):
+        """Utility method to write xyz input files from mol object"""
+
         number_of_atoms = fragment.GetNumAtoms()
         symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
         conformers = fragment.GetConformers()
@@ -78,21 +89,34 @@ class XTB_optimizer:
 
 
 class XTB_optimize_schrock(XTB_optimizer):
-    def __init__(self, mol, scoring_options, **kwargs):
+    """Specific xtb optimizer class for the schrock intermediates"""
 
+    def __init__(self, mol, scoring_options, **kwargs):
+        """
+
+        Args:
+            mol (Chem.rdchem.Mol): Mol object to score
+            scoring_options (dict): Scoring options for xtb
+        """
+
+        # Inherit the basic xtb functionality from XTB_OPTIMIZER
         super().__init__(**kwargs)
+
+        # Set class attributes
         self.mol = mol
         self.options = scoring_options
 
-        # Set xtb options
+        # Set additional xtb options
         self.add_options_to_cmd(self.options)
 
+        # Set folder name if given options dict
         if not "name" in self.options:
             self.name = "tmp_" + "".join(
                 random.choices(string.ascii_uppercase + string.digits, k=4)
             )
         else:
             self.name = self.options["name"]
+
         # set SCRATCH if environmental variable
         try:
             self.scr_dir = os.environ["SCRATCH"]
@@ -104,13 +128,25 @@ class XTB_optimize_schrock(XTB_optimizer):
     def _make_input_constrain_file(
         molecule, core, path, NH3=False, N2=False, Mo_bond=False
     ):
-        # Locate atoms to contrain
+        """Make input constrain file
+
+        Args:
+            molecule (Chem.rdchem.Mol): molecule to match on
+            core (Chem.rdchem.Mol): mol object specifying what to constrain
+            path (Path): Path to various conformers
+            NH3 (bool): Constrain NH3 on the core
+            N2 (bool): Constrain N2 on the core
+            Mo_bond (bool): Constrain the Mo-N bond
+        """
+
+        # Locate core atoms
         match = (
             np.array(molecule.GetSubstructMatch(core)) + 1
         )  # indexing starts with 0 for RDKit but 1 for xTB
         match = sorted(match)
         assert len(match) == core.GetNumAtoms(), "ERROR! Complete match not found."
 
+        # See if match list should be extended.
         if NH3:
             NH3_match = Chem.MolFromSmarts("[NH3]")
             NH3_match = Chem.AddHs(NH3_match)
@@ -120,13 +156,15 @@ class XTB_optimize_schrock(XTB_optimizer):
             N2_match = Chem.MolFromSmarts("N#N")
             N2_sub_match = np.array(molecule.GetSubstructMatch(N2_match)) + 1
             match.extend(N2_sub_match)
-
         if Mo_bond:
+            # Constrain everything that is not spcified in core.
+            # If N2 or NH3 flag was also set, these are also not contrained
             idxs = []
             for elem in molecule.GetAtoms():
                 idxs.append(elem.GetIdx() + 1)
             match = [idx for idx in idxs if idx not in match]
 
+        # Loop conformer paths
         for elem in path:
             # Write the xcontrol file
             with open(os.path.join(elem, "xcontrol.inp"), "w") as f:
@@ -137,10 +175,19 @@ class XTB_optimize_schrock(XTB_optimizer):
 
     @staticmethod
     def copy_logfile(conf_paths, name="opt.log"):
+        """Copy xtbopt.log file to new name"""
         for elem in conf_paths:
             shutil.copy(os.path.join(elem, "xtbopt.log"), os.path.join(elem, name))
 
     def optimize_schrock(self):
+        """Optimize the given mol object
+
+        Returns:
+            energy: Energy of the lowest energy conformer
+            geometry: Geometry of the lowest energy conformer
+            minidx : Idx of the lowest energy conformer
+
+        """
 
         # Check mol
         n_confs = self._check_mol(self.mol)
@@ -150,25 +197,27 @@ class XTB_optimize_schrock(XTB_optimizer):
             self.mol, "xtbmol", destination=self.name
         )
 
-        # Make input constrain file
+        # Make input constrain file. Constrain only to Mo core atoms
         self._make_input_constrain_file(
             self.mol, core=core, path=conf_paths, NH3=True, N2=True
         )
 
+        # Set paralellization options
         workers = np.min([self.options["cpus_per_task"], self.options["n_confs"]])
         cpus_per_worker = self.options["cpus_per_task"] // workers
-        # cpus_per_worker = 1
         print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
+
+        # Create args tuple and submit ff calculation
         args = [
             (xyz_file, self.cmd, cpus_per_worker, conf_paths[i], "ff")
             for i, xyz_file in enumerate(xyz_files)
         ]
         result = self.optimize(args)
 
-        # Store the log file
+        # Store the log file under given name
         self.copy_logfile(conf_paths, name="ffopt.log")
 
-        # Run non_constrained gfn2
+        # Change from ff to given method
         self.cmd = self.cmd.replace("gfnff", f"gfn {self.options['method']}")
 
         # Get the new input files and args
@@ -183,12 +232,14 @@ class XTB_optimize_schrock(XTB_optimizer):
             )
             for i, xyz_file in enumerate(xyz_files)
         ]
+
+        # Optimize with current input constrain file. Only the Mo core.
         result = self.optimize(args)
 
         # Store the log file
         self.copy_logfile(conf_paths, name="constrained_opt.log")
 
-        # Constrain only N reactants and Mo
+        # Constrain only N reactants and Mo. Let the rest of the core optimize
         self._make_input_constrain_file(
             self.mol,
             core=Chem.MolFromSmiles("[Mo]"),
@@ -196,6 +247,8 @@ class XTB_optimize_schrock(XTB_optimizer):
             NH3=True,
             N2=True,
         )
+
+        # Get new args and optimize
         args = [
             (
                 xyz_file,
@@ -212,6 +265,7 @@ class XTB_optimize_schrock(XTB_optimizer):
 
         if self.options.get("bond_opt", False):
 
+            # Get constrain file for only Mo plus NH3 or N2 atoms.
             self._make_input_constrain_file(
                 self.mol,
                 core=Chem.MolFromSmiles("[Mo]"),
@@ -220,6 +274,8 @@ class XTB_optimize_schrock(XTB_optimizer):
                 N2=True,
                 Mo_bond=True,
             )
+
+            # Optimize the Mo-N* bond
             args = [
                 (
                     xyz_file,
@@ -234,12 +290,15 @@ class XTB_optimize_schrock(XTB_optimizer):
             result = self.optimize(args)
 
         print("Finished all optimizations")
+
+        # Parse results
         energies, geometries, minidx = self._get_results(result)
 
         # Clean up
         if self.options["cleanup"]:
             shutil.rmtree(self.name)
 
+        # Check if any organic bonds have formed/broken
         final_geom, bond_change = check_bonds(
             self.options.get("bare", False),
             self.options["charge"],
@@ -255,6 +314,7 @@ class XTB_optimize_schrock(XTB_optimizer):
             return energies[minidx], final_geom, minidx.item()
 
     def _get_results(self, result):
+        """Parse xtb output tuple"""
         energies = []
         geometries = []
         for e, g in result:
@@ -275,6 +335,7 @@ class XTB_optimize_schrock(XTB_optimizer):
 
     @staticmethod
     def _check_mol(mol):
+        """Check for implicit hydrogens and get number of conformers"""
         assert isinstance(mol, Chem.rdchem.Mol)
         if mol.GetNumAtoms(onlyExplicit=True) < mol.GetNumAtoms(onlyExplicit=False):
             raise Exception("Implicit Hydrogens")

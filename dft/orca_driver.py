@@ -15,7 +15,7 @@ import numpy as np
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 from my_utils.auto import shell_pure
-from my_utils.classes import cd
+from my_utils.utils import cd
 
 # Dict for mapping options to input string
 ORCA_COMMANDS = {
@@ -25,6 +25,7 @@ ORCA_COMMANDS = {
     "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",
 }
 
+# Get dict with intermediate variables
 with open(
     os.path.join(source, "data/intermediate_smiles.json"), "r", encoding="utf-8"
 ) as f:

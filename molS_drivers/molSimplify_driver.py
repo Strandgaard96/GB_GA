@@ -27,7 +27,7 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 
 from my_utils.auto import get_paths_custom, get_paths_molsimplify, shell
-from my_utils.classes import cd
+from my_utils.utils import cd
 from my_utils.xtb_utils import run_xtb, xtb_optimize_schrock
 from scoring import scoring_functions as sc
 from scoring.make_structures import (
@@ -206,54 +206,6 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, ncores=None):
     shutil.copy(new_core, bare_core_dir)
 
     return
-
-
-def xtb_calc_serial(cycle_dir=None, param_path=None, dest="xtbout"):
-    """
-
-    Args:
-        cycle_dir (str): The directory where the shcrock cycle was created with molS
-        param_path (str): The path to the intermediate parameter dict.
-        dest (str): Path to the output folder for the xtb calcs.
-
-    Returns:
-        None
-    """
-
-    # Search the cycle dir for xyz files and create xtb output folder.
-    struct = ".xyz"
-    paths = get_paths_molsimplify(source=cycle_dir, struct=struct, dest=dest)
-
-    # Get spin and charge dict
-    with open(param_path) as f:
-        parameters = json.load(f)
-
-    print(f"Optimizing at following locations: {paths}")
-    for elem in paths:
-        print(f"Processing {elem}")
-        with cd(elem.parent):
-
-            # Get intermediate name based on folder for path
-            intermediate_name = elem.parent.name
-
-            # Get intermediate parameters from the dict
-            charge = parameters[intermediate_name]["charge"]
-            spin = parameters[intermediate_name]["spin"]
-
-            # Run the xtb calculation on the cut molecule
-            run_xtb_my(
-                structure=elem.name,
-                method="gfn2",
-                type="opt",
-                charge=charge,
-                spin=spin,
-                gbsa="Benzene",
-                numThreads=1,
-            )
-            i = 1
-            if i == 1:
-                print("lol")
-                return
 
 
 def collect_logfiles(dest=None):
@@ -459,7 +411,7 @@ def main():
 
         # create_cycleMS(**scoring_args)
 
-        results = sc.slurm_scoring_molS(create_cycleMS, scoring_args)
+        results = sc.slurm_molS(create_cycleMS, scoring_args)
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -472,7 +424,7 @@ def main():
 
     # Start xtb calcs
     xtb_args = [paths, parameters, args.ncores, args.run_dir]
-    results = sc.slurm_scoring_molS_xtb(xtb_optimize_schrock, xtb_args)
+    results = sc.slurm_molS_xtb(xtb_optimize_schrock, xtb_args)
 
     if args.cleanup:
         collect_logfiles(dest=dest)

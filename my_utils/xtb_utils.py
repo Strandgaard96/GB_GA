@@ -1,4 +1,3 @@
-# Ase stuff for database functionality
 import concurrent.futures
 import json
 import logging
@@ -32,6 +31,14 @@ mol object of the Mo core with dummy atoms instead of ligands
 
 
 def run_xtb(args):
+    """Submit xtb calculations with given params
+
+    Args:
+        args (tuple): runner parameters
+
+    Returns:
+        results: Consists of energy and geometry of calculated structure
+    """
     xyz_file, xtb_cmd, numThreads, conf_path, logname = args
     print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
 
@@ -57,12 +64,14 @@ def run_xtb(args):
     except subprocess.TimeoutExpired:
         popen.kill()
         output, err = popen.communicate()
-
+    # Save logfiles
     with open(Path(conf_path) / f"{logname}job.out", "w") as f:
         f.write(output)
     with open(Path(conf_path) / f"{logname}err.out", "w") as f:
         f.write(err)
+
     results = read_results(output, err)
+
     return results
 
 
@@ -190,7 +199,23 @@ def read_results(output, err):
 
 
 def check_bonds(bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinates):
+    """Check for broken/formed bonds in the optimization
 
+    Args:
+        bare (bool): Make file with bare Mo and ligand
+        charge (charge): Charge of molecule for xyz2mol
+        conf_paths (Path): Path to optimized conformers
+        geometries List(dict): Optimized geometries
+        minidx (int): Idx of miniumum energy conformer
+        mol (Chem.rdchem.Mol): Starting mol object
+        xyzcoordinates (bool): Read xyz coordinates from xtb file
+
+    Returns:
+        final_geom : Geometry of min energy conformer
+        bond_change (bool): Indicates whether a bond was broken/formed
+    """
+
+    # Create Mo and ligand bare xyz file
     if bare:
         file_bare = conf_paths[minidx] + f"/xtbopt_bare.xyz"
         tmp_mol = remove_NH3(mol)
@@ -202,9 +227,12 @@ def check_bonds(bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinate
                 f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
             except ValueError:
                 print("Something happened with the conformer id")
+
+    # Initialize paths
     file = conf_paths[minidx] + f"/xtbopt.xyz"
     file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
-    # Alter xyz file
+
+    # Alter xyz file to remove the Mo for xyz2mol
     with open(file, "r") as file_input:
         with open(file_noMo, "w") as output:
             lines = file_input.readlines()
@@ -227,7 +255,7 @@ def check_bonds(bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinate
     intermediate = np.delete(before_ac, idx, axis=0)
     before_ac = np.delete(intermediate, idx, axis=1)
 
-    # Check if any atoms have 0 bonds, then handle
+    # Check if any atoms have changed bonds
     bond_change = False
     if not np.all(before_ac == AC):
         print(
@@ -245,9 +273,11 @@ def check_bonds(bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinate
     logfile = Path(conf_paths[minidx] + f"/xtbopt.log")
     trajfile = Path(conf_paths[minidx] + f"/traj.xyz")
     shutil.copy(logfile, trajfile)
+
     return final_geom, bond_change
 
 
+# TODO change to new class format
 def xtb_optimize_schrock(
     args,
     gbsa="benzene",
@@ -258,6 +288,8 @@ def xtb_optimize_schrock(
     cleanup=False,
     method=" 2",
 ):
+    """Depcrecated optimization function, should be changed to class format"""
+
     files, parameters, numThreads, run_dir = args
     if not name:
         name = "tmp_" + "".join(

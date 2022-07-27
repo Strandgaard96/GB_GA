@@ -22,7 +22,6 @@ from pathlib import Path
 
 import crossover as co
 
-# Julius filter functionality.
 import filters
 import GB_GA as ga
 from my_utils.classes import Generation, Individual
@@ -158,31 +157,31 @@ def get_arguments(arg_list=None):
         "--opt",
         type=str,
         default="tight",
-        help="",
+        help="Opt convergence criteria for XTB",
     )
     parser.add_argument(
         "--gbsa",
         type=str,
         default="benzene",
-        help="",
+        help="Type of solvent",
     )
     parser.add_argument(
         "--input",
         type=str,
         default="./xcontrol.inp",
-        help="",
-    )
-    parser.add_argument(
-        "--size_stdev",
-        type=int,
-        default="10",
-        help="",
+        help="Name of input file that is created",
     )
     parser.add_argument(
         "--average_size",
         type=int,
         default=50,
-        help="",
+        help="Average number of atoms resulting from crossover",
+    )
+    parser.add_argument(
+        "--size_stdev",
+        type=int,
+        default="10",
+        help="STD of crossover molecule size distribution",
     )
     return parser.parse_args(arg_list)
 
@@ -191,13 +190,14 @@ def GA(args):
     """
 
     Args:
-        args(dict): Dictionary containint all relevant args for the functionscoring_a
+        args(dict): Dictionary containing all the commandline input args.
 
     Returns:
         gen: Generation class that contains the results of the final generation
     """
 
-    # Create initial population and get initial score
+    # Create initial population and get initial score. Check for debug option
+    # to enable fast debug
     if args["debug"]:
         population = ga.make_initial_population_debug(
             2, "data/ZINC_1000_amines.smi", rand=True
@@ -207,9 +207,10 @@ def GA(args):
             args["population_size"], args["file_name"], rand=True
         )
 
+    # Score initial population
     results = sc.slurm_scoring(args["scoring_function"], population, args)
 
-    # Set results and do some rdkit hack
+    # Set results and do some rdkit hack to prevent weird molecules
     population.set_results(results)
     population.update_property_cache()
 
@@ -217,12 +218,11 @@ def GA(args):
     if args["sa_screening"]:
         population.get_sa()
 
-    population.sortby("score")
-
     # Normalize the score of population infividuals to value between 0 and 1
+    population.sortby("score")
     population.calculate_normalized_fitness()
 
-    # Save the generation as pickle file.
+    # Save the generation as pickle file and print current output
     population.save(directory=args["output_dir"], name="GA00.pkl")
     population.print()
     with open(args["output_dir"] + "/GA0.out", "w") as f:
@@ -231,18 +231,20 @@ def GA(args):
 
     logging.info("Finished initial generation")
 
-    # Start the generations based on the initialized population
+    # Start evolving
     for generation in range(args["generations"]):
 
         # Counter for tracking generation number
         generation_num = generation + 1
         logging.info("Starting generation %d", generation_num)
 
+        # Ensure no weird RDKit erorrs
         population.update_property_cache()
 
         # Get mating pool
         mating_pool = ga.make_mating_pool(population, args["mating_pool_size"])
 
+        # If debugging simply reuse previous pop
         if args["debug"]:
             new_population = Generation(
                 generation_num=generation_num,
@@ -256,25 +258,21 @@ def GA(args):
                 molecule_filter=molecule_filter,
             )
 
+        # Save current population for debugging
         new_population.save(
             directory=args["output_dir"], name=f"GA{generation_num:02d}_debug.pkl"
         )
 
-        with open(
-            "/home/magstr/generation_data/prod_new14_large_0/GA01_debug.pkl", "rb"
-        ) as f:
-            gen = pickle.load(f)
-
-        # Ensures that new molecules have a primary amine attachment point.
         logging.info("Creating attachment points for new population")
-        gen.modify_population(supress_amines=True)
-        # new_population.modify_population(supress_amines=args["supress_amines"])
+
+        # Process population to ensure good attachment points
+        new_population.modify_population(supress_amines=True)
 
         # Assign generation and population idx to the population
         new_population.generation_num = generation_num
         new_population.assign_idx()
 
-        # Calculate new scores based on new population
+        # Calculate new scores
         logging.info("Getting scores for new population")
         results = sc.slurm_scoring(args["scoring_function"], new_population, args)
 
@@ -290,7 +288,9 @@ def GA(args):
         # Sort scores, possibly scaled by SA screening
         new_population.sortby("score")
 
+        # Create tmp population from current best molecules
         potential_survivors = copy.deepcopy(population.molecules)
+
         # The calculated population is merged with current top population
         population = ga.sanitize(
             potential_survivors + new_population.molecules,
@@ -300,7 +300,7 @@ def GA(args):
 
         population.generation_num = generation_num
 
-        # Normalize new scores
+        # Normalize new scores to prep for next gen
         population.calculate_normalized_fitness()
 
         # Collect result molecules in class.

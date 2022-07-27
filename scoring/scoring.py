@@ -21,7 +21,6 @@ from make_structures import (
     connect_ligand,
     connectMols,
     create_dummy_ligand,
-    create_ligands,
     create_prim_amine_revised,
     embed_rdkit,
     mol_with_atom_index,
@@ -29,7 +28,8 @@ from make_structures import (
     remove_NH3,
 )
 
-from my_utils.classes import Generation, Individual, cd
+from my_utils.classes import Generation, Individual
+from my_utils.utils import cd
 from my_utils.xtb_class import XTB_optimize_schrock
 
 hartree2kcalmol = 627.5094740631
@@ -86,23 +86,37 @@ and the charge and spin for the specific intermediate
 
 
 def rdkit_embed_scoring(ligand, scoring_args):
+    """
+    Score the NH3 -> N2_NH3 exchange
 
-    # Unpack variables
+    Args:
+        ligand (Chem.rdchem.Mol): ligand to put on Mo core
+        scoring_args (dict): dict with all relevant args for xtb and general scoring
+
+    Returns:
+        De (float): Scoring energy
+        Mo_N2_NH3_3d_geom: Geometry of intermediate
+        Mo_NH3_3d_geom: Geometry of intermediate
+        minidx (int): Index of the lowest energy conformer
+    """
+
+    # Get ligand tuple idx.
     idx = ligand.idx
 
     # Unpack gas energies
     NH3_ENERGY, N2_ENERGY, CP_RED_ENERGY = GAS_ENERGIES[scoring_args["method"]]
 
-    # Create ligand based on a primary amine
+    # Get mol object of Mo core + connected ligand
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     Mo_N2_NH3 = connect_ligand(core_N2_NH3[0], ligand_cut, NH3_flag=True, N2_flag=True)
     Mo_N2_NH3 = Chem.AddHs(Mo_N2_NH3)
 
-    # Embed catalyst
+    # Embed mol object
     Mo_N2_NH3_3d = embed_rdkit(
         mol=Mo_N2_NH3, core=core_N2_NH3[0], numConfs=scoring_args["n_confs"]
     )
 
+    # Go into the output directory
     with cd(scoring_args["output_dir"]):
 
         # Instantiate optimizer class
@@ -118,11 +132,12 @@ def rdkit_embed_scoring(ligand, scoring_args):
     if Mo_N2_NH3_energy == 9999:
         return 9999, None, None, None
 
-    # Now we want to remove the NH2 on the already embedded structure
+    # Remove higher energy conformes from mol object
     discard_conf = [x for x in range(len(Mo_N2_NH3_3d.GetConformers())) if x != minidx]
     for elem in discard_conf:
         Mo_N2_NH3_3d.RemoveConformer(elem)
 
+    # Remove N2 on the full embedding
     Mo_NH3_3d = remove_N2(Mo_N2_NH3_3d)
     Mo_NH3_3d = Chem.AddHs(Mo_NH3_3d)
 
@@ -143,24 +158,39 @@ def rdkit_embed_scoring(ligand, scoring_args):
     # Handle the error and return if xtb did not converge
     if None in (Mo_N2_NH3_energy, Mo_NH3_energy):
         raise Exception(f"None of the XTB calculations converged")
+
     De = ((Mo_N2_NH3_energy - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
     print(f"diff energy: {De}")
     return De, Mo_N2_NH3_3d_geom, Mo_NH3_3d_geom, minidx
 
 
 def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
+    """
+    Score the NH3 -> N2 exchange
 
+        Args:
+            ligand (Chem.rdchem.Mol): ligand to put on Mo core
+            scoring_args (dict): dict with all relevant args for xtb and general scoring
+
+        Returns:
+            De (float): Scoring energy
+            Mo_N2_3d_geom: Geometry of intermediate
+            Mo_NH3_3d_geom: Geometry of intermediate
+            minidx (int): Index of the lowest energy conformer
+    """
+
+    # Get tuple idx
     idx = ligand.idx
 
     # Unpack gas energies
     NH3_ENERGY, N2_ENERGY, CP_RED_ENERGY = GAS_ENERGIES[scoring_args["method"]]
 
-    # Create ligand based on a primary amine
+    # Get mol object of Mo core + connected ligand
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     Mo_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
     Mo_NH3 = Chem.AddHs(Mo_NH3)
 
-    # Embed catalyst
+    # Embed mol object
     Mo_NH3_3d = embed_rdkit(
         mol=Mo_NH3,
         core=core_NH3[0],
@@ -182,7 +212,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
     if Mo_NH3_energy == 9999:
         return 9999, None, None, None
 
-    # Now we want to remove the NH2 on the already embedded structure
+    # Remove higher energy conformers from mol object
     discard_conf = [x for x in range(len(Mo_NH3_3d.GetConformers())) if x != minidx]
     for elem in discard_conf:
         Mo_NH3_3d.RemoveConformer(elem)
@@ -199,7 +229,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
     Mo_3d = remove_NH3(Mo_NH3_3d)
     Mo_3d = Chem.AddHs(Mo_3d)
 
-    # Change charge of the N bound to mo
+    # Change charge of the N bound to Mo to ensure sanitation works
     match = Mo_N2.GetSubstructMatch(Chem.MolFromSmarts("[Mo]N#N"))
     Mo_N2.GetAtomWithIdx(match[1]).SetFormalCharge(1)
 
@@ -229,22 +259,36 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         raise Exception(f"None of the XTB calculations converged")
     De = (((Mo_N2_energy + NH3_ENERGY) - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
     print(f"diff energy: {De}")
+
     return De, Mo_N2_3d_geom, Mo_NH3_3d_geom, minidx
 
 
 def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
+    """
+    Score the NH3+ -> NH3 charge transfer
+
+        Args:
+            ligand (Chem.rdchem.Mol): ligand to put on Mo core
+            scoring_args (dict): dict with all relevant args for xtb and general scoring
+
+        Returns:
+            De (float): Scoring energy
+            Mo_NH3_geom: Geometry of intermediate
+            Mo_NH3plus_3d_geom: Geometry of intermediate
+            minidx (int): Index of the lowest energy conformer
+    """
 
     idx = ligand.idx
 
     # Unpack gas energies
     NH3_ENERGY, N2_ENERGY, CP_RED_ENERGY = GAS_ENERGIES[scoring_args["method"]]
 
-    # Create ligand based on a primary amine
+    # Get mol object of Mo core + connected ligand
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     Mo_NH3 = connect_ligand(core_NH3[0], ligand_cut, NH3_flag=True)
     Mo_NH3 = Chem.AddHs(Mo_NH3)
 
-    # Embed catalyst
+    # Embed mol object
     Mo_NH3_3d = embed_rdkit(
         mol=Mo_NH3,
         core=core_NH3[0],
@@ -266,7 +310,7 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
     if Mo_NH3plus_energy == 9999:
         return 9999, None, None, None
 
-    # Now we want to remove the extra conformers and only use the minimum one
+    # Remove higher energy conformers from mol object
     discard_conf = [x for x in range(len(Mo_NH3_3d.GetConformers())) if x != minidx]
     for elem in discard_conf:
         Mo_NH3_3d.RemoveConformer(elem)
@@ -290,6 +334,7 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
         raise Exception(f"None of the XTB calculations converged")
     De = (Mo_NH3_energy - Mo_NH3plus_energy + CP_RED_ENERGY) * hartree2kcalmol
     print(f"diff energy: {De}")
+
     return De, Mo_NH3_3d_geom, Mo_NH3plus_3d_geom, minidx
 
 
@@ -315,7 +360,7 @@ if __name__ == "__main__":
     ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"), cut_idx=1, idx=(0, 0))
 
     # The three scoring functions
-    #res = rdkit_embed_scoring_NH3toN2(ind, dic)
-    #res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
-    #res = rdkit_embed_scoring(ind, dic)
+    # res = rdkit_embed_scoring_NH3toN2(ind, dic)
+    # res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
+    # res = rdkit_embed_scoring(ind, dic)
     print("YOU MAAAADE IT")

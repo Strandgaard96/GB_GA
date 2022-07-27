@@ -16,17 +16,15 @@ from rdkit.Chem import rdFMCS
 
 from my_utils.xtb_utils import extract_energyxtb, write_to_db
 
-# rdBase.DisableLog("rdApp.error")
-
 
 def slurm_scoring(sc_function, population, scoring_args):
     """Evaluates a scoring function for population on SLURM cluster
     Args:
-        sc_function (function): Scoring function which takes molecules and id (int,int) as input
-        population (List): List of rdkit Molecules
-        scoring_args (dict):
+        sc_function (function): Scoring function to use for each molecule
+        population List(Individual): List of molecules objects to score
+        scoring_args (dict): Relevant scoring args for submitit or XTB
     Returns:
-        results (List): List of results from scoring function
+        results List(tuple): List of tuples containing result for each molecule
     """
     executor = submitit.AutoExecutor(
         folder=Path(scoring_args["output_dir"]) / "scoring_tmp",
@@ -45,16 +43,16 @@ def slurm_scoring(sc_function, population, scoring_args):
         sc_function, population.molecules, [scoring_args for p in population.molecules]
     )
 
+    # Get the jobs results. Assign None variables if an error is returned for the given molecule
+    # (np.nan, None, None, None) for (energy, geometry1, geometry2, minidx)
     results = [
         catch(job.result, handle=lambda e: (np.nan, None, None, None)) for job in jobs
     ]
-    # catch submitit exceptions and return same output as scoring function
-    # (np.nan, None) for (energy, geometry)
+
     if scoring_args["cleanup"]:
         shutil.rmtree("scoring_tmp")
 
     # Collect results in database
-
     if scoring_args["write_db"]:
         # Get traj paths for current gen
         p = Path(scoring_args["output_dir"])
@@ -92,8 +90,19 @@ def catch(func, *args, handle=lambda e: e, **kwargs):
 # Submitit scoring functions related to molSimplify driver scripts
 
 
-def slurm_scoring_molS(sc_function, scoring_args):
+def slurm_molS(sc_function, scoring_args):
+    """
+    To submit create_cycle_MS to the commandline and create all
+    Mo intermediates with a given ligand.
 
+    Args:
+        sc_function (func): molS driver function
+        scoring_args (dict): Relevant scoring args
+
+    Returns:
+        results List(tuples): Resulst of molS output, not used.
+
+    """
     executor = submitit.AutoExecutor(
         folder=Path(scoring_args["run_dir"]) / "scoring_tmp",
         slurm_max_num_timeout=0,
@@ -111,14 +120,14 @@ def slurm_scoring_molS(sc_function, scoring_args):
 
     results = catch(job.result, handle=lambda e: None)
 
-    # if scoring_args["cleanup"]:
-    #    shutil.rmtree("scoring_tmp")
-
     return results
 
 
-def slurm_scoring_molS_xtb(sc_function, scoring_args):
-
+def slurm_molS_xtb(sc_function, scoring_args):
+    """
+    Function is outdated and should be updated. Was used to submit all
+    intermediates to xtb calcs after molS was used to create them.
+    """
     executor = submitit.AutoExecutor(
         folder=scoring_args[-1] / "scoring_tmp",
         slurm_max_num_timeout=0,
@@ -135,8 +144,5 @@ def slurm_scoring_molS_xtb(sc_function, scoring_args):
     job = executor.submit(sc_function, scoring_args)
 
     results = catch(job.result, handle=lambda e: (None, None))
-
-    # if scoring_args["cleanup"]:
-    #    shutil.rmtree("scoring_tmp")
 
     return results

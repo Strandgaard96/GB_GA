@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import my_utils.classes
+import my_utils.utils
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     print(f"Optimizing at following locations: {paths}")
     for elem in paths:
         print(f"Processing {elem}")
-        with my_utils.classes.cd(elem.parent):
+        with my_utils.utils.cd(elem.parent):
 
             # Get spin and charge
             with open("default.in", "r") as f:

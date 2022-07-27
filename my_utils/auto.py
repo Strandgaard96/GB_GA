@@ -14,8 +14,8 @@ from ase.visualize import view
 
 
 def shell(args, shell=False):
-    """
-    Subprocess handler function where output is needed
+    """Subprocess handler function where output is stored in files
+
     Args:
         cmd (str): String to pass to bash shell
         shell (bool): Specifies whether run as bash shell or not
@@ -158,7 +158,7 @@ def get_paths_molsimplify(source, struct, dest):
     Args:
         source (str): Folder to look for files with struct extention
         struct (str): files types to look for in source.
-        dest Path(str):
+        dest (Path):
     Returns:
         paths List(Path): Returns path objects to xyz files in newly created tree.
     """

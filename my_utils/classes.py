@@ -17,6 +17,7 @@ from scoring.make_structures import (
     atom_remover,
     single_atom_remover,
     create_prim_amine_revised,
+    mol_with_atom_index
 )
 
 _neutralize_reactions = None
@@ -263,11 +264,9 @@ class Generation:
                     cut_idx = [[1]]
 
                 # rdkit hack to ensure smiles look ok
-                mol.rdkit_mol = Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
+                mol.rdkit_mol = output_ligand
                 mol.cut_idx = cut_idx[0][0]
-                mol.smiles = Chem.MolToSmiles(
-                    Chem.MolFromSmiles(Chem.MolToSmiles(output_ligand))
-                )
+                mol.smiles = Chem.MolToSmiles(output_ligand)
 
             else:
                 cut_idx = random.choice(match)
@@ -313,7 +312,9 @@ class Generation:
 
     ### SA functionality
     def sa_prep(self):
+        i = -1
         for mol in self.molecules:
+            print(i+1)
             prim_match = Chem.MolFromSmarts("[NX3;H2]")
 
             # Remove the cut idx amine to prevent it hogging the SA score

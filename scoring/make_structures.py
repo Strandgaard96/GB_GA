@@ -356,10 +356,12 @@ def create_prim_amine_revised(input_ligand):
         # Get the idx of the remaining amine
         prim_amine_index = lig.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
 
-        # Need this to prevent errors later. See: https://github.com/rdkit/rdkit/issues/1596
-        lig.UpdatePropertyCache()
+    # Need this to prevent errors later. See: https://github.com/rdkit/rdkit/issues/1596
+    output_ligand = Chem.MolFromSmiles(Chem.MolToSmiles(lig))
+    output_ligand.UpdatePropertyCache()
+    prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
 
-    return lig, prim_amine_index
+    return output_ligand, prim_amine_index
 
 
 def create_dummy_ligand(ligand, cut_idx=None):

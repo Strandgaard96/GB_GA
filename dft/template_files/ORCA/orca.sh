@@ -9,7 +9,6 @@
 #SBATCH --mem=350G
 
 # Loading necessary modules
-module load foss
 module --ignore_cache load ORCA
 
 # Initialize variable

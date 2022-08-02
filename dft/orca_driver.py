@@ -128,7 +128,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--GA_dir",
         type=Path,
-        default="/home/magstr/generation_data/prod1_0",
+        default="/home/magstr/generation_data/prod_new9_0",
         help="Path to folder containing GA pickle files",
     )
     parser.add_argument(

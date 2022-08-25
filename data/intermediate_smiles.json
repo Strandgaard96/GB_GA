@@ -21,7 +21,7 @@
     "smi": "[NH3],N#N",
     "charge": 0,
     "spin": 0,
-    "mul": 1
+    "mul": 2
   },
   "Mo_NH": {
     "smi": "[NH]",
@@ -32,8 +32,8 @@
   "Mo_NH2": {
     "smi": "[NH2]",
     "charge": 0,
-    "spin": 0,
-    "mul": 1
+    "spin": 2,
+    "mul": 3
   },
   "Mo_NH2+": {
     "smi": "[NH2]",
@@ -44,14 +44,14 @@
   "Mo_NH3": {
     "smi": "[NH3]",
     "charge": 0,
-    "spin": 0,
+    "spin": 1,
     "mul": 2
   },
   "Mo_NH3+": {
     "smi": "[NH3]",
     "charge": 1,
-    "spin": 0,
-    "mul": 1
+    "spin": 2,
+    "mul": 3
   },
   "Mo_NH+": {
     "smi": "[NH]",

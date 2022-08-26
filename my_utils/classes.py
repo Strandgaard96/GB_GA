@@ -17,7 +17,7 @@ from scoring.make_structures import (
     atom_remover,
     single_atom_remover,
     create_prim_amine_revised,
-    mol_with_atom_index
+    mol_with_atom_index,
 )
 
 _neutralize_reactions = None
@@ -314,7 +314,7 @@ class Generation:
     def sa_prep(self):
         i = -1
         for mol in self.molecules:
-            print(i+1)
+            print(i + 1)
             prim_match = Chem.MolFromSmarts("[NX3;H2]")
 
             # Remove the cut idx amine to prevent it hogging the SA score

@@ -162,5 +162,8 @@ def natural_keys(text):
     return [atoi(c) for c in re.split(r"(\d+)", text)]
 
 
+# ----- Utility for singlepoint DFT analysis -----
+
+
 if __name__ == "__main__":
     main()

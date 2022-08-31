@@ -19,7 +19,8 @@ from my_utils.utils import cd
 
 # Dict for mapping options to input string
 ORCA_COMMANDS = {
-    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF",
+    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF",
+    "sp_sarcJ": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF",
     "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF OPT",
     "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF FREQ",
     "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",
@@ -176,7 +177,8 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--no_molecules",
         type=int,
-        default=1,
+        default=[0,10],
+        nargs='+',
         help="How many of the top molecules to do DFT on",
     )
     parser.add_argument("--function", choices=FUNCTION_MAP.keys())
@@ -239,7 +241,7 @@ def GA_singlepoints(args):
         gen = pickle.load(f)
 
     # Loop over all the structures
-    for elem in gen.molecules[0 : args.no_molecules]:
+    for elem in gen.molecules[args.no_molecules[0]:args.no_molecules[1]]:
 
         # THE ORDERING OF THE KEYS MATTER HERE
         # Get scoring intermediates and charge/spin

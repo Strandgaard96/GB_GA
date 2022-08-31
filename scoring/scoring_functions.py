@@ -40,7 +40,7 @@ def slurm_scoring(sc_function, population, scoring_args):
     )
 
     jobs = executor.map_array(
-        sc_     function, population.molecules, [scoring_args for p in population.molecules]
+        sc_function, population.molecules, [scoring_args for p in population.molecules]
     )
 
     # Get the jobs results. Assign None variables if an error is returned for the given molecule
@@ -143,6 +143,6 @@ def slurm_molS_xtb(sc_function, scoring_args):
 
     job = executor.submit(sc_function, scoring_args)
 
-        results = catch(job.result, handle=lambda e: (None, None))
+    results = catch(job.result, handle=lambda e: (None, None))
 
     return results

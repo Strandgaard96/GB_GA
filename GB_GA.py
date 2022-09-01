@@ -47,7 +47,7 @@ def make_initial_population(population_size, file_name, rand=False):
             while not candidate_match:
                 mol = random.choice(mol_list)
                 candidate_match = mol.GetSubstructMatches(
-                    Chem.MolFromSmarts("[NX3;H2,H1,H0]")
+                    Chem.MolFromSmarts("[NX3;H2,H1,H0,$(*n);!$(*N)]")
                 )
 
             # Check for prim amine

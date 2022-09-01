@@ -19,10 +19,10 @@ from my_utils.utils import cd
 
 # Dict for mapping options to input string
 ORCA_COMMANDS = {
-    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF",
-    "sp_sarcJ": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF",
+    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",
+    "sp_sarcJ": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",
     "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF OPT",
-    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF FREQ",
+    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint KDIIS SOSCF FREQ",
     "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",
 }
 
@@ -153,7 +153,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_cores",
         type=int,
-        default=24,
+        default=40,
         help="How many cores for each calc",
     )
     parser.add_argument(
@@ -217,6 +217,11 @@ def write_orca_sh(
                 f.writelines(f"#SBATCH --mem={mem}GB\n")
             elif "#SBATCH --job_name" in line:
                 f.writelines(f"#SBATCH --job-name={name}\n")
+            elif "#SBATCH --time" in line:
+                if 'xeon16' in partition:
+                    f.writelines(f"#SBATCH --time=7-00:00:00\n")
+                else:
+                    f.writelines("#SBATCH --time=2-02:00:00\n")
             else:
                 f.writelines(line)
 

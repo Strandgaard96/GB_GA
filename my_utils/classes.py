@@ -300,9 +300,17 @@ class Generation:
                         mol.smiles = Chem.MolToSmiles(removed_mol)
 
                     elif nn_match:
+
                         # Replace tricky primary amines in the frag:
                         prim_match = Chem.MolFromSmarts("[NX3;H2;$(*N),$(*n)]")
-                        rm = AllChem.DeleteSubstructs(mol.rdkit_mol, prim_match)
+
+                        rm = Chem.ReplaceSubstructs(
+                            mol.rdkit_mol,
+                            prim_match,
+                            Chem.MolFromSmiles("[H]"),
+                            replaceAll=True,
+                        )[0]
+                        rm = Chem.RemoveHs(rm)
                         prim_amine_index = rm.GetSubstructMatches(
                             Chem.MolFromSmarts("[NX3;H2]")
                         )
@@ -316,6 +324,8 @@ class Generation:
         for mol in self.molecules:
             print(i + 1)
             prim_match = Chem.MolFromSmarts("[NX3;H2]")
+            if i ==46:
+                print('lol')
 
             # Remove the cut idx amine to prevent it hogging the SA score
             removed_mol = single_atom_remover(mol.rdkit_mol, mol.cut_idx)

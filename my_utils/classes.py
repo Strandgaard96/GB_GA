@@ -270,6 +270,9 @@ class Generation:
             # Set current mol for future debugging
             mol.original_mol = mol.rdkit_mol
 
+            if mol.smiles == 'C=Nc1ncnc(OC(C)C)c1[N+](=O)[O-]':
+                print('lol')
+
             # Create primary amine if it doesnt have one.
             if not match:
                 try:

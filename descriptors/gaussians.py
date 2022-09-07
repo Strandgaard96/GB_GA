@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List
 
 
 def gaussian_modifier(score: float, target: float, sigma: float) -> float:

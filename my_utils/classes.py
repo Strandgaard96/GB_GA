@@ -19,6 +19,10 @@ from scoring.make_structures import (
     create_prim_amine_revised,
     mol_with_atom_index,
 )
+from descriptors.descriptors import (
+    number_of_rotatable_bonds_target,
+    number_of_rotatable_bonds_target_clipped,
+)
 
 _neutralize_reactions = None
 
@@ -146,6 +150,23 @@ class Generation:
         self.setprop("structure2", geometries2)
         self.setprop("min_conf", min_conf)
         self.setprop("score", energies)
+
+    def reweigh_rotatable_bonds(self, nrb_target=4, nrb_standard_deviation=2):
+
+        number_of_rotatable_target_scores = [
+            number_of_rotatable_bonds_target_clipped(
+                p.rdkit_mol, nrb_target, nrb_standard_deviation
+            )
+            for p in self.molecules
+        ]
+
+        new_scores = [
+            score * scale
+            for score, scale in zip(
+                self.get("score"), number_of_rotatable_target_scores
+            )
+        ]
+        self.setprop("score", new_scores)
 
     def prune(self, population_size):
         """Sort by score and take the best scoring molecules"""
@@ -320,12 +341,9 @@ class Generation:
 
     ### SA functionality
     def sa_prep(self):
-        i = -1
+
         for mol in self.molecules:
-            print(i + 1)
             prim_match = Chem.MolFromSmarts("[NX3;H2]")
-            if i ==46:
-                print('lol')
 
             # Remove the cut idx amine to prevent it hogging the SA score
             removed_mol = single_atom_remover(mol.rdkit_mol, mol.cut_idx)

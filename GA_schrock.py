@@ -218,6 +218,9 @@ def GA(args):
     if args["sa_screening"]:
         population.get_sa()
 
+    # Reweight by rotatable bonds
+    population.reweigh_rotatable_bonds()
+
     # Normalize the score of population infividuals to value between 0 and 1
     population.sortby("score")
     population.calculate_normalized_fitness()
@@ -281,9 +284,12 @@ def GA(args):
             directory=args["output_dir"], name=f"GA{generation_num:02d}_debug2.pkl"
         )
 
-        # Functionality to check synthetic accessibility
+        # Functionality to compute synthetic accessibility
         if args["sa_screening"]:
             new_population.get_sa()
+
+        # Reweight by rotatable bonds
+        new_population.reweigh_rotatable_bonds()
 
         # Sort scores, possibly scaled by SA screening
         new_population.sortby("score")

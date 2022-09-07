@@ -137,7 +137,6 @@ def conf_viewer(idx, confs, **kwargs):
     return draw_generation(mol, **kwargs)
 
 
-
 def conf_viewer_ga(idx, confs, **kwargs):
     mol = "".join(confs[idx][2])
     gen_idx = confs[idx][0]
@@ -147,9 +146,11 @@ def conf_viewer_ga(idx, confs, **kwargs):
 
     return draw_generation(mol, gen_struct=True, **kwargs)
 
+
 def sort_ga(x):
     num = int(str(x).split(".pkl")[-2].split("GA")[-1])
     return num
+
 
 # Two functions for human sorting
 # https://stackoverflow.com/questions/5967500/how-to-correctly-sort-a-string-with-a-number-inside

@@ -360,10 +360,10 @@ if __name__ == "__main__":
     }
 
     # METHYL SIMPLE
-    ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"), cut_idx=1, idx=(0, 0))
+    ind = Individual(rdkit_mol=Chem.MolFromSmiles("Nc1cc([O-])c(F)c([O-])c1"), cut_idx=6, idx=(0, 0))
 
     # The three scoring functions
     # res = rdkit_embed_scoring_NH3toN2(ind, dic)
-    # res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
+    res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
     # res = rdkit_embed_scoring(ind, dic)
     print("YOU MAAAADE IT")

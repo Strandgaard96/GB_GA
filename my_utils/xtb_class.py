@@ -203,9 +203,9 @@ class XTB_optimize_schrock(XTB_optimizer):
         )
 
         # Set paralellization options
-        workers = np.min([self.options["cpus_per_task"], self.options["n_confs"]])
-        cpus_per_worker = self.options["cpus_per_task"] // workers
-        print(f"workers: {workers}, cpus_per_worker: {cpus_per_worker}")
+        self.workers = np.min([self.options["cpus_per_task"], self.options["n_confs"]])
+        cpus_per_worker = self.options["cpus_per_task"] // self.workers
+        print(f"workers: {self.workers}, cpus_per_worker: {cpus_per_worker}")
 
         # Create args tuple and submit ff calculation
         args = [

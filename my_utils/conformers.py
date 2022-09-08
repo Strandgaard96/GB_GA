@@ -47,7 +47,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=1,
+        default=2,
         help="How many conformers to generate",
     )
     parser.add_argument(

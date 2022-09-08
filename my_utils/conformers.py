@@ -11,6 +11,7 @@ from pathlib import Path
 import pandas as pd
 from rdkit import Chem
 from ast import literal_eval as make_tuple
+import random
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
@@ -131,10 +132,15 @@ def get_start_population_from_csv(file=None, scoring=None):
     df = pd.read_csv(file, index_col=[0])
     df = df[df["scoring"] == scoring]
 
+    mols = [Chem.MolFromSmiles(x) for x in df["smiles"]]
+
+    # Match
+    matches = [mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]")) for mol in mols]
+
     # Get list of mol objects
     inds = [
-        Individual(Chem.MolFromSmiles(x), cut_idx=int(cut_idx), idx=make_tuple(idx))
-        for x, cut_idx, idx in zip(df["smiles"], df["cut_idx"], df.index)
+        Individual(mol, cut_idx=random.choice(match)[0], idx=make_tuple(idx))
+        for mol, match, idx in zip(mols, matches, df.index)
     ]
 
     # Initialize population object.

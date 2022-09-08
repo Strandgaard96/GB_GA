@@ -113,7 +113,7 @@ def rdkit_embed_scoring(ligand, scoring_args):
 
     # Embed mol object
     Mo_N2_NH3_3d = embed_rdkit(
-        mol=Mo_N2_NH3, core=core_N2_NH3[0], numConfs=scoring_args["n_confs"]
+        mol=Mo_N2_NH3, core=core_N2_NH3[0], numConfs=scoring_args["n_confs"], pruneRmsThresh=scoring_args["RMS_thresh"]
     )
 
     # Go into the output directory

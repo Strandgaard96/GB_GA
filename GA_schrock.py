@@ -89,6 +89,12 @@ def get_arguments(arg_list=None):
         help="Number of cores to distribute over",
     )
     parser.add_argument(
+        "--RMS_thresh",
+        type=float,
+        default=0.1,
+        help="RMS pruning in embedding",
+    )
+    parser.add_argument(
         "--generations",
         type=int,
         default=1,

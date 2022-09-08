@@ -230,7 +230,7 @@ class Generation:
 
     def gen2pd(
         self,
-        columns=["score", "energy", "sa_score", "rdkit_mol"],
+        columns=["score", "energy", "sa_score", "rdkit_mol", "cut_idx"],
     ):
         """Get dataframe of population"""
         df = pd.DataFrame(
@@ -269,9 +269,6 @@ class Generation:
             )
             # Set current mol for future debugging
             mol.original_mol = mol.rdkit_mol
-
-            if mol.smiles == 'C=Nc1ncnc(OC(C)C)c1[N+](=O)[O-]':
-                print('lol')
 
             # Create primary amine if it doesnt have one.
             if not match:
@@ -416,3 +413,74 @@ class Generation:
             else:
                 # Scale the score with the sa_score (which is max 1)
                 individual.score = sa_score * individual.pre_score
+
+@dataclass(order=True)
+class Conformers:
+    """Dataclass holding the molecules for conformer screening
+
+    Contains functionality to get and set props from Individuals and
+    display vaious scoring results
+    """
+
+    molecules: List[Individual] = field(repr=True, default_factory=list)
+    size: int = field(default=None, init=True, repr=True)
+
+    def __post_init__(self):
+        self.size = len(self.molecules)
+
+    def __repr__(self):
+        return (
+            f"molecules_size={self.size})"
+        )
+
+    def save(self, directory=None, name="Conformers.pkl"):
+        """Save instance to file for later retrieval"""
+        filename = os.path.join(directory, name)
+        with open(filename, "ab+") as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+    def get(self, prop):
+        """Get property from molecules"""
+        properties = []
+        for molecule in self.molecules:
+            properties.append(getattr(molecule, prop))
+        return properties
+
+    def setprop(self, prop, list_of_values):
+        """Set property for molecules"""
+        for molecule, value in zip(self.molecules, list_of_values):
+            setattr(molecule, prop, value)
+
+    def appendprop(self, prop, list_of_values):
+        for molecule, value in zip(self.molecules, list_of_values):
+            if value:
+                getattr(molecule, prop).append(value)
+
+    def sortby(self, prop, reverse=True):
+        """Sort molecule based on score"""
+        if reverse:
+            self.molecules.sort(
+                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
+                reverse=reverse,
+            )
+        else:
+            self.molecules.sort(
+                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
+                reverse=reverse,
+            )
+
+    def set_results(self, results):
+        """Extract the scoring results and set the properties on the
+        Individual objects.
+        """
+        energies = [res[0] for res in results]
+        geometries = [res[1] for res in results]
+        geometries2 = [res[2] for res in results]
+        min_conf = [res[3] for res in results]
+
+        self.setprop("energy", energies)
+        self.setprop("pre_score", energies)
+        self.setprop("structure", geometries)
+        self.setprop("structure2", geometries2)
+        self.setprop("min_conf", min_conf)
+        self.setprop("score", energies)

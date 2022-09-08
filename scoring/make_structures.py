@@ -475,7 +475,7 @@ def embed_rdkit(
             numConfs=numConfs,
             coordMap=coordMap,
             maxAttempts=10,
-            randomSeed=random.randint(0, 2048),
+            randomSeed=3,
             numThreads=numThreads,
             pruneRmsThresh=pruneRmsThresh,
             useRandomCoords=True,

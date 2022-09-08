@@ -362,7 +362,9 @@ def create_prim_amine_revised(input_ligand):
     prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
 
     if not prim_amine_index:
-        print(f'Something was wrong for this molecule with smiles {Chem.MolToSmiles(input_ligand)}')
+        print(
+            f"Something was wrong for this molecule with smiles {Chem.MolToSmiles(input_ligand)}"
+        )
         prim_amine_index = [[1]]
 
     return output_ligand, prim_amine_index

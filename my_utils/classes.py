@@ -414,6 +414,7 @@ class Generation:
                 # Scale the score with the sa_score (which is max 1)
                 individual.score = sa_score * individual.pre_score
 
+
 @dataclass(order=True)
 class Conformers:
     """Dataclass holding the molecules for conformer screening
@@ -429,9 +430,7 @@ class Conformers:
         self.size = len(self.molecules)
 
     def __repr__(self):
-        return (
-            f"molecules_size={self.size})"
-        )
+        return f"molecules_size={self.size})"
 
     def save(self, directory=None, name="Conformers.pkl"):
         """Save instance to file for later retrieval"""

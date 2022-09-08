@@ -289,6 +289,22 @@ class XTB_optimize_schrock(XTB_optimizer):
 
             result = self.optimize(args)
 
+        if self.options.get("full_relax", True):
+            self.cmd = self.cmd.replace(" --input. / xcontrol.inp", "")
+            # Optimize the Mo-N* bond
+            args = [
+                (
+                    xyz_file,
+                    self.cmd,
+                    cpus_per_worker,
+                    conf_paths[i],
+                    f"full_relax",
+                )
+                for i, xyz_file in enumerate(xyz_files)
+            ]
+
+            result = self.optimize(args)
+
         print("Finished all optimizations")
 
         # Parse results

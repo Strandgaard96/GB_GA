@@ -23,6 +23,7 @@ from scoring.scoring import (
     rdkit_embed_scoring_NH3toN2,
 )
 
+
 def get_arguments(arg_list=None):
     """
 
@@ -81,6 +82,7 @@ def get_arguments(arg_list=None):
         help="gfn method to use",
     )
     parser.add_argument("--bond_opt", action="store_true")
+    parser.add_argument("--full_relax", action="store_true")
     # XTB specific params
     parser.add_argument(
         "--opt",
@@ -116,20 +118,24 @@ def get_arguments(arg_list=None):
         "--file",
         type=Path,
         default="data/first_conformers.csv",
-        help="File to get mol objects from"
+        help="File to get mol objects from",
     )
+    parser.add_argument("--write_db", action="store_true")
+    parser.add_argument("--cleanup", action="store_true")
     return parser.parse_args(arg_list)
-
 
 
 def get_start_population_from_csv(file=None, scoring=None):
 
     # Get ligands found with specified scoring function
     df = pd.read_csv(file, index_col=[0])
-    df = df[df['scoring']==scoring]
+    df = df[df["scoring"] == scoring]
 
     # Get list of mol objects
-    inds = [Individual(Chem.MolFromSmiles(x), cut_idx=int(cut_idx), idx = make_tuple(idx)) for x, cut_idx, idx in zip(df['smiles'], df['cut_idx'], df.index)]
+    inds = [
+        Individual(Chem.MolFromSmiles(x), cut_idx=int(cut_idx), idx=make_tuple(idx))
+        for x, cut_idx, idx in zip(df["smiles"], df["cut_idx"], df.index)
+    ]
 
     # Initialize population object.
     conformers = Conformers(inds)
@@ -157,7 +163,9 @@ def main():
     scoring_function = funcs[args.scoring_function]
 
     # Get start population from csv file
-    conformers = get_start_population_from_csv(file=args.file, scoring=args.scoring_function)
+    conformers = get_start_population_from_csv(
+        file=args.file, scoring=args.scoring_function
+    )
 
     # Submit population for scoring with many conformers
     results = sc.slurm_scoring(scoring_function, conformers, args_dict)
@@ -166,7 +174,8 @@ def main():
     # Save the results:
     conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
-    print('Done')
+    print("Done")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

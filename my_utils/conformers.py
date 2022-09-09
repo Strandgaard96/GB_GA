@@ -148,6 +148,24 @@ def get_start_population_from_csv(file=None, scoring=None):
 
     return conformers
 
+def get_start_population_debug(file=None, scoring=None):
+
+    mols = [Chem.MolFromSmiles(x) for x in ['CN', 'CCN']]
+
+    # Match
+    matches = [mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]")) for mol in mols]
+
+    # Get list of mol objects
+    inds = [
+        Individual(mol, cut_idx=random.choice(match)[0], idx=make_tuple(idx))
+        for mol, match, idx in zip(mols, matches, ['(0,1)', '(0,2)'])
+    ]
+
+    # Initialize population object.
+    conformers = Conformers(inds)
+
+    return conformers
+
 
 def main():
 
@@ -168,11 +186,14 @@ def main():
     args_dict = vars(args)
     scoring_function = funcs[args.scoring_function]
 
-    # Get start population from csv file
-    conformers = get_start_population_from_csv(
-        file=args.file, scoring=args.scoring_function
-    )
-
+    if args.debug:
+        # Get start population from csv file
+        conformers = get_start_population_debug(file=args.file, scoring=args.scoring_function)
+        args_dict['opt'] = 'loose'
+    else:
+        conformers = get_start_population_from_csv(
+            file=args.file, scoring=args.scoring_function
+        )
     # Submit population for scoring with many conformers
     results = sc.slurm_scoring(scoring_function, conformers, args_dict)
     conformers.set_results(results)

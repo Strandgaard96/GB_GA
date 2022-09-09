@@ -174,6 +174,42 @@ class XTB_optimize_schrock(XTB_optimizer):
         return
 
     @staticmethod
+    def _constrain_N(
+            molecule, path, NH3=False, N2=False
+    ):
+        """Make input constrain file
+
+        Args:
+            molecule (Chem.rdchem.Mol): molecule to match on
+            core (Chem.rdchem.Mol): mol object specifying what to constrain
+            path (Path): Path to various conformers
+            NH3 (bool): Constrain NH3 on the core
+            N2 (bool): Constrain N2 on the core
+            Mo_bond (bool): Constrain the Mo-N bond
+        """
+        # See if match list should be extended.
+
+        match = []
+        if NH3:
+            NH3_match = Chem.MolFromSmarts("[NH3]")
+            NH3_match = Chem.AddHs(NH3_match)
+            NH3_sub_match = np.array(molecule.GetSubstructMatch(NH3_match)) + 1
+            match.extend(NH3_sub_match)
+        if N2:
+            N2_match = Chem.MolFromSmarts("N#N")
+            N2_sub_match = np.array(molecule.GetSubstructMatch(N2_match)) + 1
+            match.extend(N2_sub_match)
+
+        # Loop conformer paths
+        for elem in path:
+            # Write the xcontrol file
+            with open(os.path.join(elem, "xcontrol.inp"), "w") as f:
+                f.write("$constrain\n")
+                f.write(f' atoms: {",".join(map(str, match))}\n')
+                f.write("$end\n")
+        return
+
+    @staticmethod
     def copy_logfile(conf_paths, name="opt.log"):
         """Copy xtbopt.log file to new name"""
         for elem in conf_paths:
@@ -290,7 +326,7 @@ class XTB_optimize_schrock(XTB_optimizer):
             result = self.optimize(args)
 
         if self.options.get("full_relax", True):
-            self.cmd = self.cmd.replace(" --input ./xcontrol.inp", "")
+            self._constrain_N(self.mol, path=conf_paths, NH3=True, N2=True)
             # Optimize the Mo-N* bond
             args = [
                 (

@@ -136,6 +136,12 @@ def get_arguments(arg_list=None):
         default="ase_database.db",
         help="Path to database to write files to",
     )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=12,
+        help="Minutes before timeout",
+    )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--write_db", action="store_true")
     parser.add_argument("--supress_amines", action="store_true")

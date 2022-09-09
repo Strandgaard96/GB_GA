@@ -290,7 +290,7 @@ class XTB_optimize_schrock(XTB_optimizer):
             result = self.optimize(args)
 
         if self.options.get("full_relax", True):
-            self.cmd = self.cmd.replace(" --input. / xcontrol.inp", "")
+            self.cmd = self.cmd.replace(" --input ./xcontrol.inp", "")
             # Optimize the Mo-N* bond
             args = [
                 (

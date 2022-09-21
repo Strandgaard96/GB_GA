@@ -21,7 +21,7 @@ from my_utils.utils import cd
 ORCA_COMMANDS = {
     "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",
     "sp_sarcJ": "!PBE D3BJ ZORA ZORA-def2-TZVP  SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",
-    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J NormalPrint PrintMOs KDIIS SOSCF OPT",
+    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF OPT",
     "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint KDIIS SOSCF FREQ",
     "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",
 }
@@ -135,7 +135,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--output_dir",
         type=Path,
-        default="bla",
+        default="debug",
         help="Path to folder to put the DFT output folders",
     )
     parser.add_argument(
@@ -394,6 +394,129 @@ def folder_orca_driver(args):
                 f.write(out)
 
 
+def conformersearch_dft_driver(args):
+
+    """Do DFT optimization on structures based on conformer search"""
+
+    # Directory for the conformer object
+    calc_dir = args.calc_dir
+
+    # Create dir for results
+    args.output_dir.mkdir(exist_ok=True, parents=True)
+    output_dir = args.output_dir
+
+    # Load GA object
+    with open(calc_dir / f"Conformers.pkl", "rb") as f:
+        conf = pickle.load(f)
+
+    # Loop over all the structures
+    for molecule in conf.molecules:
+
+        # THE ORDERING OF THE KEYS MATTER HERE
+        # Get scoring intermediates and charge/spin
+        scoring = args.scoring_function
+        if scoring == "rdkit_embed_scoring":
+            key1 = "Mo_N2_NH3"
+            key2 = "Mo_NH3"
+        elif scoring == "rdkit_embed_scoring_NH3toN2":
+            key1 = "Mo_N2"
+            key2 = "Mo_NH3"
+        elif scoring == "rdkit_embed_scoring_NH3plustoNH3":
+            key1 = "Mo_NH3"
+            key2 = "Mo_NH3+"
+
+        # Format the idx
+        idx = re.sub(r"[()]", "", str(molecule.idx))
+        idx = idx.replace(",", "_").replace(" ", "")
+
+        # Create folders based on idx and intermediates
+        mol_dir1 = output_dir / f"{idx}" / key1
+        mol_dir1.mkdir(exist_ok=True, parents=True)
+
+        # Create folders based on idx and intermediates
+        mol_dir2 = output_dir / f"{idx}" / key2
+        mol_dir2.mkdir(exist_ok=True, parents=True)
+
+        xyzfile = "struct.xyz"
+        with cd(mol_dir1):
+
+            # Save indvidual object for easier processing later
+            molecule.save(directory=".")
+
+            # Create xtb input file from struct
+            with open(xyzfile, "w+") as f:
+                if molecule.structure:
+                    f.writelines(molecule.structure)
+                else:
+                    print(f"No structure exists for this molecule: {molecule.idx}")
+
+            # Create input file
+            write_orca_input_file(
+                structure_path=xyzfile,
+                type_calc=args.type_calc,
+                charge=smi_dict[key1]["charge"],
+                spin=smi_dict[key1]["mul"],
+                n_cores=args.n_cores,
+                memory=args.memory,
+            )
+
+            # Customize orca.sh to current job.
+            write_orca_sh(
+                n_cores=args.n_cores,
+                mem=args.memory,
+                partition=args.partition,
+                cluster=args.cluster,
+            )
+
+            cmd = "sbatch orca.sh"
+
+            # Submit bash script in folder
+            out, err = shell_pure(cmd, shell=True)
+            with open(f"job.err", "w") as f:
+                f.write(err)
+            with open(f"job.out", "w") as f:
+                f.write(out)
+
+        with cd(mol_dir2):
+
+            # Save indvidual object for easier processing later
+            molecule.save(directory=".")
+
+            # Create xtb input file from struct
+            with open(xyzfile, "w+") as f:
+                if molecule.structure2:
+                    f.writelines(molecule.structure2)
+                else:
+                    print(f"No structure exists for this molecule: {molecule.idx}")
+
+            # Create input file
+            write_orca_input_file(
+                structure_path=xyzfile,
+                type_calc=args.type_calc,
+                charge=smi_dict[key2]["charge"],
+                spin=smi_dict[key2]["mul"],
+                n_cores=args.n_cores,
+                memory=args.memory,
+            )
+
+            # Customize orca.sh to current job.
+            write_orca_sh(
+                n_cores=args.n_cores,
+                mem=args.memory,
+                partition=args.partition,
+                cluster=args.cluster,
+            )
+
+            cmd = "sbatch orca.sh"
+
+            # Submit bash script in folder
+            out, err = shell_pure(cmd, shell=True)
+            with open(f"job.err", "w") as f:
+                f.write(err)
+            with open(f"job.out", "w") as f:
+                f.write(out)
+
+
 def parts_opts(args):
     """Future function that do DFT on structures in a folder"""
 
@@ -447,6 +570,7 @@ if __name__ == "__main__":
         "folder_orca_driver": folder_orca_driver,
         "GA_singlepoints": GA_singlepoints,
         "parts_opts": parts_opts,
+        "conformer_dft": conformersearch_dft_driver,
     }
     args = get_arguments()
     func = FUNCTION_MAP[args.function]

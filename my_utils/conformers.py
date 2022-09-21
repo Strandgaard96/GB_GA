@@ -148,9 +148,10 @@ def get_start_population_from_csv(file=None, scoring=None):
 
     return conformers
 
+
 def get_start_population_debug(file=None, scoring=None):
 
-    mols = [Chem.MolFromSmiles(x) for x in ['CN', 'CCN']]
+    mols = [Chem.MolFromSmiles(x) for x in ["CN", "CCN"]]
 
     # Match
     matches = [mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]")) for mol in mols]
@@ -158,7 +159,7 @@ def get_start_population_debug(file=None, scoring=None):
     # Get list of mol objects
     inds = [
         Individual(mol, cut_idx=random.choice(match)[0], idx=make_tuple(idx))
-        for mol, match, idx in zip(mols, matches, ['(0,1)', '(0,2)'])
+        for mol, match, idx in zip(mols, matches, ["(0,1)", "(0,2)"])
     ]
 
     # Initialize population object.
@@ -188,8 +189,10 @@ def main():
 
     if args.debug:
         # Get start population from csv file
-        conformers = get_start_population_debug(file=args.file, scoring=args.scoring_function)
-        args_dict['opt'] = 'loose'
+        conformers = get_start_population_debug(
+            file=args.file, scoring=args.scoring_function
+        )
+        args_dict["opt"] = "loose"
     else:
         conformers = get_start_population_from_csv(
             file=args.file, scoring=args.scoring_function

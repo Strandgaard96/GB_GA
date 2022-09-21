@@ -174,9 +174,7 @@ class XTB_optimize_schrock(XTB_optimizer):
         return
 
     @staticmethod
-    def _constrain_N(
-            molecule, path, NH3=False, N2=False
-    ):
+    def _constrain_N(molecule, path, NH3=False, N2=False):
         """Make input constrain file
 
         Args:

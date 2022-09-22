@@ -103,22 +103,11 @@ def get_arguments(arg_list=None):
         default="./xcontrol.inp",
         help="Name of input file that is created",
     )
-    parser.add_argument(
-        "--scoring_function",
-        dest="scoring_function",
-        choices=[
-            "rdkit_embed_scoring",
-            "rdkit_embed_scoring_NH3toN2",
-            "rdkit_embed_scoring_NH3plustoNH3",
-        ],
-        required=True,
-        help="""Choose one of the specified scoring functions to know the 
-            intermediates in question""",
-    )
+
     parser.add_argument(
         "--file",
         type=Path,
-        default="data/first_conformers.csv",
+        default="data/second_conformers.csv",
         help="File to get mol objects from",
     )
     parser.add_argument("--write_db", action="store_true")
@@ -126,11 +115,10 @@ def get_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def get_start_population_from_csv(file=None, scoring=None):
+def get_start_population_from_csv(file=None):
 
     # Get ligands found with specified scoring function
     df = pd.read_csv(file, index_col=[0])
-    df = df[df["scoring"] == scoring]
 
     mols = [Chem.MolFromSmiles(x) for x in df["smiles"]]
 
@@ -143,15 +131,19 @@ def get_start_population_from_csv(file=None, scoring=None):
         for mol, match, idx in zip(mols, matches, df.index)
     ]
 
+    for elem, scoring_function in zip(inds, df.scoring):
+        elem.scoring_function = scoring_function
+
     # Initialize population object.
     conformers = Conformers(inds)
 
     return conformers
 
 
-def get_start_population_debug(file=None, scoring=None):
+def get_start_population_debug(file=None):
 
     mols = [Chem.MolFromSmiles(x) for x in ["CN", "CCN"]]
+    scoring = ["rdkit_embed_scoring", "rdkit_embed_scoring_NH3toN2"]
 
     # Match
     matches = [mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]")) for mol in mols]
@@ -161,6 +153,9 @@ def get_start_population_debug(file=None, scoring=None):
         Individual(mol, cut_idx=random.choice(match)[0], idx=make_tuple(idx))
         for mol, match, idx in zip(mols, matches, ["(0,1)", "(0,2)"])
     ]
+
+    for elem, scoring_function in zip(inds, scoring):
+        elem.scoring_function = scoring_function
 
     # Initialize population object.
     conformers = Conformers(inds)
@@ -176,33 +171,27 @@ def main():
     # Create output folder
     args.output_dir.mkdir(exist_ok=True)
 
-    # a dictionary mapping strings of function names to function objects:
-    funcs = {
-        "rdkit_embed_scoring": rdkit_embed_scoring,
-        "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2,
-        "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3,
-    }
-
     # Get arguments as dict and add scoring function to dict.
     args_dict = vars(args)
-    scoring_function = funcs[args.scoring_function]
 
     if args.debug:
         # Get start population from csv file
-        conformers = get_start_population_debug(
-            file=args.file, scoring=args.scoring_function
-        )
+        conformers = get_start_population_debug(file=args.file)
         args_dict["opt"] = "loose"
     else:
-        conformers = get_start_population_from_csv(
-            file=args.file, scoring=args.scoring_function
-        )
+        conformers = get_start_population_from_csv(file=args.file)
+
+    # Create the scoring function dirs
+    (args.output_dir /'rdkit_embed_scoring').mkdir(exist_ok = True, parents=True)
+    (args.output_dir / 'rdkit_embed_scoring_NH3toN2').mkdir(exist_ok = True, parents=True)
+    (args.output_dir / 'rdkit_embed_scoring_NH3plustoNH3').mkdir(exist_ok = True, parents=True)
+
     # Submit population for scoring with many conformers
-    results = sc.slurm_scoring(scoring_function, conformers, args_dict)
+    results = sc.slurm_scoring_conformers(conformers, args_dict)
     conformers.set_results(results)
 
     # Save the results:
-    conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
+    conformers.save(directory=args.output_dir.parent, name=f"Conformers.pkl")
 
     print("Done")
 

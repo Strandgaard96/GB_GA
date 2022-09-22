@@ -1,0 +1,9 @@
+,score,energy,sa_score,rdkit_mol,DFT,smiles,cut_idx,scoring
+"(38, 5)",-76.3,-76.28618321215338,1.0,<rdkit.Chem.rdchem.Mol object at 0x7fd387b30730>,-36.2,Cc1cccc(SCC(C)(C)N)c1,12.0,rdkit_embed_scoring_NH3toN2
+"(25, 25)",-76.6,-77.58367771660141,0.987539264185284,<rdkit.Chem.rdchem.Mol object at 0x7f703bdf22f0>,-11.4,Nc1ccc(F)c(C(=O)C(=O)C(=O)Cl)c1,13.0,rdkit_embed_scoring_NH3plustoNH3
+"(13, 3)",-78.6,-87.15994472825317,0.9013085915889056,<rdkit.Chem.rdchem.Mol object at 0x7f703bdf2a30>,-33.4,Nc1ccccc1N=CC(=O)Cl,7.0,rdkit_embed_scoring_NH3plustoNH3
+"(40, 28)",-67.7,-67.69271895156012,1.0,<rdkit.Chem.rdchem.Mol object at 0x7fd384f5b070>,-28.0,CSCC1(N)CCCCC1,6.0,rdkit_embed_scoring_NH3toN2
+"(29, 44)",-70.8,-70.76041493220717,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f51411e6df0>,-28.0,CC(N)CC(=Cc1ccccc1)C1CC1,8.0,rdkit_embed_scoring_NH3toN2
+"(50, 11)",-65.3,-65.28233555816465,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f5140fada70>,-17.2,NCCOC(=O)c1ncnc2ccccc12,11.0,rdkit_embed_scoring
+"(33, 48)",-69.1,-69.05230123783967,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f51411e66f0>,-32.6,CC(N)Cc1ccc(Sc2ccccc2)cc1,16.0,rdkit_embed_scoring_NH3toN2
+"(19, 15)",-61.4,-61.37812041749359,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f5142eb4970>,-23.0,CCCC(N)c1ccc(OC)cc1,10.0,rdkit_embed_scoring_NH3toN2

@@ -363,19 +363,49 @@ def xtb_optimize_schrock(
     return energies, geometries
 
 
+def debug_bondcheck():
+    global file
+    file = "/home/magstr/Documents/GB_GA/debug/conf051/xtbopt.xyz"
+    file_noMo = "/home/magstr/Documents/GB_GA/debug/conf051/xtbopt_noMo.xyz"
+    start = "/home/magstr/Documents/GB_GA/debug/conf051/xtbmol051.xyz"
+    start_nomo = "/home/magstr/Documents/GB_GA/debug/conf051/xtbmol051_nomo.xyz"
+    # Alter xyz file to remove the Mo for xyz2mol
+    with open(file, "r") as file_input:
+        with open(file_noMo, "w") as output:
+            lines = file_input.readlines()
+            new_str = str(int(lines[0]) - 1) + "\n"
+            lines[0] = new_str
+            for i, line in enumerate(lines):
+                if "Mo " in line:
+                    lines.pop(i)
+                    pass
+            output.writelines(lines)
+    atoms, _, coordinates = read_xyz_file(file_noMo)
+    print("Getting the adjacency matrices")
+    AC, opt_mol = xyz2AC(atoms, coordinates, 1, use_huckel=True)
+    # Alter xyz file to remove the Mo for xyz2mol
+    with open(start, "r") as file_input:
+        with open(start_nomo, "w") as output:
+            lines = file_input.readlines()
+            new_str = str(int(lines[0]) - 1) + "\n"
+            lines[0] = new_str
+            for i, line in enumerate(lines):
+                if "Mo " in line:
+                    lines.pop(i)
+                    pass
+            output.writelines(lines)
+    atoms, _, coordinates = read_xyz_file(start_nomo)
+    print("Getting the adjacency matrices")
+    AC2, opt_mol2 = xyz2AC(atoms, coordinates, 1, use_huckel=True)
+    # Check if any atoms have changed bonds
+    bond_change = False
+    if not np.all(AC2 == AC):
+        print(
+            f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
+        )
+        bond_change = True
+
+
 if __name__ == "__main__":
     # Debugging
-    struct = ".xyz"
-    paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
-
-    xtb_optimize_schrock(
-        files=paths,
-        parameters=parameters,
-        gbsa="benzene",
-        alpb=None,
-        opt_level="tight",
-        input=None,
-        name=None,
-        cleanup=False,
-        numThreads=1,
-    )
+    debug_bondcheck()

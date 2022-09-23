@@ -405,7 +405,31 @@ def debug_bondcheck():
         )
         bond_change = True
 
+def debug_bondcheck_xtbtopo(mol):
+    file = "/home/magstr/Documents/GB_GA/debug/conf051/xtbtopo.mol"
+
+    after = Chem.MolFromMolFile(file)
+    after_ac = rdmolops.GetAdjacencyMatrix(mol)
+
+    before_ac = rdmolops.GetAdjacencyMatrix(mol)
+    # Check if any atoms have changed bonds
+    bond_change = False
+    if not np.all(AC2 == AC):
+        print(
+            f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
+        )
+        bond_change = True
+
+
+
 
 if __name__ == "__main__":
     # Debugging
+    # Load GA object
+    import pickle
+    with open("/home/magstr/Documents/GB_GA/debug/Conformers.pkl", "rb") as f:
+        conf = pickle.load(f)
+
+    mol = conf.molecules[2]
+    debug_bondcheck_xtbtopo(mol.rdkit_mol)
     debug_bondcheck()

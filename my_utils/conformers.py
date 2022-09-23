@@ -191,7 +191,7 @@ def main():
     conformers.set_results(results)
 
     # Save the results:
-    conformers.save(directory=args.output_dir.parent, name=f"Conformers.pkl")
+    conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
     print("Done")
 

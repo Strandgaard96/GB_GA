@@ -409,9 +409,9 @@ def conformersearch_dft_driver(args):
     with open(calc_dir / f"Conformers.pkl", "rb") as f:
         conf = pickle.load(f)
 
-    # Loop over all the structures
-    for molecule in conf.molecules:
-
+    # Loop over all the structures with no bond changes
+    gen = (mol for mol in conf.molecules if mol.score != 9999)
+    for molecule in gen:
         # THE ORDERING OF THE KEYS MATTER HERE
         # Get scoring intermediates and charge/spin
         scoring = args.scoring_function

@@ -240,7 +240,7 @@ def create_prim_amine_revised(input_ligand):
     dummy = Chem.MolFromSmiles("*")
 
     # Match Secondary or Tertiary amines
-    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0]"))
+    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0;!$(*n);!$(*N)]"))
     if not matches:
         raise Exception(
             f"{Chem.MolToSmiles(Chem.RemoveHs(input_ligand))} constains no amines to split on"

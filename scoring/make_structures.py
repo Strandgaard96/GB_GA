@@ -280,16 +280,13 @@ def create_prim_amine_revised(input_ligand):
 
         # Create list of tuples that contain the amine idx and idx of each of the three
         # neighbors that are not another amine.
-        indices = [
-            (match[0], x.GetIdx())
-            for x in atom.GetNeighbors()
-            if (
-                ((x.GetAtomicNum() != 7) and (x.GetAtomicNum() != 8))
-                and not input_ligand.GetBondBetweenAtoms(
-                    match[0], x.GetIdx()
-                ).IsInRing()
-            )
-        ]
+
+        banned_atoms = [7,8]
+        for x in atom.GetNeighbors():
+            if (x.GetAtomicNum() == 12):
+                indices = [(match[0], x.GetIdx())]
+            elif (x.GetAtomicNum() not in banned_atoms) and not (input_ligand.GetBondBetweenAtoms(match[0], x.GetIdx()).IsInRing()):
+                indices = [(match[0], x.GetIdx())]
 
         # Break loop of a valid match is found
         if indices:

@@ -284,7 +284,7 @@ def create_prim_amine_revised(input_ligand):
             (match[0], x.GetIdx())
             for x in atom.GetNeighbors()
             if (
-                ((x.GetAtomicNum() != 7))
+                ((x.GetAtomicNum() != 7) and (x.GetAtomicNum() != 8))
                 and not input_ligand.GetBondBetweenAtoms(
                     match[0], x.GetIdx()
                 ).IsInRing()

@@ -341,10 +341,8 @@ class Generation:
 
     ### SA functionality
     def sa_prep(self):
-
         for mol in self.molecules:
             prim_match = Chem.MolFromSmarts("[NX3;H2]")
-
             # Remove the cut idx amine to prevent it hogging the SA score
             removed_mol = single_atom_remover(mol.rdkit_mol, mol.cut_idx)
             mol.rdkit_mol_sa = removed_mol

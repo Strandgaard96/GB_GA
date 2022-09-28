@@ -25,6 +25,7 @@ def draw_generation(
     atomlabel=False,
     hit_ats=None,
     gen_struct=None,
+    trajectory=False
 ):
     try:
         p = py3Dmol.view(width=width, height=height)
@@ -41,7 +42,12 @@ def draw_generation(
                         xyz_f = open(mol)
                         line = xyz_f.read()
                         xyz_f.close()
-                        p.addModel(line, "xyz")
+                        if trajectory:
+                            # p.addModels(line, 'xyz')
+                            p.addModelsAsFrames(line, "xyz")
+                            p.animate({"loop": "forward", "reps": 10, 'interval': 0.05})
+                        else:
+                            p.addModel(line, "xyz")
                 else:
                     mb = Chem.MolToMolBlock(mol, confId=confId)
                     p.addModel(mb, "sdf")

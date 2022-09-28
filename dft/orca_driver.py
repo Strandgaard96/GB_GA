@@ -414,7 +414,7 @@ def conformersearch_dft_driver(args):
     for molecule in gen:
         # THE ORDERING OF THE KEYS MATTER HERE
         # Get scoring intermediates and charge/spin
-        scoring = args.scoring_function
+        scoring = molecule.scoring_function
         if scoring == "rdkit_embed_scoring":
             key1 = "Mo_N2_NH3"
             key2 = "Mo_NH3"

@@ -100,7 +100,7 @@ def slurm_scoring_conformers(conformers, scoring_args):
         slurm_max_num_timeout=0,
     )
     executor.update_parameters(
-        name=f"sc_g{conformers.molecules[0].idx[0]}",
+        name=f"conformer_search",
         cpus_per_task=scoring_args["cpus_per_task"],
         slurm_mem_per_cpu="500MB",
         timeout_min=scoring_args["timeout"],

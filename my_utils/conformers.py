@@ -70,6 +70,12 @@ def get_arguments(arg_list=None):
         help="RMS pruning in embedding",
     )
     parser.add_argument(
+        "--partition",
+        type=str,
+        default="xeon40",
+        help="Which partition to run on",
+    )
+    parser.add_argument(
         "--output_dir",
         type=Path,
         default=".",

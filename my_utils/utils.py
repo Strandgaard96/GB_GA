@@ -20,6 +20,35 @@ sys.path.insert(0, "../scoring")
 _neutralize_reactions = None
 
 
+def write_input_files(fragment, name="struct.xyz", destination="."):
+    """Utility method to write xyz input files from mol object"""
+
+    number_of_atoms = fragment.GetNumAtoms()
+    symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
+    conformers = fragment.GetConformers()
+    file_paths = []
+    conf_paths = []
+    for i, conf in enumerate(conformers):
+        conf_path = os.path.join(destination, f"conf{i:03d}")
+        conf_paths.append(conf_path)
+
+        if os.path.exists(conf_path):
+            shutil.rmtree(conf_path)
+        os.makedirs(conf_path)
+
+        file_name = f"{name}{i:03d}.xyz"
+        file_path = os.path.join(conf_path, file_name)
+        with open(file_path, "w") as _file:
+            _file.write(str(number_of_atoms) + "\n")
+            _file.write(f"{Chem.MolToSmiles(fragment)}\n")
+            for atom, symbol in enumerate(symbols):
+                p = conf.GetAtomPosition(atom)
+                line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
+                _file.write(line)
+        file_paths.append(file_path)
+    return file_paths, conf_paths
+
+
 def mol_from_xyz(xyz_file, charge=0):
     atoms, _, xyz_coordinates = read_xyz_file(xyz_file)
     mol = xyz2mol(atoms, xyz_coordinates, charge)

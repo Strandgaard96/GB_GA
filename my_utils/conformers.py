@@ -4,18 +4,20 @@ import logging
 import os
 import pathlib
 import pickle
+import random
 import sys
 import time
+from ast import literal_eval as make_tuple
 from copy import deepcopy
 from pathlib import Path
+
 import pandas as pd
 from rdkit import Chem
-from ast import literal_eval as make_tuple
-import random
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 
+from dft.orca_driver import conformersearch_dft_driver
 from my_utils.classes import Conformers, Individual
 from scoring import scoring_functions as sc
 from scoring.scoring import (
@@ -23,6 +25,14 @@ from scoring.scoring import (
     rdkit_embed_scoring_NH3plustoNH3,
     rdkit_embed_scoring_NH3toN2,
 )
+
+ORCA_COMMANDS = {
+    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",
+    "sp_sarcJ": "!PBE D3BJ ZORA ZORA-def2-TZVP  SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",
+    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF OPT",
+    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint KDIIS SOSCF FREQ",
+    "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",
+}
 
 
 def get_arguments(arg_list=None):
@@ -48,7 +58,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=2,
+        default=4,
         help="How many conformers to generate",
     )
     parser.add_argument(
@@ -78,7 +88,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--output_dir",
         type=Path,
-        default=".",
+        default="debug_conformer",
         help="Directory to put various files",
     )
     parser.add_argument("--debug", action="store_true")
@@ -118,6 +128,50 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--write_db", action="store_true")
     parser.add_argument("--cleanup", action="store_true")
+    parser.add_argument(
+        "--calc_dir",
+        type=Path,
+        default="debug",
+        help="Path to folder containing xyz files",
+    )
+    parser.add_argument(
+        "--n_cores",
+        type=int,
+        default=40,
+        help="How many cores for each calc",
+    )
+    parser.add_argument(
+        "--memory",
+        type=int,
+        default=8,
+        help="How many GB requested for each calc",
+    )
+    parser.add_argument(
+        "--cluster",
+        type=str,
+        default="niflheim",
+        help="Which cluster the calc is running on",
+    )
+    parser.add_argument(
+        "--no_molecules",
+        type=int,
+        default=[0, 10],
+        nargs="+",
+        help="How many of the top molecules to do DFT on",
+    )
+    parser.add_argument(
+        "--type_calc",
+        dest="type_calc",
+        choices=list(ORCA_COMMANDS.keys()),
+        required=True,
+        help="""Choose top line for input file""",
+    )
+    parser.add_argument(
+        "--energy_cutoff",
+        type=float,
+        default=0.0319,
+        help="Cutoff for conformer energies in hartree",
+    )
     return parser.parse_args(arg_list)
 
 
@@ -149,7 +203,7 @@ def get_start_population_from_csv(file=None):
 def get_start_population_debug(file=None):
 
     mols = [Chem.MolFromSmiles(x) for x in ["CN", "CCN"]]
-    scoring = ["rdkit_embed_scoring", "rdkit_embed_scoring_NH3toN2"]
+    scoring = ["rdkit_embed_scoring", "rdkit_embed_scoring"]
 
     # Match
     matches = [mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]")) for mol in mols]
@@ -171,6 +225,10 @@ def get_start_population_debug(file=None):
 
 def main():
 
+    FUNCTION_MAP = {
+        "conformer_dft": conformersearch_dft_driver,
+    }
+
     # Get args
     args = get_arguments()
 
@@ -188,18 +246,21 @@ def main():
         conformers = get_start_population_from_csv(file=args.file)
 
     # Create the scoring function dirs
-    (args.output_dir /'rdkit_embed_scoring').mkdir(exist_ok = True, parents=True)
-    (args.output_dir / 'rdkit_embed_scoring_NH3toN2').mkdir(exist_ok = True, parents=True)
-    (args.output_dir / 'rdkit_embed_scoring_NH3plustoNH3').mkdir(exist_ok = True, parents=True)
+    (args.output_dir / "rdkit_embed_scoring").mkdir(exist_ok=True, parents=True)
+    (args.output_dir / "rdkit_embed_scoring_NH3toN2").mkdir(exist_ok=True, parents=True)
+    (args.output_dir / "rdkit_embed_scoring_NH3plustoNH3").mkdir(
+        exist_ok=True, parents=True
+    )
 
     # Submit population for scoring with many conformers
-    results = sc.slurm_scoring_conformers(conformers, args_dict)
-    conformers.set_results(results)
+    # results = sc.slurm_scoring_conformers(conformers, args_dict)
+    # conformers.handle_results(results)
 
     # Save the results:
-    conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
+    # conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
-    print("Done")
+    print("Done with XTB conformational search, Submitting DFT calcs")
+    conformersearch_dft_driver(args)
 
 
 if __name__ == "__main__":

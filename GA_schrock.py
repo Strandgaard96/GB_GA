@@ -21,7 +21,6 @@ from copy import deepcopy
 from pathlib import Path
 
 import crossover as co
-
 import filters
 import GB_GA as ga
 from my_utils.classes import Generation, Individual
@@ -55,7 +54,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--population_size",
         type=int,
-        default=100,
+        default=10,
         help="Sets the size of population pool.",
     )
     parser.add_argument(
@@ -73,7 +72,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=1,
+        default=2,
         help="How many conformers to generate",
     )
     parser.add_argument(
@@ -91,7 +90,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--RMS_thresh",
         type=float,
-        default=0.1,
+        default=0.25,
         help="RMS pruning in embedding",
     )
     parser.add_argument(
@@ -144,12 +143,19 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--write_db", action="store_true")
+    parser.add_argument("--ga_scoring", action="store_true")
     parser.add_argument("--supress_amines", action="store_true")
     parser.add_argument(
         "--method",
         type=str,
         default="2",
         help="gfn method to use",
+    )
+    parser.add_argument(
+        "--energy_cutoff",
+        type=float,
+        default=0.0319,
+        help="Cutoff for conformer energies",
     )
     parser.add_argument("--bond_opt", action="store_true")
     parser.add_argument("--cleanup", action="store_true")
@@ -223,8 +229,11 @@ def GA(args):
     results = sc.slurm_scoring(args["scoring_function"], population, args)
 
     # Set results and do some rdkit hack to prevent weird molecules
-    population.set_results(results)
+    population.handle_results(results)
     population.update_property_cache()
+
+    # Save current population for debugging
+    population.save(directory=args["output_dir"], name=f"GA_debug_firstit.pkl")
 
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
@@ -291,7 +300,7 @@ def GA(args):
         logging.info("Getting scores for new population")
         results = sc.slurm_scoring(args["scoring_function"], new_population, args)
 
-        new_population.set_results(results)
+        new_population.handle_results(results)
         new_population.save(
             directory=args["output_dir"], name=f"GA{generation_num:02d}_debug2.pkl"
         )

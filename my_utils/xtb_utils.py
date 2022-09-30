@@ -177,7 +177,7 @@ def create_intermediates(file=None, charge=0):
 
 def read_results(output, err):
     if not "normal termination" in err:
-        return 9999, {"atoms": None, "coords": None}
+        return {"atoms": None, "coords": None, "energy": None}
     lines = output.splitlines()
     energy = None
     structure_block = False
@@ -195,86 +195,71 @@ def read_results(output, err):
                 structure_block = False
         elif "TOTAL ENERGY" in l:
             energy = float(l.split()[3])
-    return energy, {"atoms": atoms, "coords": coords}
+    return {"atoms": atoms, "coords": coords, "energy": energy}
 
 
-def check_bonds(bare, charge, conf_paths, geometries, minidx, mol, xyzcoordinates):
+def write_xyz(atoms, coords, destination_dir):
+    """Write .xyz file from atoms and coords"""
+    file = destination_dir / "mol.xyz"
+    natoms = len(atoms)
+    xyz = f"{natoms} \n \n"
+    for atomtype, coord in zip(atoms, coords):
+        xyz += f"{atomtype}  {' '.join(list(map(str, coord)))} \n"
+    with open(file, "w") as inp:
+        inp.write(xyz)
+
+    return file
+
+
+def check_bonds(mol, conf_paths, charge):
     """Check for broken/formed bonds in the optimization
 
     Args:
-        bare (bool): Make file with bare Mo and ligand
         charge (charge): Charge of molecule for xyz2mol
-        conf_paths (Path): Path to optimized conformers
-        geometries List(dict): Optimized geometries
-        minidx (int): Idx of miniumum energy conformer
         mol (Chem.rdchem.Mol): Starting mol object
-        xyzcoordinates (bool): Read xyz coordinates from xtb file
-
     Returns:
-        final_geom : Geometry of min energy conformer
-        bond_change (bool): Indicates whether a bond was broken/formed
+        bond_changes
     """
+    bond_changes = []
+    for path in conf_paths:
 
-    # Create Mo and ligand bare xyz file
-    if bare:
-        file_bare = conf_paths[minidx] + f"/xtbopt_bare.xyz"
-        tmp_mol = remove_NH3(mol)
-        tmp_mol = remove_N2(tmp_mol)
-        Chem.AddHs(tmp_mol)
+        try:
+            # Initialize paths
+            file = path + f"/xtbopt.xyz"
+            file_noMo = path + "/xtbopt_noMo.xyz"
 
-        with open(file_bare, "w") as f:
-            try:
-                f.write(Chem.MolToXYZBlock(tmp_mol, confId=minidx.item()))
-            except ValueError:
-                print("Something happened with the conformer id")
+            print("Getting the adjacency matrices")
+            # Alter xyz file to remove the Mo for xyz2mol
+            with open(file, "r") as file_input:
+                with open(file_noMo, "w") as output:
+                    lines = file_input.readlines()
+                    new_str = str(int(lines[0]) - 1) + "\n"
+                    lines[0] = new_str
+                    for i, line in enumerate(lines):
+                        if "Mo " in line:
+                            lines.pop(i)
+                            pass
+                    output.writelines(lines)
+            atoms, _, coordinates = read_xyz_file(file_noMo)
+            after_ac, opt_mol = xyz2AC(atoms, coordinates, charge, use_huckel=True)
 
-    # Initialize paths
-    file = conf_paths[minidx] + f"/xtbopt.xyz"
-    file_noMo = conf_paths[minidx] + "/xtbopt_noMo.xyz"
+            before_ac = rdmolops.GetAdjacencyMatrix(mol)
+            # Remove the Mo row:
+            idx = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]"))[0]
+            intermediate = np.delete(before_ac, idx, axis=0)
+            before_ac = np.delete(intermediate, idx, axis=1)
 
-    # Alter xyz file to remove the Mo for xyz2mol
-    with open(file, "r") as file_input:
-        with open(file_noMo, "w") as output:
-            lines = file_input.readlines()
-            new_str = str(int(lines[0]) - 1) + "\n"
-            lines[0] = new_str
-            for i, line in enumerate(lines):
-                if "Mo " in line:
-                    lines.pop(i)
-                    pass
-            output.writelines(lines)
-    atoms, _, coordinates = read_xyz_file(file_noMo)
-    print("Getting the adjacency matrices")
-    AC, opt_mol = xyz2AC(atoms, coordinates, charge, use_huckel=True)
+            # Check if any atoms have changed bonds
+            if not np.all(after_ac == before_ac):
+                print(f"There have been bonds changes for ligand {path}")
+                bond_changes.append(True)
+            else:
+                bond_changes.append(False)
+        except:
+            print(f"Something failed for {path}")
+            bond_changes.append(True)
 
-    # Check pre and after adjacency matrix
-    before_ac = rdmolops.GetAdjacencyMatrix(mol)
-
-    # Remove the Mo row:
-    idx = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]"))[0]
-    intermediate = np.delete(before_ac, idx, axis=0)
-    before_ac = np.delete(intermediate, idx, axis=1)
-
-    # Check if any atoms have changed bonds
-    bond_change = False
-    if not np.all(before_ac == AC):
-        print(
-            f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
-        )
-        bond_change = True
-
-    # Get xyz coordnates or tuple
-    if xyzcoordinates:
-        with open(file, "r") as f:
-            final_geom = f.readlines()
-    else:
-        final_geom = geometries[minidx]
-    # Create traj file ready to write to database
-    logfile = Path(conf_paths[minidx] + f"/xtbopt.log")
-    trajfile = Path(conf_paths[minidx] + f"/traj.xyz")
-    shutil.copy(logfile, trajfile)
-
-    return final_geom, bond_change
+    return bond_changes
 
 
 # TODO change to new class format
@@ -405,28 +390,28 @@ def debug_bondcheck():
         )
         bond_change = True
 
+
 def debug_bondcheck_xtbtopo(mol):
     file = "/home/magstr/Documents/GB_GA/debug/conf051/xtbtopo.mol"
 
-    after = Chem.MolFromMolFile(file)
+    after = Chem.MolFromMolFile(file, sanitize=False)
     after_ac = rdmolops.GetAdjacencyMatrix(mol)
 
     before_ac = rdmolops.GetAdjacencyMatrix(mol)
     # Check if any atoms have changed bonds
     bond_change = False
-    if not np.all(AC2 == AC):
+    if not np.all(AC == AC):
         print(
             f"There have been bonds changes. Saving struct and setting energy to 9999, for ligand {conf_paths[0]}"
         )
         bond_change = True
 
 
-
-
 if __name__ == "__main__":
     # Debugging
     # Load GA object
     import pickle
+
     with open("/home/magstr/Documents/GB_GA/debug/Conformers.pkl", "rb") as f:
         conf = pickle.load(f)
 

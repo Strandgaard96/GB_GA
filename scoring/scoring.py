@@ -5,13 +5,16 @@ Contains various global variables that should be available to the scoring
 function at all times
 
 """
+import copy
 import json
 import os
 import pickle
 import sys
 from pathlib import Path
 
+import numpy as np
 from rdkit import Chem
+from rdkit.Chem.PropertyMol import PropertyMol
 
 scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
@@ -94,10 +97,7 @@ def rdkit_embed_scoring(ligand, scoring_args):
         scoring_args (dict): dict with all relevant args for xtb and general scoring
 
     Returns:
-        De (float): Scoring energy
-        Mo_N2_NH3_3d_geom: Geometry of intermediate
-        Mo_NH3_3d_geom: Geometry of intermediate
-        minidx (int): Index of the lowest energy conformer
+
     """
 
     # Get ligand tuple idx.
@@ -129,19 +129,29 @@ def rdkit_embed_scoring(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_N2_NH3_3d, scoring_options=scoring_args)
 
         # Perform calculation
-        Mo_N2_NH3_energy, Mo_N2_NH3_3d_geom, minidx = optimizer.optimize_schrock()
+        optimized_mol1, energies = optimizer.optimize_schrock()
 
-    # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
-    if Mo_N2_NH3_energy == 9999:
-        return 9999, None, None, None
+    confs = optimized_mol1.GetConformers()
+    if len(confs) == 0:
+        return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Remove higher energy conformes from mol object
-    discard_conf = [x for x in range(len(Mo_N2_NH3_3d.GetConformers())) if x != minidx]
-    for elem in discard_conf:
-        Mo_N2_NH3_3d.RemoveConformer(elem)
+    # Remove fonformers that are too far from the minimum energy conf
+    energies, new_mol = energy_filter(confs, energies, optimized_mol1, scoring_args)
+
+    single_conf = copy.deepcopy(new_mol)
+
+    if scoring_args.get("ga_scoring", False):
+        # Copy into new mol object
+        # Remove higher energy conformes from mol object
+        minidx = np.argmin(energies)
+        discard_conf = [
+            x for x in range(len(single_conf.GetConformers())) if x != minidx
+        ]
+        for elem in discard_conf:
+            single_conf.RemoveConformer(elem)
 
     # Remove N2 on the full embedding
-    Mo_NH3_3d = remove_N2(Mo_N2_NH3_3d)
+    Mo_NH3_3d = remove_N2(single_conf)
     Mo_NH3_3d = Chem.AddHs(Mo_NH3_3d)
 
     with cd(scoring_args["output_dir"]):
@@ -153,18 +163,20 @@ def rdkit_embed_scoring(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
 
         # Perform calculation
-        Mo_NH3_energy, Mo_NH3_3d_geom, minidx = optimizer.optimize_schrock()
+        optimized_mol2, energies2 = optimizer.optimize_schrock()
 
-    if Mo_NH3_energy == 9999:
-        return 9999, None, None, None
+    confs = optimized_mol2.GetConformers()
+    if len(confs) == 0:
+        return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Handle the error and return if xtb did not converge
-    if None in (Mo_N2_NH3_energy, Mo_NH3_energy):
-        raise Exception(f"None of the XTB calculations converged")
+    energies2, new_mol2 = energy_filter(confs, energies2, optimized_mol2, scoring_args)
 
-    De = ((Mo_N2_NH3_energy - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
-    print(f"diff energy: {De}")
-    return De, Mo_N2_NH3_3d_geom, Mo_NH3_3d_geom, minidx
+    energy_diff = (energies.min() - (energies2.min() + N2_ENERGY)) * hartree2kcalmol
+    print(f"Score for top scoring conformer: {energy_diff}")
+
+    en_dict = {"energy1": energies, "energy2": energies2, "score": energy_diff}
+
+    return new_mol, new_mol2, en_dict
 
 
 def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
@@ -176,10 +188,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
             scoring_args (dict): dict with all relevant args for xtb and general scoring
 
         Returns:
-            De (float): Scoring energy
-            Mo_N2_3d_geom: Geometry of intermediate
-            Mo_NH3_3d_geom: Geometry of intermediate
-            minidx (int): Index of the lowest energy conformer
+
     """
 
     # Get tuple idx
@@ -198,6 +207,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         mol=Mo_NH3,
         core=core_NH3[0],
         numConfs=scoring_args["n_confs"],
+        pruneRmsThresh=scoring_args["RMS_thresh"],
     )
 
     with cd(scoring_args["output_dir"]):
@@ -209,27 +219,32 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
 
         # Perform calculation
-        Mo_NH3_energy, Mo_NH3_3d_geom, minidx = optimizer.optimize_schrock()
+        optimized_mol1, energies = optimizer.optimize_schrock()
 
-    # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
-    if Mo_NH3_energy == 9999:
-        return 9999, None, None, None
+    confs = optimized_mol1.GetConformers()
+    if len(confs) == 0:
+        return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Remove higher energy conformers from mol object
-    discard_conf = [x for x in range(len(Mo_NH3_3d.GetConformers())) if x != minidx]
+    # Remove fonformers that are too far from the minimum energy conf
+    energies, new_mol = energy_filter(confs, energies, optimized_mol1, scoring_args)
+
+    single_conf = copy.deepcopy(new_mol)
+
+    minidx = np.argmin(energies)
+    discard_conf = [x for x in range(len(single_conf.GetConformers())) if x != minidx]
     for elem in discard_conf:
-        Mo_NH3_3d.RemoveConformer(elem)
+        single_conf.RemoveConformer(elem)
 
     # Replace NH3 with N2
     Mo_N2 = Chem.ReplaceSubstructs(
-        Mo_NH3_3d,
+        single_conf,
         Chem.AddHs(Chem.MolFromSmarts("[NH3]")),
         Chem.MolFromSmarts("N#N"),
         replaceAll=True,
     )[0]
 
-    # Get bare Mo to use as embed refference
-    Mo_3d = remove_NH3(Mo_NH3_3d)
+    # Get bare Mo to use as embed reference
+    Mo_3d = remove_NH3(single_conf)
     Mo_3d = Chem.AddHs(Mo_3d)
 
     # Change charge of the N bound to Mo to ensure sanitation works
@@ -237,11 +252,17 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
     Mo_N2.GetAtomWithIdx(match[1]).SetFormalCharge(1)
 
     # Embed catalyst
-    Mo_N2_3d = embed_rdkit(
-        mol=Mo_N2,
-        core=Mo_3d,
-        numConfs=1,
-    )
+    if scoring_args.get("ga_scoring", False):
+        Mo_N2_3d = embed_rdkit(
+            mol=Mo_N2, core=Mo_3d, numConfs=1, pruneRmsThresh=scoring_args["RMS_thresh"]
+        )
+    else:
+        Mo_N2_3d = embed_rdkit(
+            mol=Mo_N2,
+            core=core[0],
+            numConfs=scoring_args["n_confs"],
+            pruneRmsThresh=scoring_args["RMS_thresh"],
+        )
 
     with cd(scoring_args["output_dir"]):
 
@@ -252,18 +273,22 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_N2_3d, scoring_options=scoring_args)
 
         # Perform calculation
-        Mo_N2_energy, Mo_N2_3d_geom, minidx = optimizer.optimize_schrock()
+        optimized_mol2, energies2 = optimizer.optimize_schrock()
 
-    if Mo_N2_energy == 9999:
-        return 9999, None, None, None
+    confs = optimized_mol2.GetConformers()
+    if len(confs) == 0:
+        return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Handle the error and return if xtb did not converge
-    if None in (Mo_N2_energy, Mo_NH3_energy):
-        raise Exception(f"None of the XTB calculations converged")
-    De = (((Mo_N2_energy + NH3_ENERGY) - (Mo_NH3_energy + N2_ENERGY))) * hartree2kcalmol
-    print(f"diff energy: {De}")
+    energies2, new_mol2 = energy_filter(confs, energies2, optimized_mol2, scoring_args)
 
-    return De, Mo_N2_3d_geom, Mo_NH3_3d_geom, minidx
+    energy_diff = (
+        ((energies2.min() + NH3_ENERGY) - (energies.min() + N2_ENERGY))
+    ) * hartree2kcalmol
+    print(f"Score for top scoring conformer: {energy_diff}")
+
+    en_dict = {"energy1": energies, "energy2": energies2, "score": energy_diff}
+
+    return new_mol, new_mol2, en_dict
 
 
 def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
@@ -274,11 +299,6 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
             ligand (Chem.rdchem.Mol): ligand to put on Mo core
             scoring_args (dict): dict with all relevant args for xtb and general scoring
 
-        Returns:
-            De (float): Scoring energy
-            Mo_NH3_geom: Geometry of intermediate
-            Mo_NH3plus_3d_geom: Geometry of intermediate
-            minidx (int): Index of the lowest energy conformer
     """
 
     idx = ligand.idx
@@ -296,6 +316,7 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
         mol=Mo_NH3,
         core=core_NH3[0],
         numConfs=scoring_args["n_confs"],
+        pruneRmsThresh=scoring_args["RMS_thresh"],
     )
 
     with cd(scoring_args["output_dir"]):
@@ -307,16 +328,25 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
 
         # Perform calculation
-        Mo_NH3plus_energy, Mo_NH3plus_3d_geom, minidx = optimizer.optimize_schrock()
+        optimized_mol1, energies = optimizer.optimize_schrock()
 
-    # THIS VALUE IS HARDCODED IN xtb_pre_optimize!
-    if Mo_NH3plus_energy == 9999:
-        return 9999, None, None, None
+    confs = optimized_mol1.GetConformers()
+    if len(confs) == 0:
+        return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Remove higher energy conformers from mol object
-    discard_conf = [x for x in range(len(Mo_NH3_3d.GetConformers())) if x != minidx]
-    for elem in discard_conf:
-        Mo_NH3_3d.RemoveConformer(elem)
+    # Remove fonformers that are too far from the minimum energy conf
+    energies, new_mol = energy_filter(confs, energies, optimized_mol1, scoring_args)
+
+    single_conf = copy.deepcopy(new_mol)
+    if scoring_args.get("ga_scoring", False):
+        # Copy into new mol object
+        # Remove higher energy conformes from mol object
+        minidx = np.argmin(energies)
+        discard_conf = [
+            x for x in range(len(single_conf.GetConformers())) if x != minidx
+        ]
+        for elem in discard_conf:
+            single_conf.RemoveConformer(elem)
 
     with cd(scoring_args["output_dir"]):
 
@@ -324,21 +354,39 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
         scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3"
         scoring_args["charge"] = smi_dict["Mo_NH3"]["charge"]
         scoring_args["uhf"] = smi_dict["Mo_NH3"]["spin"]
-        optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
+        optimizer = XTB_optimize_schrock(mol=single_conf, scoring_options=scoring_args)
 
         # Perform calculation
-        Mo_NH3_energy, Mo_NH3_3d_geom, minidx = optimizer.optimize_schrock()
+        optimized_mol2, energies2 = optimizer.optimize_schrock()
 
-    if Mo_NH3_energy == 9999:
-        return 9999, None, None, None
+    confs = optimized_mol2.GetConformers()
+    if len(confs) == 0:
+        return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Handle the error and return if xtb did not converge
-    if None in (Mo_NH3_energy, Mo_NH3plus_energy):
-        raise Exception(f"None of the XTB calculations converged")
-    De = (Mo_NH3_energy - Mo_NH3plus_energy + CP_RED_ENERGY) * hartree2kcalmol
-    print(f"diff energy: {De}")
+    energies2, new_mol2 = energy_filter(confs, energies2, optimized_mol2, scoring_args)
 
-    return De, Mo_NH3_3d_geom, Mo_NH3plus_3d_geom, minidx
+    energy_diff = (energies2.min() - energies.min() + CP_RED_ENERGY) * hartree2kcalmol
+
+    print(f"Score for top scoring conformer: {energy_diff}")
+
+    en_dict = {"energy1": energies, "energy2": energies2, "score": energy_diff}
+
+    return new_mol, new_mol2, en_dict
+
+
+# "----- Scoring util -------
+def energy_filter(confs, energies, optimized_mol, scoring_args):
+
+    mask = energies < (energies.min() + scoring_args["energy_cutoff"])
+    print(mask, energies)
+    confs = list(np.array(confs)[mask])
+    new_mol = copy.deepcopy(optimized_mol)
+    new_mol.RemoveAllConformers()
+    for c in confs:
+        new_mol.AddConformer(c, assignId=True)
+    energies = energies[mask]
+
+    return energies, new_mol
 
 
 if __name__ == "__main__":

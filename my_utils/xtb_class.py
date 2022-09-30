@@ -1,4 +1,5 @@
 import concurrent.futures
+import copy
 import os
 import random
 import shutil
@@ -7,6 +8,8 @@ from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
+from rdkit.Chem.PropertyMol import PropertyMol
+from rdkit.Geometry import Point3D
 
 from my_utils.xtb_utils import check_bonds, run_xtb
 
@@ -217,10 +220,7 @@ class XTB_optimize_schrock(XTB_optimizer):
         """Optimize the given mol object
 
         Returns:
-            energy: Energy of the lowest energy conformer
-            geometry: Geometry of the lowest energy conformer
-            minidx : Idx of the lowest energy conformer
-
+            mol_opt: optimized mol object with all the conformers
         """
 
         # Check mol
@@ -323,7 +323,7 @@ class XTB_optimize_schrock(XTB_optimizer):
 
             result = self.optimize(args)
 
-        if self.options.get("full_relax", True):
+        if self.options.get("full_relax", False):
             self._constrain_N(self.mol, path=conf_paths, NH3=True, N2=True)
             # Optimize the Mo-N* bond
             args = [
@@ -340,28 +340,49 @@ class XTB_optimize_schrock(XTB_optimizer):
             result = self.optimize(args)
 
         print("Finished all optimizations")
+        # Add optimized conformers to mol_opt
+        mol_opt = copy.deepcopy(self.mol)
+        n_confs = mol_opt.GetNumConformers()
 
-        # Parse results
-        energies, geometries, minidx = self._get_results(result)
+        # Check if any organic bonds have formed/broken
+        bond_changes = check_bonds(
+            mol_opt,
+            conf_paths,
+            charge=self.options["charge"],
+        )
+
+        mol_opt.RemoveAllConformers()
+
+        energies = []
+        # Add optimized conformers
+        for i, res in enumerate(result):
+            if res:
+                if not bond_changes[i] and res["energy"]:
+                    energies.append(res["energy"])
+                    self._add_conformer2mol(
+                        mol=mol_opt,
+                        atoms=res["atoms"],
+                        coords=res["coords"],
+                        energy=res["energy"],
+                        bond_change=bond_changes[i],
+                    )
+            else:
+                print(f"Conformer {i} did not converge.")
+
+        # Reset confIDs (starting from 0)
+        confs = mol_opt.GetConformers()
+        print(len(confs))
+        for i in range(len(confs)):
+            confs[i].SetId(i)
+
+        # if "constrain_atoms" in options and len(options["constrain_atoms"]) > 0:
+        #    _ = AllChem.AlignMolConformers(mol_opt, atomIds=options["constrain_atoms"])
 
         # Clean up
         if self.options["cleanup"]:
             shutil.rmtree(self.name)
 
-        # Check if any organic bonds have formed/broken
-        final_geom, bond_change = check_bonds(
-            self.options.get("bare", False),
-            self.options["charge"],
-            conf_paths,
-            geometries,
-            minidx,
-            self.mol,
-            self.options.get("print_xyz", True),
-        )
-        if bond_change:
-            return 9999, None, None
-        else:
-            return energies[minidx], final_geom, minidx.item()
+        return mol_opt, np.array(energies)
 
     def _get_results(self, result):
         """Parse xtb output tuple"""
@@ -382,6 +403,19 @@ class XTB_optimize_schrock(XTB_optimizer):
             geometries = None
             minidx = None
             return energies, geometries, minidx
+
+    @staticmethod
+    def _add_conformer2mol(mol, atoms, coords, energy=None, bond_change=None):
+        """Add Conformer to rdkit.mol object."""
+        conf = Chem.Conformer()
+        for i in range(mol.GetNumAtoms()):
+            # assert that same atom type
+            assert (
+                mol.GetAtomWithIdx(i).GetSymbol() == atoms[i]
+            ), "Order of atoms if not the same in CREST output and rdkit Mol"
+            x, y, z = coords[i]
+            conf.SetAtomPosition(i, Point3D(x, y, z))
+        mol.AddConformer(conf, assignId=True)
 
     @staticmethod
     def _check_mol(mol):

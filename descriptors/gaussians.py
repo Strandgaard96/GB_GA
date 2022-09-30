@@ -1,5 +1,6 @@
-import numpy as np
 from typing import List
+
+import numpy as np
 
 
 def gaussian_modifier(score: float, target: float, sigma: float) -> float:

@@ -57,7 +57,15 @@ def slurm_scoring(sc_function, population, scoring_args):
     # Get the jobs results. Assign None variables if an error is returned for the given molecule
     # (np.nan, None, None, None) for (energy, geometry1, geometry2, minidx)
     results = [
-        catch(job.result, handle=lambda e: (np.nan, None, None, None)) for job in jobs
+        catch(
+            job.result,
+            handle=lambda e: (
+                None,
+                None,
+                {"energy1": None, "energy2": None, "score": np.nan},
+            ),
+        )
+        for job in jobs
     ]
 
     if scoring_args["cleanup"]:
@@ -111,7 +119,7 @@ def slurm_scoring_conformers(conformers, scoring_args):
     list_scoring = []
     for mol in conformers.molecules:
         tmp = scoring_args.copy()
-        tmp["output_dir"] = scoring_args["output_dir"]/mol.scoring_function
+        tmp["output_dir"] = scoring_args["output_dir"] / mol.scoring_function
         list_scoring.append(tmp)
 
     jobs = [
@@ -122,7 +130,15 @@ def slurm_scoring_conformers(conformers, scoring_args):
     # Get the jobs results. Assign None variables if an error is returned for the given molecule
     # (np.nan, None, None, None) for (energy, geometry1, geometry2, minidx)
     results = [
-        catch(job.result, handle=lambda e: (np.nan, None, None, None)) for job in jobs
+        catch(
+            job.result,
+            handle=lambda e: (
+                None,
+                None,
+                {"energy1": None, "energy2": None, "score": np.nan},
+            ),
+        )
+        for job in jobs
     ]
 
     if scoring_args["cleanup"]:

@@ -11,17 +11,17 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from tabulate import tabulate
 
+from descriptors.descriptors import (
+    number_of_rotatable_bonds_target,
+    number_of_rotatable_bonds_target_clipped,
+)
 from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
 from scoring.make_structures import (
     atom_remover,
-    single_atom_remover,
     create_prim_amine_revised,
     mol_with_atom_index,
-)
-from descriptors.descriptors import (
-    number_of_rotatable_bonds_target,
-    number_of_rotatable_bonds_target_clipped,
+    single_atom_remover,
 )
 
 _neutralize_reactions = None
@@ -40,6 +40,12 @@ class Individual:
         default_factory=Chem.rdchem.Mol, repr=False, compare=False
     )
     rdkit_mol_sa: Chem.rdchem.Mol = field(
+        default_factory=Chem.rdchem.Mol, repr=False, compare=False
+    )
+    optimized_mol1: Chem.rdchem.Mol = field(
+        default_factory=Chem.rdchem.Mol, repr=False, compare=False
+    )
+    optimized_mol2: Chem.rdchem.Mol = field(
         default_factory=Chem.rdchem.Mol, repr=False, compare=False
     )
     cut_idx: int = field(default=None, repr=False, compare=False)
@@ -135,21 +141,23 @@ class Generation:
                 reverse=reverse,
             )
 
-    def set_results(self, results):
+    def handle_results(self, results):
         """Extract the scoring results and set the properties on the
         Individual objects.
         """
-        energies = [res[0] for res in results]
-        geometries = [res[1] for res in results]
-        geometries2 = [res[2] for res in results]
-        min_conf = [res[3] for res in results]
+        optimized_mol1 = [res[0] for res in results]
+        optimized_mol2 = [res[1] for res in results]
+        en_dicts = [res[2] for res in results]
+        self.setprop("energy_dict", en_dicts)
 
-        self.setprop("energy", energies)
-        self.setprop("pre_score", energies)
-        self.setprop("structure", geometries)
-        self.setprop("structure2", geometries2)
-        self.setprop("min_conf", min_conf)
-        self.setprop("score", energies)
+        # Extract scores and set on the Individals
+        self.setprop("score", [en["score"] for en in en_dicts])
+        self.setprop("pre_score", [en["score"] for en in en_dicts])
+        self.setprop("energy", [en["score"] for en in en_dicts])
+
+        for mol, opt1, opt2 in zip(self.molecules, optimized_mol1, optimized_mol2):
+            mol.optimized_mol1 = opt1
+            mol.optimized_mol2 = opt2
 
     def reweigh_rotatable_bonds(self, nrb_target=4, nrb_standard_deviation=2):
 
@@ -259,7 +267,6 @@ class Generation:
         supresss_amines: Decides whether primary amines other than the
         attachment point are changed to hydrogen.
         """
-
         # Loop over molecules in popualtion
         for mol in self.molecules:
 
@@ -406,11 +413,8 @@ class Generation:
         """Set sa score. If score is high, then score is not modified"""
         for individual, sa_score in zip(self.molecules, sa_scores):
             individual.sa_score = sa_score
-            if individual.score > 5000:
-                continue
-            else:
-                # Scale the score with the sa_score (which is max 1)
-                individual.score = sa_score * individual.pre_score
+            # Scale the score with the sa_score (which is max 1)
+            individual.score = sa_score * individual.pre_score
 
 
 @dataclass(order=True)
@@ -481,3 +485,21 @@ class Conformers:
         self.setprop("structure2", geometries2)
         self.setprop("min_conf", min_conf)
         self.setprop("score", energies)
+
+    def handle_results(self, results):
+        """Extract the scoring results and set the properties on the
+        Individual objects.
+        """
+        optimized_mol1 = [res[0] for res in results]
+        optimized_mol2 = [res[1] for res in results]
+        en_dicts = [res[2] for res in results]
+        self.setprop("energy_dict", en_dicts)
+
+        # Extract scores and set on the Individals
+        self.setprop("score", [en["score"] for en in en_dicts])
+        self.setprop("pre_score", [en["score"] for en in en_dicts])
+        self.setprop("energy", [en["score"] for en in en_dicts])
+
+        for mol, opt1, opt2 in zip(self.molecules, optimized_mol1, optimized_mol2):
+            mol.optimized_mol1 = opt1
+            mol.optimized_mol2 = opt2

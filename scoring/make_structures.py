@@ -240,7 +240,9 @@ def create_prim_amine_revised(input_ligand):
     dummy = Chem.MolFromSmiles("*")
 
     # Match Secondary or Tertiary amines
-    matches = input_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H1,H0;!$(*n);!$(*N)]"))
+    matches = input_ligand.GetSubstructMatches(
+        Chem.MolFromSmarts("[NX3;H1,H0;!$(*n);!$(*N)]")
+    )
     if not matches:
         raise Exception(
             f"{Chem.MolToSmiles(Chem.RemoveHs(input_ligand))} constains no amines to split on"
@@ -281,11 +283,13 @@ def create_prim_amine_revised(input_ligand):
         # Create list of tuples that contain the amine idx and idx of each of the three
         # neighbors that are not another amine.
 
-        banned_atoms = [7,8]
+        banned_atoms = [7, 8]
         for x in atom.GetNeighbors():
-            if (x.GetAtomicNum() == 12):
+            if x.GetAtomicNum() == 12:
                 indices = [(match[0], x.GetIdx())]
-            elif (x.GetAtomicNum() not in banned_atoms) and not (input_ligand.GetBondBetweenAtoms(match[0], x.GetIdx()).IsInRing()):
+            elif (x.GetAtomicNum() not in banned_atoms) and not (
+                input_ligand.GetBondBetweenAtoms(match[0], x.GetIdx()).IsInRing()
+            ):
                 indices = [(match[0], x.GetIdx())]
 
         # Break loop of a valid match is found

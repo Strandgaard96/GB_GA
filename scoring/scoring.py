@@ -219,6 +219,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
 
         # Perform calculation
+        print('scoring part 1')
         optimized_mol1, energies = optimizer.optimize_schrock()
 
     confs = optimized_mol1.GetConformers()
@@ -226,16 +227,19 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
     # Remove fonformers that are too far from the minimum energy conf
+    print('filtering')
     energies, new_mol = energy_filter(confs, energies, optimized_mol1, scoring_args)
 
     single_conf = copy.deepcopy(new_mol)
 
+    print('removing min confs')
     minidx = np.argmin(energies)
     discard_conf = [x for x in range(len(single_conf.GetConformers())) if x != minidx]
     for elem in discard_conf:
         single_conf.RemoveConformer(elem)
 
     # Replace NH3 with N2
+    print('replace substruct')
     Mo_N2 = Chem.ReplaceSubstructs(
         single_conf,
         Chem.AddHs(Chem.MolFromSmarts("[NH3]")),
@@ -252,6 +256,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
     Mo_N2.GetAtomWithIdx(match[1]).SetFormalCharge(1)
 
     # Embed catalyst
+    print('ga_scoring')
     if scoring_args.get("ga_scoring", False):
         Mo_N2_3d = embed_rdkit(
             mol=Mo_N2, core=Mo_3d, numConfs=1, pruneRmsThresh=scoring_args["RMS_thresh"]
@@ -273,6 +278,7 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_N2_3d, scoring_options=scoring_args)
 
         # Perform calculation
+        print('score part 2')
         optimized_mol2, energies2 = optimizer.optimize_schrock()
 
     confs = optimized_mol2.GetConformers()
@@ -392,28 +398,25 @@ def energy_filter(confs, energies, optimized_mol, scoring_args):
 if __name__ == "__main__":
 
     # Current dir:
-    gen = Path("/home/magstr/generation_data/prod_new15_large_0/GA50.pkl")
+    gen = Path("/home/magstr/Documents/GB_GA/debug/35980807_9_submitted.pkl")
 
     # 370399_submitted.pkl
     with open(gen, "rb") as f:
         gen0 = pickle.load(f)
-    ind = gen0.new_molecules[10]
+    ind = gen0.args[0]
 
-    dic = {
-        "cpus_per_task": 3,
-        "n_confs": 1,
-        "cleanup": False,
-        "output_dir": "debug",
-        "method": "2",
-    }
+    dic = gen0.args[1]
+    dic['cpus_per_task'] = 4
+    dic['n_confs'] = 2
+
 
     # METHYL SIMPLE
-    ind = Individual(
-        rdkit_mol=Chem.MolFromSmiles("Nc1cc([O-])c(F)c([O-])c1"), cut_idx=6, idx=(0, 0)
-    )
+    #ind = Individual(
+    #    rdkit_mol=Chem.MolFromSmiles("Nc1cc([O-])c(F)c([O-])c1"), cut_idx=6, idx=(0, 0)
+    #)
 
     # The three scoring functions
-    # res = rdkit_embed_scoring_NH3toN2(ind, dic)
-    res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
+    res = rdkit_embed_scoring_NH3toN2(ind, dic)
+    #res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
     # res = rdkit_embed_scoring(ind, dic)
     print("YOU MAAAADE IT")

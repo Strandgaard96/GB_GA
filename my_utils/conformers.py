@@ -253,15 +253,16 @@ def main():
     )
 
     # Submit population for scoring with many conformers
-    # results = sc.slurm_scoring_conformers(conformers, args_dict)
-    # conformers.handle_results(results)
+    results = sc.slurm_scoring_conformers(conformers, args_dict)
+    conformers.handle_results(results)
 
     # Save the results:
-    # conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
+    conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
     print("Done with XTB conformational search, Submitting DFT calcs")
     conformersearch_dft_driver(args)
 
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

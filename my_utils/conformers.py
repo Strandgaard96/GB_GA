@@ -10,6 +10,7 @@ import time
 from ast import literal_eval as make_tuple
 from copy import deepcopy
 from pathlib import Path
+import json
 
 import pandas as pd
 from rdkit import Chem
@@ -19,6 +20,7 @@ sys.path.insert(0, str(source))
 
 from dft.orca_driver import conformersearch_dft_driver
 from my_utils.classes import Conformers, Individual
+from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc
 from scoring.scoring import (
     rdkit_embed_scoring,
@@ -58,7 +60,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--n_confs",
         type=int,
-        default=4,
+        default=3,
         help="How many conformers to generate",
     )
     parser.add_argument(
@@ -169,7 +171,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--energy_cutoff",
         type=float,
-        default=0.0319,
+        default=0.0159,
         help="Cutoff for conformer energies in hartree",
     )
     return parser.parse_args(arg_list)
@@ -202,8 +204,8 @@ def get_start_population_from_csv(file=None):
 
 def get_start_population_debug(file=None):
 
-    mols = [Chem.MolFromSmiles(x) for x in ["CN", "CCN"]]
-    scoring = ["rdkit_embed_scoring", "rdkit_embed_scoring"]
+    mols = [Chem.MolFromSmiles(x) for x in ["CCN", "CCCN"]]
+    scoring = ["rdkit_embed_scoring_NH3toN2", "rdkit_embed_scoring_NH3toN2"]
 
     # Match
     matches = [mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]")) for mol in mols]
@@ -252,6 +254,24 @@ def main():
         exist_ok=True, parents=True
     )
 
+    # Setup logger
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)-5.5s]  %(message)s",
+        handlers=[
+            logging.FileHandler(
+                os.path.join(args_dict["output_dir"], "printlog.txt"), mode="w"
+            ),
+            logging.StreamHandler(),  # For debugging. Can be removed on remote
+        ],
+    )
+
+    # Log current git commit
+    logging.info("Current git hash: %s", get_git_revision_short_hash())
+
+    # Log the argparse set values
+    logging.info("Input args: %r", args)
+
     # Submit population for scoring with many conformers
     results = sc.slurm_scoring_conformers(conformers, args_dict)
     conformers.handle_results(results)
@@ -263,6 +283,7 @@ def main():
     conformersearch_dft_driver(args)
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

@@ -358,6 +358,7 @@ class XTB_optimize_schrock(XTB_optimizer):
         for i, res in enumerate(result):
             if res:
                 if not bond_changes[i] and res["energy"]:
+
                     energies.append(res["energy"])
                     self._add_conformer2mol(
                         mol=mol_opt,

@@ -154,7 +154,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--energy_cutoff",
         type=float,
-        default=0.0319,
+        default=0.0159,
         help="Cutoff for conformer energies",
     )
     parser.add_argument("--bond_opt", action="store_true")
@@ -227,6 +227,10 @@ def GA(args):
 
     # Score initial population
     results = sc.slurm_scoring(args["scoring_function"], population, args)
+
+    # Load GA object
+    # with open(f"debug/GA_debug_firstit.pkl", "rb") as f:
+    #    population = pickle.load(f)
 
     # Set results and do some rdkit hack to prevent weird molecules
     population.handle_results(results)

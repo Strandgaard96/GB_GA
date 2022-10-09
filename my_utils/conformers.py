@@ -1,5 +1,6 @@
 import argparse
 import copy
+import json
 import logging
 import os
 import pathlib
@@ -10,7 +11,6 @@ import time
 from ast import literal_eval as make_tuple
 from copy import deepcopy
 from pathlib import Path
-import json
 
 import pandas as pd
 from rdkit import Chem
@@ -22,11 +22,9 @@ from dft.orca_driver import conformersearch_dft_driver
 from my_utils.classes import Conformers, Individual
 from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc
-from scoring.scoring import (
-    rdkit_embed_scoring,
-    rdkit_embed_scoring_NH3plustoNH3,
-    rdkit_embed_scoring_NH3toN2,
-)
+from scoring.scoring import (rdkit_embed_scoring,
+                             rdkit_embed_scoring_NH3plustoNH3,
+                             rdkit_embed_scoring_NH3toN2)
 
 ORCA_COMMANDS = {
     "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",
@@ -130,6 +128,7 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--write_db", action="store_true")
     parser.add_argument("--cleanup", action="store_true")
+    parser.add_argument("--dft", action="store_true")
     parser.add_argument(
         "--calc_dir",
         type=Path,
@@ -280,7 +279,8 @@ def main():
     conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
     print("Done with XTB conformational search, Submitting DFT calcs")
-    conformersearch_dft_driver(args)
+    if args.dft:
+        conformersearch_dft_driver(args)
 
     sys.exit(0)
 

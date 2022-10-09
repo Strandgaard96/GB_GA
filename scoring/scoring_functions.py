@@ -15,11 +15,9 @@ from rdkit import Chem, rdBase
 from rdkit.Chem import rdFMCS
 
 from my_utils.xtb_utils import extract_energyxtb, write_to_db
-from scoring.scoring import (
-    rdkit_embed_scoring,
-    rdkit_embed_scoring_NH3plustoNH3,
-    rdkit_embed_scoring_NH3toN2,
-)
+from scoring.scoring import (rdkit_embed_scoring,
+                             rdkit_embed_scoring_NH3plustoNH3,
+                             rdkit_embed_scoring_NH3toN2, scoring_submitter)
 
 funcs = {
     "rdkit_embed_scoring": rdkit_embed_scoring,
@@ -107,25 +105,21 @@ def slurm_scoring_conformers(conformers, scoring_args):
         folder=Path(scoring_args["output_dir"]) / "scoring_tmp",
         slurm_max_num_timeout=0,
     )
+    mem_per_cpu = (scoring_args["memory"]*1000)//scoring_args["cpus_per_task"]
     executor.update_parameters(
         name=f"conformer_search",
         cpus_per_task=scoring_args["cpus_per_task"],
-        slurm_mem_per_cpu="500MB",
+        slurm_mem_per_cpu=f"{mem_per_cpu}MB",
         timeout_min=scoring_args["timeout"],
         slurm_partition=scoring_args["partition"],
-        slurm_array_parallelism=100,
+        slurm_array_parallelism=20,
     )
 
-    list_scoring = []
-    for mol in conformers.molecules:
-        tmp = scoring_args.copy()
-        tmp["output_dir"] = scoring_args["output_dir"] / mol.scoring_function
-        list_scoring.append(tmp)
-
-    jobs = [
-        executor.submit(funcs[mol.scoring_function], mol, scoring_args)
-        for mol, scoring_args in zip(conformers.molecules, list_scoring)
-    ]
+    jobs = executor.map_array(
+        scoring_submitter,
+        conformers.molecules,
+        [scoring_args for c in conformers.molecules],
+    )
 
     # Get the jobs results. Assign None variables if an error is returned for the given molecule
     # (np.nan, None, None, None) for (energy, geometry1, geometry2, minidx)

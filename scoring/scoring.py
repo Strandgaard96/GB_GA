@@ -20,16 +20,9 @@ scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from make_structures import (
-    connect_ligand,
-    connectMols,
-    create_dummy_ligand,
-    create_prim_amine_revised,
-    embed_rdkit,
-    mol_with_atom_index,
-    remove_N2,
-    remove_NH3,
-)
+from make_structures import (connect_ligand, connectMols, create_dummy_ligand,
+                             create_prim_amine_revised, embed_rdkit,
+                             mol_with_atom_index, remove_N2, remove_NH3)
 
 from my_utils.classes import Generation, Individual
 from my_utils.utils import cd
@@ -86,6 +79,23 @@ with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
 Dictionary that contains the smiles string for each N-related intermediate
 and the charge and spin for the specific intermediate
 """
+
+
+def scoring_submitter(mol, scoring_args):
+
+    scoring_args["output_dir"] = scoring_args["output_dir"] / mol.scoring_function
+
+    if mol.scoring_function == "rdkit_embed_scoring":
+        new_mol, new_mol2, en_dict = rdkit_embed_scoring(mol, scoring_args)
+    elif mol.scoring_function == "rdkit_embed_scoring_NH3toN2":
+        new_mol, new_mol2, en_dict = rdkit_embed_scoring_NH3toN2(mol, scoring_args)
+    elif mol.scoring_function == "rdkit_embed_scoring_NH3plustoNH3":
+        new_mol, new_mol2, en_dict = rdkit_embed_scoring_NH3plustoNH3(mol, scoring_args)
+    else:
+        print("Non valid scoring function")
+        return None
+
+    return new_mol, new_mol2, en_dict
 
 
 def rdkit_embed_scoring(ligand, scoring_args):

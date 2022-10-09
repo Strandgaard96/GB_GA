@@ -31,9 +31,7 @@ class XTB_optimizer:
         # xtb runner function
         self.xtb_runner = run_xtb
         # xtb options
-        self.XTB_OPTIONS = {
-            "opt": "tight",
-        }
+        self.XTB_OPTIONS = {}
 
         # Start with ff optimization
         cmd = f"xtb --gfn{self.method}"

@@ -132,7 +132,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--calc_dir",
         type=Path,
-        default="debug",
+        default="debug_conformer",
         help="Path to folder containing xyz files",
     )
     parser.add_argument(
@@ -276,7 +276,10 @@ def main():
     conformers.handle_results(results)
 
     # Save the results:
-    conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
+    #conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
+
+    #with open("/home/magstr/Documents/GB_GA/debug_conformer/Conformers.pkl", "rb") as f:
+    #    conf = pickle.load(f)
 
     print("Done with XTB conformational search, Submitting DFT calcs")
     if args.dft:

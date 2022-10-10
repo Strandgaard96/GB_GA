@@ -379,7 +379,10 @@ class XTB_optimize_schrock(XTB_optimizer):
 
         # Clean up
         if self.options["cleanup"]:
-            shutil.rmtree(self.name)
+            if len(confs) == 0:
+                pass
+            else:
+                shutil.rmtree(self.name)
 
         return mol_opt, np.array(energies)
 

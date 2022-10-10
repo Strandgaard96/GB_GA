@@ -440,6 +440,10 @@ def conformersearch_dft_driver(args):
 
         xyzfile = "struct.xyz"
 
+        if not molecule.optimized_mol1:
+            print(f'None for {molecule.idx}, {molecule.scoring_function}')
+            continue
+
         # Resort conformers by energy
         confs = molecule.optimized_mol1.GetConformers()
         energies = molecule.energy_dict["energy1"]

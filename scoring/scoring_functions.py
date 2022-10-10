@@ -136,7 +136,7 @@ def slurm_scoring_conformers(conformers, scoring_args):
     ]
 
     if scoring_args["cleanup"]:
-        shutil.rmtree("scoring_tmp")
+        shutil.rmtree(Path(scoring_args["output_dir"])/"scoring_tmp")
 
     # Collect results in database
     if scoring_args["write_db"]:

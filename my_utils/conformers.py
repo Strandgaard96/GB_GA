@@ -272,14 +272,16 @@ def main():
     logging.info("Input args: %r", args)
 
     # Submit population for scoring with many conformers
-    results = sc.slurm_scoring_conformers(conformers, args_dict)
-    conformers.handle_results(results)
+    # results = sc.slurm_scoring_conformers(conformers, args_dict)
+    # conformers.handle_results(results)
 
     # Save the results:
-    #conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
+    # conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
-    #with open("/home/magstr/Documents/GB_GA/debug_conformer/Conformers.pkl", "rb") as f:
-    #    conf = pickle.load(f)
+    with open(
+        "/home/magstr/dft_data/prod_new26_2score_large_0/23_20/Mo_NH3/ind.pkl", "rb"
+    ) as f:
+        conf = pickle.load(f)
 
     print("Done with XTB conformational search, Submitting DFT calcs")
     if args.dft:

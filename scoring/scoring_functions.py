@@ -105,7 +105,7 @@ def slurm_scoring_conformers(conformers, scoring_args):
         folder=Path(scoring_args["output_dir"]) / "scoring_tmp",
         slurm_max_num_timeout=0,
     )
-    mem_per_cpu = (scoring_args["memory"]*1000)//scoring_args["cpus_per_task"]
+    mem_per_cpu = (scoring_args["memory"] * 1000) // scoring_args["cpus_per_task"]
     executor.update_parameters(
         name=f"conformer_search",
         cpus_per_task=scoring_args["cpus_per_task"],
@@ -136,7 +136,7 @@ def slurm_scoring_conformers(conformers, scoring_args):
     ]
 
     if scoring_args["cleanup"]:
-        shutil.rmtree(Path(scoring_args["output_dir"])/"scoring_tmp")
+        shutil.rmtree(Path(scoring_args["output_dir"]) / "scoring_tmp")
 
     # Collect results in database
     if scoring_args["write_db"]:
@@ -210,6 +210,31 @@ def slurm_molS(sc_function, scoring_args):
 
 
 def slurm_molS_xtb(sc_function, scoring_args):
+    """
+    Function is outdated and should be updated. Was used to submit all
+    intermediates to xtb calcs after molS was used to create them.
+    """
+    executor = submitit.AutoExecutor(
+        folder=scoring_args[-1] / "scoring_tmp",
+        slurm_max_num_timeout=0,
+    )
+    executor.update_parameters(
+        name=f"xtb",
+        cpus_per_task=scoring_args[-2],
+        slurm_mem_per_cpu="2GB",
+        timeout_min=10,
+        slurm_partition="kemi1",
+        slurm_array_parallelism=2,
+    )
+
+    job = executor.submit(sc_function, scoring_args)
+
+    results = catch(job.result, handle=lambda e: (None, None))
+
+    return results
+
+
+def slurm_conformer_dft(sc_function, scoring_args):
     """
     Function is outdated and should be updated. Was used to submit all
     intermediates to xtb calcs after molS was used to create them.

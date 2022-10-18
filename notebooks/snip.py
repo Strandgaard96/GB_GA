@@ -342,7 +342,7 @@ def rdkit_embed_scoring_calc(N2_NH3, NH3):
     return delta
 
 
-def rdkit_embed_scoring_NH3toN2_calc(NH3, N2):
+def rdkit_embed_scoring_NH3toN2_calc(N2, NH3):
     delta = (N2.min() * kcal + reactions_dft_orca_sarcJ_tzp["NH3"]) - (
         NH3.min() * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
     )

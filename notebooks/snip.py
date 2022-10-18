@@ -367,9 +367,6 @@ def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
 def main():
     folder = Path("/home/magstr/Documents/GB_GA/notebooks/debug")
     f = sorted(folder.glob("*"))
-    total_df = pd.DataFrame(
-        columns=["score", "energy", "sa_score", "rdkit_mol", "DFT", "smiles"]
-    )
     for elem in f:
 
         # Load GA object
@@ -396,11 +393,9 @@ def main():
         df["DFT"] = df["DFT"].apply(lambda x: round(x, 1))
         df.sort_values(by=["DFT"], inplace=True)
 
-        total_df = pd.concat([total_df, df])
-
     print("saving")
     # Save DF
-    total_df.to_csv("df.csv")
+    df.to_csv("df.csv")
 
 
 if __name__ == "__main__":

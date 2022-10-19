@@ -291,8 +291,6 @@ def get_energy_dicts():
 
 
 def extract_scoring(mol_path, reverse=False, scoring=None):
-    inds = []
-    deltas = []
 
     keys = {
         "rdkit_embed_scoring": ["Mo_N2_NH3", "Mo_NH3"],
@@ -322,23 +320,22 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
         else:
             delta = funcs[scoring](first_all, second_all)
 
-    deltas.append(delta)
-
     res = sorted(mol_path.rglob("*ind.pkl"))
     # Get the ind object
     try:
         ind_path = res[0]
         with open(ind_path, "rb") as f:
             ind = pickle.load(f)
-            inds.append(ind)
     except:
-        inds.append(None)
+        ind = None
 
-    return inds, deltas
+    return ind, delta
 
 
 def rdkit_embed_scoring_calc(N2_NH3, NH3):
-    delta = N2_NH3.min() * kcal - (NH3.min() * kcal + reactions_dft_orca_sarcJ_tzp["N2"])
+    delta = N2_NH3.min() * kcal - (
+        NH3.min() * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
+    )
     return delta
 
 
@@ -350,7 +347,11 @@ def rdkit_embed_scoring_NH3toN2_calc(N2, NH3):
 
 
 def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
-    delta = NH3.min() * kcal - NH3plus.min() * kcal + reactions_dft_orca_sarcJ_tzp["delta_Cp"]
+    delta = (
+        NH3.min() * kcal
+        - NH3plus.min() * kcal
+        + reactions_dft_orca_sarcJ_tzp["delta_Cp"]
+    )
     return delta
 
 
@@ -367,6 +368,8 @@ def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
 def main():
     folder = Path("/home/magstr/Documents/GB_GA/notebooks/debug")
     f = sorted(folder.glob("*"))
+    total_inds = []
+    deltas = []
     for elem in f:
 
         # Load GA object
@@ -375,7 +378,7 @@ def main():
 
         keys = [p.name for p in sorted(elem.glob("*"))]
 
-        reverse=False
+        reverse = False
         if "Mo_NH3" and "Mo_NH3+" in keys:
             scoring = "rdkit_embed_scoring_NH3plustoNH3"
         elif "Mo_NH3" and "Mo_N2" in keys:
@@ -384,14 +387,16 @@ def main():
         elif "Mo_NH3" and "Mo_N2_NH3" in keys:
             scoring = "rdkit_embed_scoring"
         print(scoring, elem)
-        inds, deltas = extract_scoring(elem, scoring=scoring, reverse=reverse)
+        ind, delta = extract_scoring(elem, scoring=scoring, reverse=reverse)
+        total_inds.append(ind)
+        deltas.append(delta)
 
-        gen = Generation(molecules=inds)
-        df = gen.gen2pd()
-        df["DFT"] = deltas
-        df["score"] = df["score"].apply(lambda x: round(x, 1))
-        df["DFT"] = df["DFT"].apply(lambda x: round(x, 1))
-        df.sort_values(by=["DFT"], inplace=True)
+    gen = Generation(molecules=total_inds)
+    df = gen.gen2pd()
+    df["DFT"] = deltas
+    df["score"] = df["score"].apply(lambda x: round(x, 1))
+    df["DFT"] = df["DFT"].apply(lambda x: round(x, 1))
+    df.sort_values(by=["DFT"], inplace=True)
 
     print("saving")
     # Save DF

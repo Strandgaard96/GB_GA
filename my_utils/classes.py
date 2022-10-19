@@ -232,7 +232,7 @@ class Generation:
 
     def gen2pd(
         self,
-        columns=["score", "energy", "sa_score", "smiles", "cut_idx"],
+        columns=["cut_idx", "score", "energy", "sa_score", "smiles"],
     ):
         """Get dataframe of population"""
         df = pd.DataFrame(

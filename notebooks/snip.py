@@ -130,7 +130,7 @@ def read_properties_sp(logfile):
                 scf_energy = float(line.split()[4])
                 break
             else:
-                scf_energy = None
+                scf_energy = np.nan
 
     return scf_energy
 
@@ -326,30 +326,30 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
         ind_path = res[0]
         with open(ind_path, "rb") as f:
             ind = pickle.load(f)
-    except:
-        ind = None
-
+    except Exception as e:
+        print(e)
+        ind = Individual(rdkit_mol=Chem.MolFromSmiles('CN'))
     return ind, delta
 
 
 def rdkit_embed_scoring_calc(N2_NH3, NH3):
-    delta = N2_NH3.min() * kcal - (
-        NH3.min() * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
+    delta = np.nanmin(N2_NH3) * kcal - (
+        np.nanmin(NH3) * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
     )
     return delta
 
 
 def rdkit_embed_scoring_NH3toN2_calc(N2, NH3):
-    delta = (N2.min() * kcal + reactions_dft_orca_sarcJ_tzp["NH3"]) - (
-        NH3.min() * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
+    delta = (np.nanmin(N2) * kcal + reactions_dft_orca_sarcJ_tzp["NH3"]) - (
+        np.nanmin(NH3) * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
     )
     return delta
 
 
 def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
     delta = (
-        NH3.min() * kcal
-        - NH3plus.min() * kcal
+        np.nanmin(NH3) * kcal
+        - np.nanmin(NH3plus) * kcal
         + reactions_dft_orca_sarcJ_tzp["delta_Cp"]
     )
     return delta
@@ -366,10 +366,11 @@ def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
 
 
 def main():
-    folder = Path("/home/magstr/Documents/GB_GA/notebooks/debug")
+    folder = Path(str(sys.argv[1]))
     f = sorted(folder.glob("*"))
     total_inds = []
     deltas = []
+    scoring_col = []
     for elem in f:
 
         # Load GA object
@@ -378,22 +379,24 @@ def main():
 
         keys = [p.name for p in sorted(elem.glob("*"))]
 
-        reverse = False
         if "Mo_NH3" and "Mo_NH3+" in keys:
             scoring = "rdkit_embed_scoring_NH3plustoNH3"
         elif "Mo_NH3" and "Mo_N2" in keys:
-            reverse = True
             scoring = "rdkit_embed_scoring_NH3toN2"
         elif "Mo_NH3" and "Mo_N2_NH3" in keys:
             scoring = "rdkit_embed_scoring"
-        print(scoring, elem)
-        ind, delta = extract_scoring(elem, scoring=scoring, reverse=reverse)
+
+        #print(scoring, elem)
+        ind, delta = extract_scoring(elem, scoring=scoring)
         total_inds.append(ind)
         deltas.append(delta)
+        scoring_col.append(scoring)
+    print(scoring_col,deltas)
 
     gen = Generation(molecules=total_inds)
     df = gen.gen2pd()
     df["DFT"] = deltas
+    df["scoring"] = scoring_col
     df["score"] = df["score"].apply(lambda x: round(x, 1))
     df["DFT"] = df["DFT"].apply(lambda x: round(x, 1))
     df.sort_values(by=["DFT"], inplace=True)

@@ -19,7 +19,7 @@ source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 
 from dft.orca_driver import conformersearch_dft_driver
-from my_utils.classes import Conformers, Individual
+from my_utils.classes import Conformers, Generation, Individual
 from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc
 from scoring.scoring import (rdkit_embed_scoring,
@@ -203,7 +203,7 @@ def get_start_population_from_csv(file=None):
 
 def get_start_population_debug(file=None):
 
-    mols = [Chem.MolFromSmiles(x) for x in ["CCN", "CCCN"]]
+    mols = [Chem.MolFromSmiles(x) for x in ["CCN", "CC(N)CC(=Cc1ccccc1)C1CC1"]]
     scoring = ["rdkit_embed_scoring_NH3toN2", "rdkit_embed_scoring_NH3toN2"]
 
     # Match
@@ -278,11 +278,6 @@ def main():
     # Save the results:
     # conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
-    with open(
-        "/home/magstr/dft_data/prod_new26_2score_large_0/23_20/Mo_NH3/ind.pkl", "rb"
-    ) as f:
-        conf = pickle.load(f)
-
     print("Done with XTB conformational search, Submitting DFT calcs")
     if args.dft:
         conformersearch_dft_driver(args)
@@ -291,4 +286,12 @@ def main():
 
 
 if __name__ == "__main__":
+    # Load GA object
+    with open(f"debug/rest/Conformers.pkl", "rb") as f:
+        conf = pickle.load(f)
+
+    with open(f"debug/hundred2/Conformers.pkl", "rb") as f:
+        conf2 = pickle.load(f)
+    # c = Conformers(molecules=[conf.molecules[41]])
+    # c.save('debug/', name='tmpconf.pkl')
     main()

@@ -297,6 +297,7 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
         "rdkit_embed_scoring_NH3toN2": ["Mo_NH3", "Mo_N2"],
         "rdkit_embed_scoring_NH3plustoNH3": ["Mo_NH3+", "Mo_NH3"],
     }
+    min_paths = []
 
     p_1 = mol_path / keys[scoring][0]
     p_2 = mol_path / keys[scoring][1]
@@ -320,6 +321,11 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
         else:
             delta = funcs[scoring](first_all, second_all)
 
+        # Get min paths
+        min_paths.append(
+            (str(p1[np.nanargmin(first_all)]), str(p2[np.nanargmin(second_all)]))
+        )
+
     res = sorted(mol_path.rglob("*ind.pkl"))
     # Get the ind object
     try:
@@ -328,8 +334,8 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
             ind = pickle.load(f)
     except Exception as e:
         print(e)
-        ind = Individual(rdkit_mol=Chem.MolFromSmiles('CN'))
-    return ind, delta
+        ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"))
+    return ind, delta, min_paths
 
 
 def rdkit_embed_scoring_calc(N2_NH3, NH3):
@@ -371,6 +377,7 @@ def main():
     total_inds = []
     deltas = []
     scoring_col = []
+    min_confs = []
     for elem in f:
 
         # Load GA object
@@ -386,24 +393,40 @@ def main():
         elif "Mo_NH3" and "Mo_N2_NH3" in keys:
             scoring = "rdkit_embed_scoring"
 
-        #print(scoring, elem)
-        ind, delta = extract_scoring(elem, scoring=scoring)
+        print(scoring, elem)
+        ind, delta, min_paths = extract_scoring(elem, scoring=scoring)
         total_inds.append(ind)
         deltas.append(delta)
         scoring_col.append(scoring)
-    print(scoring_col,deltas)
+        min_confs.append(min_paths)
+    print(scoring_col, deltas)
 
     gen = Generation(molecules=total_inds)
     df = gen.gen2pd()
     df["DFT"] = deltas
     df["scoring"] = scoring_col
+    df["min_confs"] = min_confs
     df["score"] = df["score"].apply(lambda x: round(x, 1))
     df["DFT"] = df["DFT"].apply(lambda x: round(x, 1))
     df.sort_values(by=["DFT"], inplace=True)
 
     print("saving")
     # Save DF
-    df.to_csv("df.csv")
+    df.to_csv(f"{sys.argv[1]}.csv")
+
+
+# Prep Conformers .pkl to perform DFT opts on.
+def prep_dft_optimization_candidates():
+
+    # Create output dir
+
+    # Copy orca.sh, struct.xyz, orca.inp into output dir
+
+    # Add OPT to orca.inp file
+
+    # Submit the calc.
+
+    return
 
 
 if __name__ == "__main__":

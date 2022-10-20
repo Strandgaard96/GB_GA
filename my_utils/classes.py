@@ -471,7 +471,7 @@ class Conformers:
             if value:
                 getattr(molecule, prop).append(value)
 
-    def sortby(self, prop, reverse=True):
+    def sortby(self, prop, reverse=False):
         """Sort molecule based on score"""
         if reverse:
             self.molecules.sort(

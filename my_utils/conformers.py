@@ -272,11 +272,11 @@ def main():
     logging.info("Input args: %r", args)
 
     # Submit population for scoring with many conformers
-    # results = sc.slurm_scoring_conformers(conformers, args_dict)
-    # conformers.handle_results(results)
+    results = sc.slurm_scoring_conformers(conformers, args_dict)
+    conformers.handle_results(results)
 
     # Save the results:
-    # conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
+    conformers.save(directory=args.output_dir, name=f"Conformers.pkl")
 
     print("Done with XTB conformational search, Submitting DFT calcs")
     if args.dft:
@@ -292,6 +292,16 @@ if __name__ == "__main__":
 
     with open(f"debug/hundred2/Conformers.pkl", "rb") as f:
         conf2 = pickle.load(f)
+
+    for mol in conf2.molecules:
+        if not mol.optimized_mol1:
+            print(f"None for {mol.idx}, {mol.scoring_function}")
+            continue
+    for mol in conf.molecules:
+        if not mol.optimized_mol2:
+            print(f"None for {mol.idx}, {mol.scoring_function}")
+            continue
+
     # c = Conformers(molecules=[conf.molecules[41]])
     # c.save('debug/', name='tmpconf.pkl')
     main()

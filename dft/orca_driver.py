@@ -184,7 +184,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--no_molecules",
         type=int,
-        default=[0, 3],
+        default=[0, 10],
         nargs="+",
         help="How many of the top molecules to do DFT on",
     )
@@ -249,7 +249,7 @@ def conformer_opt(args):
     # Load conformer pickle object
     with open(args.conformer_file, "rb") as f:
         conf = pickle.load(f)
-    conf.sortby(prop='dft_singlepoint_conf', reverse=True)
+    conf.sortby(prop='dft_singlepoint_conf')
 
     # Create output folder
     args.output_dir.mkdir(exist_ok=True)
@@ -492,7 +492,7 @@ def conformersearch_dft_driver(args):
         conf = pickle.load(f)
 
     # Loop over all the structures with no bond changes
-    for molecule in conf.molecules:
+    for i, molecule in enumerate(conf.molecules):
 
         # THE ORDERING OF THE KEYS MATTER HERE
         # Get scoring intermediates and charge/spin
@@ -525,6 +525,9 @@ def conformersearch_dft_driver(args):
         xyzfile = "struct.xyz"
 
         if not molecule.optimized_mol1:
+            print(f"None for {molecule.idx}, {molecule.scoring_function}")
+            continue
+        if not molecule.optimized_mol2:
             print(f"None for {molecule.idx}, {molecule.scoring_function}")
             continue
 

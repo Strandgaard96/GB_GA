@@ -249,7 +249,7 @@ def conformer_opt(args):
     # Load conformer pickle object
     with open(args.conformer_file, "rb") as f:
         conf = pickle.load(f)
-
+    conf.sortby(prop='dft_singlepoint_conf', reverse=True)
     # Create output folder
     args.output_dir.mkdir(exist_ok=True)
     output_dir = args.output_dir

@@ -63,6 +63,10 @@ class Individual:
             self.sa_score,
             self.smiles,
         ]
+    def get(self, prop):
+        """Get property from individual"""
+        prop = getattr(self, prop)
+        return prop
 
     def save(self, directory="."):
         """Dump ind object into file"""
@@ -471,12 +475,12 @@ class Conformers:
         """Sort molecule based on score"""
         if reverse:
             self.molecules.sort(
-                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
+                key=lambda x: float("inf") if np.isnan(x.get(prop)) else x.get(prop),
                 reverse=reverse,
             )
         else:
             self.molecules.sort(
-                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
+                key=lambda x: float("inf") if np.isnan(x.get(prop)) else x.get(prop),
                 reverse=reverse,
             )
 

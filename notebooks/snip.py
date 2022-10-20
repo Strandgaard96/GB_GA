@@ -293,70 +293,62 @@ def get_energy_dicts():
     )
 
 
-def extract_scoring(mol_path, reverse=False, scoring=None):
+def extract_scoring(mol_path, reverse=False, scoring=None, keys=None):
 
-    keys = {
-        "rdkit_embed_scoring": ["Mo_N2_NH3", "Mo_NH3"],
-        "rdkit_embed_scoring_NH3toN2": ["Mo_NH3", "Mo_N2"],
-        "rdkit_embed_scoring_NH3plustoNH3": ["Mo_NH3+", "Mo_NH3"],
-    }
     min_paths = []
 
-    p_1 = mol_path / keys[scoring][0]
-    p_2 = mol_path / keys[scoring][1]
+    result_dict = {}
+    try:
+        for key in keys:
+            p = mol_path / key
+            p = sorted(p.rglob("*orca.out"))
 
-    p1 = sorted(p_1.rglob("*orca.out"))
-    p2 = sorted(p_2.rglob("*orca.out"))
-    if not (p1 and p2):
+            res = []
+            for elem in p:
+                res.append(read_properties_sp(elem))
+            result_dict[key] = np.array(res)
+            min_paths.append(p[np.nanargmin(res)].parent)
+            ind_paths = sorted(p[np.nanargmin(res)].parent.rglob("*ind.pkl"))
+
+        delta = funcs[scoring](result_dict)
+
+        # Get the ind object
+        ind_path = ind_paths[0]
+        with open(ind_path, "rb") as f:
+            ind = pickle.load(f)
+    except Exception as e:
+        print(e)
+        print(f'Something failed for {mol_path}')
         delta = np.nan
         ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"))
         min_paths = [(0, 0)]
-    else:
-        first_all = []
-        second_all = []
-        for elem in p1:
-            first_all.append(read_properties_sp(elem))
-        for elem2 in p2:
-            second_all.append(read_properties_sp(elem2))
-        second_all = np.array(second_all)
-        first_all = np.array(first_all)
-
-        if not (first_all.any() and second_all.any()):
-            delta = np.nan
-        else:
-            delta = funcs[scoring](first_all, second_all)
-
-        # Get min paths
-        min_paths.append(
-            (
-                str(p1[np.nanargmin(first_all)].parent),
-                str(p2[np.nanargmin(second_all)].parent),
-            )
-        )
-        res = sorted(p1[np.nanargmin(first_all)].parent.rglob("*ind.pkl"))
-        # Get the ind object
-        ind_path = res[0]
-        with open(ind_path, "rb") as f:
-            ind = pickle.load(f)
 
     return ind, delta, min_paths
 
 
-def rdkit_embed_scoring_calc(N2_NH3, NH3):
+def rdkit_embed_scoring_calc(arrays):
+
+    N2_NH3 = arrays['Mo_N2_NH3']
+    NH3 = arrays['Mo_NH3']
+
     delta = np.nanmin(N2_NH3) * kcal - (
         np.nanmin(NH3) * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
     )
     return delta
 
 
-def rdkit_embed_scoring_NH3toN2_calc(N2, NH3):
+def rdkit_embed_scoring_NH3toN2_calc(arrays):
+    N2 = arrays['Mo_N2']
+    NH3 = arrays['Mo_NH3']
     delta = (np.nanmin(N2) * kcal + reactions_dft_orca_sarcJ_tzp["NH3"]) - (
         np.nanmin(NH3) * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
     )
     return delta
 
 
-def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
+def rdkit_embed_scoring_NH3plustoNH3_calc(arrays):
+    NH3plus = arrays['Mo_NH3+']
+    NH3 = arrays['Mo_NH3']
     delta = (
         np.nanmin(NH3) * kcal
         - np.nanmin(NH3plus) * kcal
@@ -407,14 +399,13 @@ def main():
             scoring = "rdkit_embed_scoring"
 
         print(scoring, elem)
-        ind, delta, min_paths = extract_scoring(elem, scoring=scoring)
+        ind, delta, min_paths = extract_scoring(elem, scoring=scoring, keys=keys)
 
         if not np.isnan(delta):
             setattr(ind, "dft_singlepoint_conf", delta)
             setattr(ind, "min_confs", min_paths)
             structs = {}
-            for elem in min_paths[0]:
-                dir = Path(elem)
+            for dir in min_paths:
                 with open(dir / "struct.xyz", "r") as f:
                     lines = f.readlines()
                 structs[f"{dir.parent.name}"] = lines

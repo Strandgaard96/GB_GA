@@ -128,6 +128,12 @@ def get_arguments(arg_list=None):
         help="Path to folder containing xyz files",
     )
     parser.add_argument(
+        "--conformer_file",
+        type=Path,
+        default=".",
+        help="Path to folder containing xyz files",
+    )
+    parser.add_argument(
         "--GA_dir",
         type=Path,
         default="/home/magstr/Documents/GB_GA/debug",
@@ -178,7 +184,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--no_molecules",
         type=int,
-        default=[0, 10],
+        default=[0, 3],
         nargs="+",
         help="How many of the top molecules to do DFT on",
     )
@@ -225,6 +231,80 @@ def write_orca_sh(
                     f.writelines("#SBATCH --time=2-02:00:00\n")
             else:
                 f.writelines(line)
+
+
+def conformer_opt(args):
+    """
+    Driver to take final conformers after dft singlepoints and do full DFT
+    optimizations on them
+
+    Args:
+        conformer_object: Conformer object containint all the molecules to
+        do the DFT optimization on
+        args: Commandline args
+    Returns:
+        None
+    """
+
+    # Load conformer pickle object
+    with open(args.conformer_file, "rb") as f:
+        conf = pickle.load(f)
+
+    # Create output folder
+    args.output_dir.mkdir(exist_ok=True)
+    output_dir = args.output_dir
+
+    # Loop over all the structures
+    for elem in conf.molecules[args.no_molecules[0] : args.no_molecules[1]]:
+
+        # Format the idx
+        idx = re.sub(r"[()]", "", str(elem.idx))
+        idx = idx.replace(",", "_").replace(" ", "")
+
+        # xyzfile ame
+        xyzfile = "struct.xyz"
+        for key, value in elem.final_structs.items():
+
+            # Create folders based on idx and intermediates
+            mol_dir = output_dir / f"{idx}" / key
+            mol_dir.mkdir(exist_ok=True, parents=True)
+
+            with cd(mol_dir):
+
+                # Save indvidual object for easier processing later
+                elem.save(directory=".")
+
+                # Create xtb input file from struct
+                with open(xyzfile, "w+") as f:
+                    f.writelines(value)
+
+                # Create input file
+                write_orca_input_file(
+                    structure_path=xyzfile,
+                    type_calc=args.type_calc,
+                    charge=smi_dict[key]["charge"],
+                    spin=smi_dict[key]["mul"],
+                    n_cores=args.n_cores,
+                    memory=args.memory,
+                )
+
+                # Customize orca.sh to current job.
+                write_orca_sh(
+                    n_cores=args.n_cores,
+                    mem=args.memory,
+                    partition=args.partition,
+                    cluster=args.cluster,
+                )
+
+                cmd = "sbatch orca.sh"
+                # Submit bash script in folder
+                out, err = shell_pure(cmd, shell=True)
+                with open(f"1job.err", "w") as f:
+                    f.write(err)
+                with open(f"1job.out", "w") as f:
+                    f.write(out)
+
+    return
 
 
 def GA_singlepoints(args):
@@ -745,8 +825,11 @@ if __name__ == "__main__":
         "GA_singlepoints": GA_singlepoints,
         "parts_opts": parts_opts,
         "conformer_dft": conformersearch_dft_driver,
+        "conformer_opt": conformer_opt,
     }
+
     args = get_arguments()
+    print(args)
     func = FUNCTION_MAP[args.function]
 
     # Run chosen function

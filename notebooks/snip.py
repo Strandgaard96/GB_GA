@@ -12,7 +12,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 # For highlight colors
 from matplotlib.colors import ColorConverter
 from rdkit import Chem
@@ -311,7 +310,7 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
     if not (p1 and p2):
         delta = np.nan
         ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"))
-        min_paths=[(0,0)]
+        min_paths = [(0, 0)]
     else:
         first_all = []
         second_all = []
@@ -375,6 +374,7 @@ def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
     reactions_dft_orca_sarcJ_tzp,
 ) = get_energy_dicts()
 
+
 def rename():
     folder = Path(str(sys.argv[1]))
     f = sorted(folder.glob("*"))
@@ -384,9 +384,9 @@ def rename():
         keys = [p.name for p in sorted(elem.glob("*"))]
         if "Mo_NH3" and "Mo_N2" in keys:
             # tmp
-            os.rename(elem/'Mo_N2', elem/'Mo_NH3_tmp')
-            os.rename(elem /'Mo_NH3', elem / 'Mo_N2')
-            os.rename(elem /'Mo_NH3_tmp', elem / 'Mo_NH3')
+            os.rename(elem / "Mo_N2", elem / "Mo_NH3_tmp")
+            os.rename(elem / "Mo_NH3", elem / "Mo_N2")
+            os.rename(elem / "Mo_NH3_tmp", elem / "Mo_NH3")
         else:
             pass
 
@@ -434,5 +434,5 @@ if __name__ == "__main__":
         "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2_calc,
         "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3_calc,
     }
-    #rename()
+    # rename()
     main()

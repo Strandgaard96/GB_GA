@@ -11,18 +11,12 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from tabulate import tabulate
 
-from descriptors.descriptors import (
-    number_of_rotatable_bonds_target,
-    number_of_rotatable_bonds_target_clipped,
-)
+from descriptors.descriptors import (number_of_rotatable_bonds_target,
+                                     number_of_rotatable_bonds_target_clipped)
 from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
-from scoring.make_structures import (
-    atom_remover,
-    create_prim_amine_revised,
-    mol_with_atom_index,
-    single_atom_remover,
-)
+from scoring.make_structures import (atom_remover, create_prim_amine_revised,
+                                     mol_with_atom_index, single_atom_remover)
 
 _neutralize_reactions = None
 

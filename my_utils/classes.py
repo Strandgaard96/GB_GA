@@ -11,12 +11,18 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from tabulate import tabulate
 
-from descriptors.descriptors import (number_of_rotatable_bonds_target,
-                                     number_of_rotatable_bonds_target_clipped)
+from descriptors.descriptors import (
+    number_of_rotatable_bonds_target,
+    number_of_rotatable_bonds_target_clipped,
+)
 from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
-from scoring.make_structures import (atom_remover, create_prim_amine_revised,
-                                     mol_with_atom_index, single_atom_remover)
+from scoring.make_structures import (
+    atom_remover,
+    create_prim_amine_revised,
+    mol_with_atom_index,
+    single_atom_remover,
+)
 
 _neutralize_reactions = None
 
@@ -50,7 +56,6 @@ class Individual:
     normalized_fitness: float = field(default=None, repr=False, compare=False)
     energy: float = field(default=None, repr=False, compare=False)
     sa_score: float = field(default=None, repr=False, compare=False)
-    structure: tuple = field(default=None, compare=False, repr=False)
 
     def __post_init__(self):
         self.smiles = Chem.MolToSmiles(self.rdkit_mol)
@@ -241,6 +246,23 @@ class Generation:
                 self.get("idx"), names=("generation", "individual")
             ),
         )
+        df.columns = columns
+        return df
+
+    def gen2pd_dft(
+        self,
+        columns=[
+            "smiles",
+            "idx",
+            "cut_idx",
+            "score",
+            "energy",
+            "dft_singlepoint_conf",
+            "min_confs",
+        ],
+    ):
+        """Get dataframe of population"""
+        df = pd.DataFrame(list(map(list, zip(*[self.get(prop) for prop in columns]))))
         df.columns = columns
         return df
 

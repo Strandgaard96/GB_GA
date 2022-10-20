@@ -36,9 +36,9 @@ echo "Slurm Job name is: ${SLURM_JOB_NAME}" >  $job.out
 echo "Contents of the tmp dir:"
 ls $tdir
 
-cp ${tdir}/$job.gbw .
-cp ${tdir}/$job.engrad .
+#cp ${tdir}/$job.gbw .
+#cp ${tdir}/$job.engrad .
 cp ${tdir}/${job}_trj.xyz .
 cp ${tdir}/$job.xyz .
 cp ${tdir}/$job.opt .
-cp ${tdir}/$job.densities .
+#cp ${tdir}/$job.densities .

@@ -130,7 +130,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--GA_dir",
         type=Path,
-        default="/home/magstr/generation_data/prod_new9_0",
+        default="/home/magstr/Documents/GB_GA/debug",
         help="Path to folder containing GA pickle files",
     )
     parser.add_argument(
@@ -243,7 +243,7 @@ def GA_singlepoints(args):
     # Possibly add option to select specific generation
 
     # Load GA object
-    with open(GA_dir / f"GA{generation_no:0>2}.pkl", "rb") as f:
+    with open(GA_dir / f"GA25.pkl", "rb") as f:
         gen = pickle.load(f)
 
     # Loop over all the structures
@@ -438,6 +438,9 @@ def conformersearch_dft_driver(args):
         mol_dir2 = output_dir_dft / f"{idx}" / key2
         mol_dir2.mkdir(exist_ok=True, parents=True)
 
+        # Save indvidual object for easier processing later
+        molecule.save(directory=output_dir_dft / f"{idx}")
+
         xyzfile = "struct.xyz"
 
         if not molecule.optimized_mol1:
@@ -456,9 +459,6 @@ def conformersearch_dft_driver(args):
             conf_dir1.mkdir(exist_ok=True)
 
             with cd(conf_dir1):
-
-                # Save indvidual object for easier processing later
-                molecule.save(directory=".")
 
                 # Create xtb input file from struct
                 number_of_atoms = molecule.optimized_mol1.GetNumAtoms()
@@ -511,15 +511,14 @@ def conformersearch_dft_driver(args):
 
             with cd(conf_dir2):
 
-                # Save indvidual object for easier processing later
-                molecule.save(directory=".")
-
                 number_of_atoms = molecule.optimized_mol2.GetNumAtoms()
                 symbols = [a.GetSymbol() for a in molecule.optimized_mol2.GetAtoms()]
                 # Create xtb input file from struct
                 with open(xyzfile, "w") as _file:
                     _file.write(str(number_of_atoms) + "\n")
-                    _file.write(f"{Chem.MolToSmiles(molecule.optimized_mol2)}\n")
+                    _file.write(
+                        f"{Chem.MolToSmiles(Chem.RemoveHs(molecule.optimized_mol2))}\n"
+                    )
                     for atom, symbol in enumerate(symbols):
                         p = conf.GetAtomPosition(atom)
                         line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
@@ -580,6 +579,9 @@ def conformersearch_dft_driver_single_molecule(molecule, args):
     mol_dir2 = output_dir_dft / f"{idx}" / key2
     mol_dir2.mkdir(exist_ok=True, parents=True)
 
+    # Save indvidual object for easier processing later
+    molecule.save(directory=output_dir_dft / f"{idx}")
+
     xyzfile = "struct.xyz"
 
     if not molecule.optimized_mol1:
@@ -598,9 +600,6 @@ def conformersearch_dft_driver_single_molecule(molecule, args):
         conf_dir1.mkdir(exist_ok=True)
 
         with cd(conf_dir1):
-
-            # Save indvidual object for easier processing later
-            molecule.save(directory=".")
 
             # Create xtb input file from struct
             number_of_atoms = molecule.optimized_mol1.GetNumAtoms()
@@ -652,9 +651,6 @@ def conformersearch_dft_driver_single_molecule(molecule, args):
         conf_dir2.mkdir(exist_ok=True)
 
         with cd(conf_dir2):
-
-            # Save indvidual object for easier processing later
-            molecule.save(directory=".")
 
             number_of_atoms = molecule.optimized_mol2.GetNumAtoms()
             symbols = [a.GetSymbol() for a in molecule.optimized_mol2.GetAtoms()]

@@ -34,7 +34,7 @@ ls $SCRATCH
 
 # done, now copy back wanted files.
 cp $JOB.xyz $SLURM_SUBMIT_DIR
-cp $JOB.gbw $SLURM_SUBMIT_DIR
-cp $JOB.densities $SLURM_SUBMIT_DIR
+#cp $JOB.gbw $SLURM_SUBMIT_DIR
+#cp $JOB.densities $SLURM_SUBMIT_DIR
 cp ${JOB}_trj.xyz $SLURM_SUBMIT_DIR
 cp $JOB.opt $SLURM_SUBMIT_DIR

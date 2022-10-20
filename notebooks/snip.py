@@ -12,6 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
 # For highlight colors
 from matplotlib.colors import ColorConverter
 from rdkit import Chem
@@ -23,7 +24,10 @@ sys.path.insert(0, str(source))
 
 # Custom functions
 from my_utils.analysis import atoi, conf_viewer, draw_generation, natural_keys
+from my_utils.auto import shell_pure
 from my_utils.classes import Conformers, Generation, Individual
+from my_utils.utils import cd
+from my_utils.xtb_utils import read_results
 
 HARTREE2EV = 27.2114
 HARTREE2KCAL = 627.51
@@ -306,6 +310,8 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
     p2 = sorted(p_2.rglob("*orca.out"))
     if not (p1 and p2):
         delta = np.nan
+        ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"))
+        min_paths=[(0,0)]
     else:
         first_all = []
         second_all = []
@@ -323,18 +329,17 @@ def extract_scoring(mol_path, reverse=False, scoring=None):
 
         # Get min paths
         min_paths.append(
-            (str(p1[np.nanargmin(first_all)]), str(p2[np.nanargmin(second_all)]))
+            (
+                str(p1[np.nanargmin(first_all)].parent),
+                str(p2[np.nanargmin(second_all)].parent),
+            )
         )
-
-    res = sorted(mol_path.rglob("*ind.pkl"))
-    # Get the ind object
-    try:
+        res = sorted(p1[np.nanargmin(first_all)].parent.rglob("*ind.pkl"))
+        # Get the ind object
         ind_path = res[0]
         with open(ind_path, "rb") as f:
             ind = pickle.load(f)
-    except Exception as e:
-        print(e)
-        ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"))
+
     return ind, delta, min_paths
 
 
@@ -375,14 +380,7 @@ def main():
     folder = Path(str(sys.argv[1]))
     f = sorted(folder.glob("*"))
     total_inds = []
-    deltas = []
-    scoring_col = []
-    min_confs = []
     for elem in f:
-
-        # Load GA object
-        # with open(elem / f"Conformers.pkl", "rb") as f:
-        #    conf = pickle.load(f)
 
         keys = [p.name for p in sorted(elem.glob("*"))]
 
@@ -395,38 +393,23 @@ def main():
 
         print(scoring, elem)
         ind, delta, min_paths = extract_scoring(elem, scoring=scoring)
-        total_inds.append(ind)
-        deltas.append(delta)
-        scoring_col.append(scoring)
-        min_confs.append(min_paths)
-    print(scoring_col, deltas)
 
-    gen = Generation(molecules=total_inds)
-    df = gen.gen2pd()
-    df["DFT"] = deltas
-    df["scoring"] = scoring_col
-    df["min_confs"] = min_confs
-    df["score"] = df["score"].apply(lambda x: round(x, 1))
-    df["DFT"] = df["DFT"].apply(lambda x: round(x, 1))
-    df.sort_values(by=["DFT"], inplace=True)
+        if not np.isnan(delta):
+            setattr(ind, "dft_singlepoint_conf", delta)
+            setattr(ind, "min_confs", min_paths)
+            structs = {}
+            for elem in min_paths[0]:
+                dir = Path(elem)
+                with open(dir / "struct.xyz", "r") as f:
+                    lines = f.readlines()
+                structs[f"{dir.parent.name}"] = lines
+            setattr(ind, f"final_structs", structs)
+            total_inds.append(ind)
+        else:
+            continue
 
-    print("saving")
-    # Save DF
-    df.to_csv(f"{sys.argv[1]}.csv")
-
-
-# Prep Conformers .pkl to perform DFT opts on.
-def prep_dft_optimization_candidates():
-
-    # Create output dir
-
-    # Copy orca.sh, struct.xyz, orca.inp into output dir
-
-    # Add OPT to orca.inp file
-
-    # Submit the calc.
-
-    return
+    conf = Conformers(molecules=total_inds)
+    conf.save(directory=".", name="150mol_dft_singlepoints.pkl")
 
 
 if __name__ == "__main__":

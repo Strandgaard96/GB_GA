@@ -15,9 +15,12 @@ from rdkit import Chem, rdBase
 from rdkit.Chem import rdFMCS
 
 from my_utils.xtb_utils import extract_energyxtb, write_to_db
-from scoring.scoring import (rdkit_embed_scoring,
-                             rdkit_embed_scoring_NH3plustoNH3,
-                             rdkit_embed_scoring_NH3toN2, scoring_submitter)
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3plustoNH3,
+    rdkit_embed_scoring_NH3toN2,
+    scoring_submitter,
+)
 
 funcs = {
     "rdkit_embed_scoring": rdkit_embed_scoring,

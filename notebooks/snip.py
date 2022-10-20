@@ -375,6 +375,21 @@ def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
     reactions_dft_orca_sarcJ_tzp,
 ) = get_energy_dicts()
 
+def rename():
+    folder = Path(str(sys.argv[1]))
+    f = sorted(folder.glob("*"))
+    total_inds = []
+    for elem in f:
+
+        keys = [p.name for p in sorted(elem.glob("*"))]
+        if "Mo_NH3" and "Mo_N2" in keys:
+            # tmp
+            os.rename(elem/'Mo_N2', elem/'Mo_NH3_tmp')
+            os.rename(elem /'Mo_NH3', elem / 'Mo_N2')
+            os.rename(elem /'Mo_NH3_tmp', elem / 'Mo_NH3')
+        else:
+            pass
+
 
 def main():
     folder = Path(str(sys.argv[1]))
@@ -419,5 +434,5 @@ if __name__ == "__main__":
         "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2_calc,
         "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3_calc,
     }
-
+    #rename()
     main()

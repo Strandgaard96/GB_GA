@@ -22,9 +22,11 @@ from dft.orca_driver import conformersearch_dft_driver
 from my_utils.classes import Conformers, Generation, Individual
 from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc
-from scoring.scoring import (rdkit_embed_scoring,
-                             rdkit_embed_scoring_NH3plustoNH3,
-                             rdkit_embed_scoring_NH3toN2)
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3plustoNH3,
+    rdkit_embed_scoring_NH3toN2,
+)
 
 ORCA_COMMANDS = {
     "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",

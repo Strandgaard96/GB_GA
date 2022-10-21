@@ -12,6 +12,7 @@ from io import StringIO
 
 from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, Draw
+
 # Options to visualise molecules
 from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
 

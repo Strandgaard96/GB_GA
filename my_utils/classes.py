@@ -11,12 +11,18 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from tabulate import tabulate
 
-from descriptors.descriptors import (number_of_rotatable_bonds_target,
-                                     number_of_rotatable_bonds_target_clipped)
+from descriptors.descriptors import (
+    number_of_rotatable_bonds_target,
+    number_of_rotatable_bonds_target_clipped,
+)
 from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
-from scoring.make_structures import (atom_remover, create_prim_amine_revised,
-                                     mol_with_atom_index, single_atom_remover)
+from scoring.make_structures import (
+    atom_remover,
+    create_prim_amine_revised,
+    mol_with_atom_index,
+    single_atom_remover,
+)
 
 _neutralize_reactions = None
 
@@ -63,6 +69,7 @@ class Individual:
             self.sa_score,
             self.smiles,
         ]
+
     def get(self, prop):
         """Get property from individual"""
         prop = getattr(self, prop)
@@ -438,7 +445,9 @@ class Conformers:
     Contains functionality to get and set props from Individuals and
     display vaious scoring results
     """
+
     molecules: List[Individual] = field(repr=True, default_factory=list)
+
     @property
     def size(self):
         return len(self.molecules)

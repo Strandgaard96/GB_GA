@@ -246,10 +246,10 @@ def conformer_opt(args):
         None
     """
 
-    # Load conformer pickle object
+    # Load conformer pickle object1
     with open(args.conformer_file, "rb") as f:
         conf = pickle.load(f)
-    conf.sortby(prop='dft_singlepoint_conf')
+    conf.sortby(prop="dft_singlepoint_conf")
 
     # Create output folder
     args.output_dir.mkdir(exist_ok=True)
@@ -306,6 +306,32 @@ def conformer_opt(args):
                     f.write(out)
 
     return
+
+
+def remove_confs(conf):
+    remove_idx = [
+        (50, 32),
+        (29, 44),
+        (22, 49),
+        (49, 12),
+        (35, 11),
+        (42, 44),
+        (50, 49),
+        (41, 15),
+        (13, 32),
+    ]
+
+    def determine(tup):
+        print(tup)
+        if tup in remove_idx:
+            print("yas")
+            return True
+        else:
+            print("nos")
+            return False
+
+    conf.molecules[:] = [tup for tup in conf.molecules if not determine(tup.idx)]
+    conf.save(directory="data", name="150mol_dft_singlepoints.pkl")
 
 
 def GA_singlepoints(args):
@@ -501,11 +527,11 @@ def conformersearch_dft_driver(args):
             key1 = "Mo_N2_NH3"
             key2 = "Mo_NH3"
         elif scoring == "rdkit_embed_scoring_NH3toN2":
-            key2 = "Mo_NH3"
-            key1 = "Mo_N2"
-        elif scoring == "rdkit_embed_scoring_NH3plustoNH3":
-            key2 = "Mo_NH3+"
             key1 = "Mo_NH3"
+            key2 = "Mo_N2"
+        elif scoring == "rdkit_embed_scoring_NH3plustoNH3":
+            key1 = "Mo_NH3+"
+            key2 = "Mo_NH3"
 
         # Format the idx
         idx = re.sub(r"[()]", "", str(molecule.idx))

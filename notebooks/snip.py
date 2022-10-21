@@ -12,6 +12,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
 # For highlight colors
 from matplotlib.colors import ColorConverter
 from rdkit import Chem
@@ -318,7 +319,7 @@ def extract_scoring(mol_path, reverse=False, scoring=None, keys=None):
             ind = pickle.load(f)
     except Exception as e:
         print(e)
-        print(f'Something failed for {mol_path}')
+        print(f"Something failed for {mol_path}")
         delta = np.nan
         ind = Individual(rdkit_mol=Chem.MolFromSmiles("CN"))
         min_paths = [(0, 0)]
@@ -328,8 +329,8 @@ def extract_scoring(mol_path, reverse=False, scoring=None, keys=None):
 
 def rdkit_embed_scoring_calc(arrays):
 
-    N2_NH3 = arrays['Mo_N2_NH3']
-    NH3 = arrays['Mo_NH3']
+    N2_NH3 = arrays["Mo_N2_NH3"]
+    NH3 = arrays["Mo_NH3"]
 
     delta = np.nanmin(N2_NH3) * kcal - (
         np.nanmin(NH3) * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
@@ -338,8 +339,8 @@ def rdkit_embed_scoring_calc(arrays):
 
 
 def rdkit_embed_scoring_NH3toN2_calc(arrays):
-    N2 = arrays['Mo_N2']
-    NH3 = arrays['Mo_NH3']
+    N2 = arrays["Mo_N2"]
+    NH3 = arrays["Mo_NH3"]
     delta = (np.nanmin(N2) * kcal + reactions_dft_orca_sarcJ_tzp["NH3"]) - (
         np.nanmin(NH3) * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
     )
@@ -347,8 +348,8 @@ def rdkit_embed_scoring_NH3toN2_calc(arrays):
 
 
 def rdkit_embed_scoring_NH3plustoNH3_calc(arrays):
-    NH3plus = arrays['Mo_NH3+']
-    NH3 = arrays['Mo_NH3']
+    NH3plus = arrays["Mo_NH3+"]
+    NH3 = arrays["Mo_NH3"]
     delta = (
         np.nanmin(NH3) * kcal
         - np.nanmin(NH3plus) * kcal

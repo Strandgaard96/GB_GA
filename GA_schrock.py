@@ -28,9 +28,11 @@ from my_utils.utils import get_git_revision_short_hash
 from sa.neutralize import neutralize_molecules
 from sa.sascorer import get_sa_scores, reweigh_scores_by_sa
 from scoring import scoring_functions as sc
-from scoring.scoring import (rdkit_embed_scoring,
-                             rdkit_embed_scoring_NH3plustoNH3,
-                             rdkit_embed_scoring_NH3toN2)
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3plustoNH3,
+    rdkit_embed_scoring_NH3toN2,
+)
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 

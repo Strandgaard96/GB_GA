@@ -203,7 +203,7 @@ def get_start_population_from_csv(file=None):
 
 def get_start_population_debug(file=None):
 
-    mols = [Chem.MolFromSmiles(x) for x in ["CCN", "CC(N)CC(=Cc1ccccc1)C1CC1"]]
+    mols = [Chem.MolFromSmiles(x) for x in ["CCN", "CCCN"]]
     scoring = ["rdkit_embed_scoring_NH3toN2", "rdkit_embed_scoring_NH3toN2"]
 
     # Match
@@ -286,22 +286,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # Load GA object
-    with open(f"debug/rest/Conformers.pkl", "rb") as f:
-        conf = pickle.load(f)
-
-    with open(f"debug/hundred2/Conformers.pkl", "rb") as f:
-        conf2 = pickle.load(f)
-
-    for mol in conf2.molecules:
-        if not mol.optimized_mol1:
-            print(f"None for {mol.idx}, {mol.scoring_function}")
-            continue
-    for mol in conf.molecules:
-        if not mol.optimized_mol2:
-            print(f"None for {mol.idx}, {mol.scoring_function}")
-            continue
-
-    # c = Conformers(molecules=[conf.molecules[41]])
-    # c.save('debug/', name='tmpconf.pkl')
     main()

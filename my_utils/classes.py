@@ -438,12 +438,10 @@ class Conformers:
     Contains functionality to get and set props from Individuals and
     display vaious scoring results
     """
-
     molecules: List[Individual] = field(repr=True, default_factory=list)
-    size: int = field(default=None, init=True, repr=True)
-
-    def __post_init__(self):
-        self.size = len(self.molecules)
+    @property
+    def size(self):
+        return len(self.molecules)
 
     def __repr__(self):
         return f"molecules_size={self.size})"

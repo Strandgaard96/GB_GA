@@ -23,7 +23,7 @@ from scoring.make_structures import mol_with_atom_index, remove_N2, remove_NH3
 from .auto import shell
 from .xyz2mol import read_xyz_file, xyz2AC, xyz2mol
 
-file = "../templates/core_noHS.mol"
+file = "templates/core_noHS.mol"
 core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
 """Mol: 
 mol object of the Mo core with dummy atoms instead of ligands

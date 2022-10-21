@@ -136,7 +136,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--GA_dir",
         type=Path,
-        default="/home/magstr/Documents/GB_GA/debug",
+        default="/home/magstr/generation_data/prod_runs/prod_new28_small_0",
         help="Path to folder containing GA pickle files",
     )
     parser.add_argument(
@@ -350,7 +350,7 @@ def GA_singlepoints(args):
     # Possibly add option to select specific generation
 
     # Load GA object
-    with open(GA_dir / f"GA25.pkl", "rb") as f:
+    with open(GA_dir / f"GA{generation_no:0>2}.pkl", "rb") as f:
         gen = pickle.load(f)
 
     # Loop over all the structures

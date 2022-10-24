@@ -20,16 +20,9 @@ scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from make_structures import (
-    connect_ligand,
-    connectMols,
-    create_dummy_ligand,
-    create_prim_amine_revised,
-    embed_rdkit,
-    mol_with_atom_index,
-    remove_N2,
-    remove_NH3,
-)
+from make_structures import (connect_ligand, connectMols, create_dummy_ligand,
+                             create_prim_amine_revised, embed_rdkit,
+                             mol_with_atom_index, remove_N2, remove_NH3)
 
 from my_utils.classes import Generation, Individual
 from my_utils.utils import cd

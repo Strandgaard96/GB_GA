@@ -12,7 +12,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 # For highlight colors
 from matplotlib.colors import ColorConverter
 from rdkit import Chem
@@ -416,7 +415,7 @@ def main():
             continue
 
     conf = Conformers(molecules=total_inds)
-    conf.save(directory=".", name="150mol_dft_singlepoints.pkl")
+    conf.save(directory=".", name=f"{str(sys.argv[1])}")
 
 
 if __name__ == "__main__":

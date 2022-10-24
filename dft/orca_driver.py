@@ -279,31 +279,7 @@ def conformer_opt(args):
                 with open(xyzfile, "w+") as f:
                     f.writelines(value)
 
-                # Create input file
-                write_orca_input_file(
-                    structure_path=xyzfile,
-                    type_calc=args.type_calc,
-                    charge=smi_dict[key]["charge"],
-                    spin=smi_dict[key]["mul"],
-                    n_cores=args.n_cores,
-                    memory=args.memory,
-                )
-
-                # Customize orca.sh to current job.
-                write_orca_sh(
-                    n_cores=args.n_cores,
-                    mem=args.memory,
-                    partition=args.partition,
-                    cluster=args.cluster,
-                )
-
-                cmd = "sbatch orca.sh"
-                # Submit bash script in folder
-                out, err = shell_pure(cmd, shell=True)
-                with open(f"1job.err", "w") as f:
-                    f.write(err)
-                with open(f"1job.out", "w") as f:
-                    f.write(out)
+                submit_orca(args, key, xyzfile)
 
     return
 
@@ -351,11 +327,11 @@ def GA_singlepoints(args):
     with open(GA_dir / f"GA{generation_no:0>2}.pkl", "rb") as f:
         gen = pickle.load(f)
 
-
     xyzfile = "struct.xyz"
-
     # Loop the conformer dirs
-    for i, molecule in enumerate(gen.molecules[args.no_molecules[0]:args.no_molecules[1]]):
+    for i, molecule in enumerate(
+        gen.molecules[args.no_molecules[0] : args.no_molecules[1]]
+    ):
 
         scoring = args.scoring_function
         if scoring == "rdkit_embed_scoring":
@@ -369,7 +345,7 @@ def GA_singlepoints(args):
             key2 = "Mo_NH3+"
 
         # Resort conformers by energy
-        confs =molecule.optimized_mol1.GetConformers()
+        confs = molecule.optimized_mol1.GetConformers()
         energies = molecule.energy_dict["energy1"]
         confs = [c for _, c in sorted(zip(energies, confs))]
 
@@ -393,46 +369,9 @@ def GA_singlepoints(args):
 
         with cd(mol_dir1):
 
-            # Create xtb input file from struct
-            number_of_atoms = molecule.optimized_mol1.GetNumAtoms()
-            symbols = [a.GetSymbol() for a in molecule.optimized_mol1.GetAtoms()]
-            with open(xyzfile, "w") as _file:
-                _file.write(str(number_of_atoms) + "\n")
-                _file.write(
-                    f"{Chem.MolToSmiles(Chem.RemoveHs(molecule.optimized_mol1))}\n"
-                )
-                for atom, symbol in enumerate(symbols):
-                    p = low_conf.GetAtomPosition(atom)
-                    line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
-                    _file.write(line)
+            write_xtb_from_struct(low_conf, molecule.optimized_mol1, xyzfile)
 
-            # Create input file
-            write_orca_input_file(
-                structure_path=xyzfile,
-                type_calc=args.type_calc,
-                charge=smi_dict[key1]["charge"],
-                spin=smi_dict[key1]["mul"],
-                n_cores=args.n_cores,
-                memory=args.memory,
-            )
-
-            # Customize orca.sh to current job.
-            write_orca_sh(
-                n_cores=args.n_cores,
-                mem=args.memory,
-                partition=args.partition,
-                cluster=args.cluster,
-            )
-
-            cmd = "sbatch orca.sh"
-
-            # Submit bash script in folder
-            out, err = shell_pure(cmd, shell=True)
-            with open(f"job.err", "w") as f:
-                f.write(err)
-            with open(f"job.out", "w") as f:
-                f.write(out)
-
+            submit_orca(args, key1, xyzfile)
 
         # Resort conformers by energy
         confs = molecule.optimized_mol2.GetConformers()
@@ -444,73 +383,49 @@ def GA_singlepoints(args):
 
         with cd(mol_dir2):
 
-            # Create xtb input file from struct
-            number_of_atoms = molecule.optimized_mol2.GetNumAtoms()
-            symbols = [a.GetSymbol() for a in molecule.optimized_mol2.GetAtoms()]
-            with open(xyzfile, "w") as _file:
-                _file.write(str(number_of_atoms) + "\n")
-                _file.write(
-                    f"{Chem.MolToSmiles(Chem.RemoveHs(molecule.optimized_mol2))}\n"
-                )
-                for atom, symbol in enumerate(symbols):
-                    p = low_conf.GetAtomPosition(atom)
-                    line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
-                    _file.write(line)
+            write_xtb_from_struct(low_conf, molecule.optimized_mol2, xyzfile)
+            submit_orca(args, key2, xyzfile)
 
-            # Create input file
-            write_orca_input_file(
-                structure_path=xyzfile,
-                type_calc=args.type_calc,
-                charge=smi_dict[key1]["charge"],
-                spin=smi_dict[key1]["mul"],
-                n_cores=args.n_cores,
-                memory=args.memory,
-            )
-
-            # Customize orca.sh to current job.
-            write_orca_sh(
-                n_cores=args.n_cores,
-                mem=args.memory,
-                partition=args.partition,
-                cluster=args.cluster,
-            )
-
-            cmd = "sbatch orca.sh"
-
-            # Submit bash script in folder
-            out, err = shell_pure(cmd, shell=True)
-            with open(f"job.err", "w") as f:
-                f.write(err)
-            with open(f"job.out", "w") as f:
-                f.write(out)
-
-
-            # Create input file
-            write_orca_input_file(
-                structure_path=xyzfile,
-                type_calc=args.type_calc,
-                charge=smi_dict[key1]["charge"],
-                spin=smi_dict[key1]["mul"],
-                n_cores=args.n_cores,
-                memory=args.memory,
-            )
-
-            # Customize orca.sh to current job.
-            write_orca_sh(
-                n_cores=args.n_cores,
-                mem=args.memory,
-                partition=args.partition,
-                cluster=args.cluster,
-            )
-
-            cmd = "sbatch orca.sh"
-            # Submit bash script in folder
-            out, err = shell_pure(cmd, shell=True)
-            with open(f"1job.err", "w") as f:
-                f.write(err)
-            with open(f"1job.out", "w") as f:
-                f.write(out)
     return
+
+
+def submit_orca(args, key1, xyzfile):
+    # Create input file
+    write_orca_input_file(
+        structure_path=xyzfile,
+        type_calc=args.type_calc,
+        charge=smi_dict[key1]["charge"],
+        spin=smi_dict[key1]["mul"],
+        n_cores=args.n_cores,
+        memory=args.memory,
+    )
+    # Customize orca.sh to current job.
+    write_orca_sh(
+        n_cores=args.n_cores,
+        mem=args.memory,
+        partition=args.partition,
+        cluster=args.cluster,
+    )
+    cmd = "sbatch orca.sh"
+    # Submit bash script in folder
+    out, err = shell_pure(cmd, shell=True)
+    with open(f"job.err", "w") as f:
+        f.write(err)
+    with open(f"job.out", "w") as f:
+        f.write(out)
+
+
+def write_xtb_from_struct(conf, molecule, xyzfile):
+    # Utility function to write xtb file from conformer
+    number_of_atoms = molecule.GetNumAtoms()
+    symbols = [a.GetSymbol() for a in molecule.GetAtoms()]
+    with open(xyzfile, "w") as _file:
+        _file.write(str(number_of_atoms) + "\n")
+        _file.write(f"{Chem.MolToSmiles(Chem.RemoveHs(molecule))}\n")
+        for atom, symbol in enumerate(symbols):
+            p = conf.GetAtomPosition(atom)
+            line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
+            _file.write(line)
 
 
 def folder_orca_driver(args):
@@ -529,32 +444,8 @@ def folder_orca_driver(args):
         key = str(path.parent.name)
 
         with cd(path.parent):
-            # Create input file
-            write_orca_input_file(
-                structure_path=path.name,
-                type_calc=args.type_calc,
-                charge=smi_dict[key]["charge"],
-                spin=smi_dict[key]["mul"],
-                n_cores=args.n_cores,
-                memory=args.memory,
-            )
 
-            # Customize orca.sh to current job.
-            write_orca_sh(
-                n_cores=args.n_cores,
-                mem=args.memory,
-                partition=args.partition,
-                cluster=args.cluster,
-            )
-
-            cmd = "sbatch orca.sh"
-
-            # Submit bash script in folder
-            out, err = shell_pure(cmd, shell=True)
-            with open(f"job.err", "w") as f:
-                f.write(err)
-            with open(f"job.out", "w") as f:
-                f.write(out)
+            submit_orca(args, key, xyzfile)
 
 
 def conformersearch_dft_driver(args):
@@ -626,44 +517,9 @@ def conformersearch_dft_driver(args):
             with cd(conf_dir1):
 
                 # Create xtb input file from struct
-                number_of_atoms = molecule.optimized_mol1.GetNumAtoms()
-                symbols = [a.GetSymbol() for a in molecule.optimized_mol1.GetAtoms()]
-                with open(xyzfile, "w") as _file:
-                    _file.write(str(number_of_atoms) + "\n")
-                    _file.write(
-                        f"{Chem.MolToSmiles(Chem.RemoveHs(molecule.optimized_mol1))}\n"
-                    )
-                    for atom, symbol in enumerate(symbols):
-                        p = conf.GetAtomPosition(atom)
-                        line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
-                        _file.write(line)
+                write_xtb_from_struct(conf, molecule.optimized_mol1, xyzfile)
 
-                # Create input file
-                write_orca_input_file(
-                    structure_path=xyzfile,
-                    type_calc=args.type_calc,
-                    charge=smi_dict[key1]["charge"],
-                    spin=smi_dict[key1]["mul"],
-                    n_cores=args.n_cores,
-                    memory=args.memory,
-                )
-
-                # Customize orca.sh to current job.
-                write_orca_sh(
-                    n_cores=args.n_cores,
-                    mem=args.memory,
-                    partition=args.partition,
-                    cluster=args.cluster,
-                )
-
-                cmd = "sbatch orca.sh"
-
-                # Submit bash script in folder
-                out, err = shell_pure(cmd, shell=True)
-                with open(f"job.err", "w") as f:
-                    f.write(err)
-                with open(f"job.out", "w") as f:
-                    f.write(out)
+                submit_orca(args, key1, xyzfile)
 
         # Resort conformers by energy
         confs = molecule.optimized_mol2.GetConformers()
@@ -676,184 +532,9 @@ def conformersearch_dft_driver(args):
 
             with cd(conf_dir2):
 
-                number_of_atoms = molecule.optimized_mol2.GetNumAtoms()
-                symbols = [a.GetSymbol() for a in molecule.optimized_mol2.GetAtoms()]
-                # Create xtb input file from struct
-                with open(xyzfile, "w") as _file:
-                    _file.write(str(number_of_atoms) + "\n")
-                    _file.write(
-                        f"{Chem.MolToSmiles(Chem.RemoveHs(molecule.optimized_mol2))}\n"
-                    )
-                    for atom, symbol in enumerate(symbols):
-                        p = conf.GetAtomPosition(atom)
-                        line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
-                        _file.write(line)
-
                 # Create input file
-                write_orca_input_file(
-                    structure_path=xyzfile,
-                    type_calc=args.type_calc,
-                    charge=smi_dict[key2]["charge"],
-                    spin=smi_dict[key2]["mul"],
-                    n_cores=args.n_cores,
-                    memory=args.memory,
-                )
-
-                # Customize orca.sh to current job.
-                write_orca_sh(
-                    n_cores=args.n_cores,
-                    mem=args.memory,
-                    partition=args.partition,
-                    cluster=args.cluster,
-                )
-
-                cmd = "sbatch orca.sh"
-
-                # Submit bash script in folder
-                out, err = shell_pure(cmd, shell=True)
-                with open(f"job.err", "w") as f:
-                    f.write(err)
-                with open(f"job.out", "w") as f:
-                    f.write(out)
-
-
-def conformersearch_dft_driver_single_molecule(molecule, args):
-
-    # THE ORDERING OF THE KEYS MATTER HERE
-    # Get scoring intermediates and charge/spin
-    scoring = molecule.scoring_function
-    if scoring == "rdkit_embed_scoring":
-        key1 = "Mo_N2_NH3"
-        key2 = "Mo_NH3"
-    elif scoring == "rdkit_embed_scoring_NH3toN2":
-        key1 = "Mo_N2"
-        key2 = "Mo_NH3"
-    elif scoring == "rdkit_embed_scoring_NH3plustoNH3":
-        key1 = "Mo_NH3"
-        key2 = "Mo_NH3+"
-
-    # Format the idx
-    idx = re.sub(r"[()]", "", str(molecule.idx))
-    idx = idx.replace(",", "_").replace(" ", "")
-
-    # Create folders based on idx and intermediates
-    mol_dir1 = output_dir_dft / f"{idx}" / key1
-    mol_dir1.mkdir(exist_ok=True, parents=True)
-
-    # Create folders based on idx and intermediates
-    mol_dir2 = output_dir_dft / f"{idx}" / key2
-    mol_dir2.mkdir(exist_ok=True, parents=True)
-
-    # Save indvidual object for easier processing later
-    molecule.save(directory=output_dir_dft / f"{idx}")
-
-    xyzfile = "struct.xyz"
-
-    if not molecule.optimized_mol1:
-        print(f"None for {molecule.idx}, {molecule.scoring_function}")
-        # continue
-
-    # Resort conformers by energy
-    confs = molecule.optimized_mol1.GetConformers()
-    energies = molecule.energy_dict["energy1"]
-    confs = [c for _, c in sorted(zip(energies, confs))]
-
-    # Loop the conformer dirs
-    for i, conf in enumerate(confs[args.no_molecules[0] : args.no_molecules[1]]):
-
-        conf_dir1 = mol_dir1 / f"conf{i:03d}"
-        conf_dir1.mkdir(exist_ok=True)
-
-        with cd(conf_dir1):
-
-            # Create xtb input file from struct
-            number_of_atoms = molecule.optimized_mol1.GetNumAtoms()
-            symbols = [a.GetSymbol() for a in molecule.optimized_mol1.GetAtoms()]
-            with open(xyzfile, "w") as _file:
-                _file.write(str(number_of_atoms) + "\n")
-                _file.write(
-                    f"{Chem.MolToSmiles(Chem.RemoveHs(molecule.optimized_mol1))}\n"
-                )
-                for atom, symbol in enumerate(symbols):
-                    p = conf.GetAtomPosition(atom)
-                    line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
-                    _file.write(line)
-
-            # Create input file
-            write_orca_input_file(
-                structure_path=xyzfile,
-                type_calc=args.type_calc,
-                charge=smi_dict[key1]["charge"],
-                spin=smi_dict[key1]["mul"],
-                n_cores=args.n_cores,
-                memory=args.memory,
-            )
-
-            # Customize orca.sh to current job.
-            write_orca_sh(
-                n_cores=args.n_cores,
-                mem=args.memory,
-                partition=args.partition,
-                cluster=args.cluster,
-            )
-
-            cmd = "sbatch orca.sh"
-
-            # Submit bash script in folder
-            out, err = shell_pure(cmd, shell=True)
-            with open(f"job.err", "w") as f:
-                f.write(err)
-            with open(f"job.out", "w") as f:
-                f.write(out)
-
-    # Resort conformers by energy
-    confs = molecule.optimized_mol2.GetConformers()
-    energies = molecule.energy_dict["energy2"]
-    confs = [c for _, c in sorted(zip(energies, confs))]
-
-    for i, conf in enumerate(confs[args.no_molecules[0] : args.no_molecules[1]]):
-        conf_dir2 = mol_dir2 / f"conf{i:03d}"
-        conf_dir2.mkdir(exist_ok=True)
-
-        with cd(conf_dir2):
-
-            number_of_atoms = molecule.optimized_mol2.GetNumAtoms()
-            symbols = [a.GetSymbol() for a in molecule.optimized_mol2.GetAtoms()]
-            # Create xtb input file from struct
-            with open(xyzfile, "w") as _file:
-                _file.write(str(number_of_atoms) + "\n")
-                _file.write(f"{Chem.MolToSmiles(molecule.optimized_mol2)}\n")
-                for atom, symbol in enumerate(symbols):
-                    p = conf.GetAtomPosition(atom)
-                    line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
-                    _file.write(line)
-
-            # Create input file
-            write_orca_input_file(
-                structure_path=xyzfile,
-                type_calc=args.type_calc,
-                charge=smi_dict[key2]["charge"],
-                spin=smi_dict[key2]["mul"],
-                n_cores=args.n_cores,
-                memory=args.memory,
-            )
-
-            # Customize orca.sh to current job.
-            write_orca_sh(
-                n_cores=args.n_cores,
-                mem=args.memory,
-                partition=args.partition,
-                cluster=args.cluster,
-            )
-
-            cmd = "sbatch orca.sh"
-
-            # Submit bash script in folder
-            out, err = shell_pure(cmd, shell=True)
-            with open(f"job.err", "w") as f:
-                f.write(err)
-            with open(f"job.out", "w") as f:
-                f.write(out)
+                write_xtb_from_struct(conf, molecule.optimized_mol2, xyzfile)
+                submit_orca(args, key2, xyzfile)
 
 
 def parts_opts(args):

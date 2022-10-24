@@ -484,15 +484,15 @@ def conformersearch_dft_driver(args):
         idx = idx.replace(",", "_").replace(" ", "")
 
         # Create folders based on idx and intermediates
-        mol_dir1 = output_dir_dft / f"{idx}" / key1
+        mol_dir1 = output_dir_dft /f'{i}'/ f"{idx}" / key1
         mol_dir1.mkdir(exist_ok=True, parents=True)
 
         # Create folders based on idx and intermediates
-        mol_dir2 = output_dir_dft / f"{idx}" / key2
+        mol_dir2 = output_dir_dft /f'{i}'/f"{idx}" / key2
         mol_dir2.mkdir(exist_ok=True, parents=True)
 
         # Save indvidual object for easier processing later
-        molecule.save(directory=output_dir_dft / f"{idx}")
+        molecule.save(directory=output_dir_dft/f'{i}' / f"{idx}")
 
         xyzfile = "struct.xyz"
 

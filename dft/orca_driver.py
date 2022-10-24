@@ -255,8 +255,14 @@ def conformer_opt(args):
     args.output_dir.mkdir(exist_ok=True)
     output_dir = args.output_dir
 
+    # Get list to
+    molecules = conf.molecules[args.no_molecules[0]:args.no_molecules[1]]
+
+    # idx for labeling folders
+    retained_idx = [i for i in range(args.no_molecules[0],args.no_molecules[1])]
+
     # Loop over all the structures
-    for elem in conf.molecules[args.no_molecules[0] : args.no_molecules[1]]:
+    for idx_l,elem in zip(retained_idx, molecules):
 
         # Format the idx
         idx = re.sub(r"[()]", "", str(elem.idx))
@@ -267,7 +273,7 @@ def conformer_opt(args):
         for key, value in elem.final_structs.items():
 
             # Create folders based on idx and intermediates
-            mol_dir = output_dir / f"{idx}" / key
+            mol_dir = output_dir / f'{idx_l}'/f"{idx}" / key
             mol_dir.mkdir(exist_ok=True, parents=True)
 
             with cd(mol_dir):
@@ -307,7 +313,7 @@ def remove_confs(conf):
             return False
 
     conf.molecules[:] = [tup for tup in conf.molecules if not determine(tup.idx)]
-    conf.save(directory="data", name="150mol_dft_singlepoints.pkl")
+    conf.save(directory="data", name="150mol_dft_singlepoints_stripped.pkl")
 
 
 def GA_singlepoints(args):

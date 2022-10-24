@@ -308,8 +308,8 @@ def extract_scoring(mol_path, reverse=False, scoring=None, keys=None):
                 res.append(read_properties_sp(elem))
             result_dict[key] = np.array(res)
             min_paths.append(p[np.nanargmin(res)].parent)
-            ind_paths = sorted(p[np.nanargmin(res)].parent.rglob("*ind.pkl"))
 
+        ind_paths = sorted(mol_path.rglob("*ind.pkl"))
         delta = funcs[scoring](result_dict)
 
         # Get the ind object
@@ -385,11 +385,11 @@ def rename():
 
 def main():
     folder = Path(str(sys.argv[1]))
-    f = sorted(folder.glob("*"))
+    f = sorted(folder.glob("*/*"))
     total_inds = []
     for elem in f:
 
-        keys = [p.name for p in sorted(elem.glob("*"))]
+        keys = set([p.parents[1].name for p in sorted(elem.rglob("*orca.out"))])
 
         if "Mo_NH3" and "Mo_NH3+" in keys:
             scoring = "rdkit_embed_scoring_NH3plustoNH3"
@@ -415,7 +415,9 @@ def main():
             continue
 
     conf = Conformers(molecules=total_inds)
-    conf.save(directory=".", name=f"{str(sys.argv[1])}")
+    # Sort before saving
+    conf.sortby('dft_singlepoint_conf')
+    conf.save(directory=".", name=f"{str(sys.argv[2])}")
 
 
 if __name__ == "__main__":

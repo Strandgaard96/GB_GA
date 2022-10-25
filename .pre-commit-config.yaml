@@ -1,0 +1,69 @@
+repos:
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--unsafe"]
+      - id: check-added-large-files
+
+  - repo: https://github.com/myint/autoflake
+    rev: v1.4
+    hooks:
+      - id: autoflake
+        name: Removes unused variables
+        args:
+          - --in-place
+          - --remove-all-unused-imports
+          - --expand-star-imports
+          - --ignore-init-module-imports
+
+
+  - repo: https://github.com/psf/black
+    rev: 22.6.0
+    hooks:
+      - id: black
+        name: Fixes formatting
+        language_version: python3
+
+  - repo: https://github.com/myint/docformatter
+    rev: v1.3.1
+    hooks:
+      - id: docformatter
+        args: [--in-place]
+        name: docformatter
+        description: 'Formats docstrings to follow PEP 257.'
+        entry: docformatter
+        language: python
+        types: [python]
+
+  - repo: local
+    hooks:
+      - id: jupyisort
+        name: Sorts ipynb imports
+        entry: jupytext --pipe-fmt ".py" --pipe "isort - --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses" --sync
+        files: \.ipynb$
+        language: python
+
+      - id: jupyblack
+        name: Fixes ipynb format
+        entry: jupytext --pipe-fmt ".py" --pipe "black - " --sync
+        files: \.ipynb$
+        language: python
+
+      - id: nbconvert
+        name: Removes ipynb content
+        entry: jupyter nbconvert
+        args:
+          [
+            "--ClearOutputPreprocessor.enabled=True",
+            "--ClearMetadataPreprocessor.enabled=True",
+            "--RegexRemovePreprocessor.enabled=True",
+            "--to=notebook",
+            "--log-level=ERROR",
+            "--inplace",
+          ]
+        files: \.ipynb$
+        language: python

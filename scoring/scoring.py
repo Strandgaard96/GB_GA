@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-""" Scoring module
-Module handling the driver for scoring ligand candidates.
-Contains various global variables that should be available to the scoring
-function at all times
+"""Scoring module Module handling the driver for scoring ligand candidates.
 
+Contains various global variables that should be available to the
+scoring function at all times
 """
 import copy
 import json
@@ -14,17 +13,19 @@ from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem.PropertyMol import PropertyMol
 
 scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from make_structures import (connect_ligand, connectMols, create_dummy_ligand,
-                             create_prim_amine_revised, embed_rdkit,
-                             mol_with_atom_index, remove_N2, remove_NH3)
+from make_structures import (
+    connect_ligand,
+    create_dummy_ligand,
+    embed_rdkit,
+    remove_N2,
+    remove_NH3,
+)
 
-from my_utils.classes import Generation, Individual
 from my_utils.utils import cd
 from my_utils.xtb_class import XTB_optimize_schrock
 
@@ -49,25 +50,25 @@ GAS_ENERGIES = {
 hartree2kcalmol: Handles conversion from hartree to kcal/mol
 CORE_ELECTRONIC_ENERGY: The electronic energy of the Mo core with cut
 ligands
-NH3_ENERGY_gfn2: Electronic energy of pure NH3, 
+NH3_ENERGY_gfn2: Electronic energy of pure NH3,
 used for scoring the NH3 dissacossiation reaction
 """
 
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-"""Mol: 
+"""Mol:
 mol object of the Mo core with dummy atoms instead of ligands
 """
 file_NH3 = "templates/core_NH3_dummy.sdf"
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
-"""Mol: 
+"""Mol:
 mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
 
 file_N2_NH3 = "templates/core_N2_NH3_dummy.sdf"
 core_N2_NH3 = Chem.SDMolSupplier(file_N2_NH3, removeHs=False, sanitize=False)
-"""Mol: 
+"""Mol:
 mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
@@ -75,7 +76,7 @@ dummy atoms instead of ligands
 
 with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
-"""dict: 
+"""dict:
 Dictionary that contains the smiles string for each N-related intermediate
 and the charge and spin for the specific intermediate
 """
@@ -99,15 +100,13 @@ def scoring_submitter(mol, scoring_args):
 
 
 def rdkit_embed_scoring(ligand, scoring_args):
-    """
-    Score the NH3 -> N2_NH3 exchange
+    """Score the NH3 -> N2_NH3 exchange.
 
     Args:
         ligand (Chem.rdchem.Mol): ligand to put on Mo core
         scoring_args (dict): dict with all relevant args for xtb and general scoring
 
     Returns:
-
     """
 
     # Get ligand tuple idx.
@@ -190,15 +189,13 @@ def rdkit_embed_scoring(ligand, scoring_args):
 
 
 def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
-    """
-    Score the NH3 -> N2 exchange
+    """Score the NH3 -> N2 exchange.
 
-        Args:
-            ligand (Chem.rdchem.Mol): ligand to put on Mo core
-            scoring_args (dict): dict with all relevant args for xtb and general scoring
+    Args:
+        ligand (Chem.rdchem.Mol): ligand to put on Mo core
+        scoring_args (dict): dict with all relevant args for xtb and general scoring
 
-        Returns:
-
+    Returns:
     """
 
     # Get tuple idx
@@ -308,13 +305,11 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
 
 
 def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
-    """
-    Score the NH3+ -> NH3 charge transfer
+    """Score the NH3+ -> NH3 charge transfer.
 
-        Args:
-            ligand (Chem.rdchem.Mol): ligand to put on Mo core
-            scoring_args (dict): dict with all relevant args for xtb and general scoring
-
+    Args:
+        ligand (Chem.rdchem.Mol): ligand to put on Mo core
+        scoring_args (dict): dict with all relevant args for xtb and general scoring
     """
 
     idx = ligand.idx

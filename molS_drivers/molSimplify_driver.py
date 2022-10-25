@@ -1,17 +1,14 @@
-"""
-
-This is the driver script for doing various molS operations on the Mo catalyst core
+"""This is the driver script for doing various molS operations on the Mo
+catalyst core.
 
 Example:
     How to run:
 
         $ python molSymplify_driver.py args
-
 """
 
 import argparse
 import concurrent.futures
-import glob
 import json
 import os
 import pathlib
@@ -20,22 +17,23 @@ import shutil
 import sys
 import time
 from contextlib import suppress
-from multiprocessing import Pool
 from pathlib import Path
 
 from rdkit import Chem
-from rdkit.Chem import Draw
 
-from my_utils.auto import get_paths_custom, get_paths_molsimplify, shell
+from my_utils.auto import get_paths_molsimplify, shell
 from my_utils.utils import cd
 from my_utils.xtb_utils import run_xtb, xtb_optimize_schrock
 from scoring import scoring_functions as sc
-from scoring.make_structures import (connect_ligand, create_dummy_ligand,
-                                     embed_rdkit, mol_with_atom_index)
+from scoring.make_structures import (
+    connect_ligand,
+    create_dummy_ligand,
+    embed_rdkit,
+)
 
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-"""Mol: 
+"""Mol:
 mol object of the Mo core with dummy atoms instead of ligands
 """
 
@@ -143,8 +141,8 @@ def get_arguments(arg_list=None):
 
 
 def create_cycleMS(new_core=None, smi_path=None, run_dir=None, ncores=None):
-    """
-    Creates all the intermediates for the cycle based on the proposed catalyst.
+    """Creates all the intermediates for the cycle based on the proposed
+    catalyst.
 
     Args:
         new_core (str): Path to the new core with the proposed ligand put on.
@@ -276,10 +274,8 @@ def create_custom_core_rdkit(ligand, newcore_path="newcore.xyz"):
 
 
 def extract_structure_scoring(ligand):
-    """
-    Get the optimized xtb xyz structure for the given ligand
-    and print into xyz-file
-    """
+    """Get the optimized xtb xyz structure for the given ligand and print into
+    xyz-file."""
     structure_txt = ligand.structure
     newcore_path = "new_core.xyz"
     with open(newcore_path, "w+") as f:
@@ -290,15 +286,12 @@ def extract_structure_scoring(ligand):
 
 
 def create_custom_core(args):
-    """
-
-    Create a custom core based on a proposed ligand.
+    """Create a custom core based on a proposed ligand.
 
     Args:
         args (Namespace): args from driver
 
     Returns:
-
     """
     lig_smi = args.ligand_smi
     core_file = Path("templates/core_withHS.xyz")
@@ -325,8 +318,7 @@ def create_custom_core(args):
 
 
 def main():
-    """
-    Driver script
+    """Driver script.
 
     Returns:
         None

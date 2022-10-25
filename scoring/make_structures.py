@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
-"""
-Module that performs the handling mol ligands. Conversion between
-x-amines to dummy atoms and subsequent placement on Mo core
+"""Module that performs the handling mol ligands.
 
+Conversion between x-amines to dummy atoms and subsequent placement on
+Mo core
 """
 
-import os
 import random
 import sys
 from io import StringIO
 
-from rdkit import Chem, RDLogger
-from rdkit.Chem import AllChem, Draw
+from rdkit import Chem
+from rdkit.Chem import AllChem
+
 # Options to visualise molecules
-from rdkit.Chem.Draw import IPythonConsole, MolsToGridImage
 
 
 def mol_with_atom_index(mol):
-    """Visualize mol object with atom indices"""
+    """Visualize mol object with atom indices."""
     atoms = mol.GetNumAtoms()
     for idx in range(atoms):
         mol.GetAtomWithIdx(idx).SetProp(
@@ -28,7 +27,7 @@ def mol_with_atom_index(mol):
 
 
 def remove_NH3(mol):
-    """Remove NH3 group on mol"""
+    """Remove NH3 group on mol."""
 
     # Substructure match the NH3
     NH3_match = Chem.MolFromSmarts("[NH3]")
@@ -39,7 +38,7 @@ def remove_NH3(mol):
 
 
 def remove_N2(mol):
-    """Remove N2 group on mol"""
+    """Remove N2 group on mol."""
 
     # Substructure match the N2
     NH2_match = Chem.MolFromSmarts("N#N")
@@ -49,7 +48,7 @@ def remove_N2(mol):
 
 
 def remove_dummy(mol):
-    """Remove dummy atom from mol"""
+    """Remove dummy atom from mol."""
 
     dum_match = Chem.MolFromSmiles("*")
     removed_mol = Chem.DeleteSubstructs(mol, dum_match)
@@ -79,7 +78,7 @@ def getAttachmentVector(mol, atom_num=0):
 
 
 def replaceAtom(mol, indexAtom, indexNeighbor, atom_type="Br"):
-    """Replace an atom with another type"""
+    """Replace an atom with another type."""
 
     emol = Chem.EditableMol(mol)
     emol.ReplaceAtom(indexAtom, Chem.Atom(atom_type))
@@ -89,7 +88,7 @@ def replaceAtom(mol, indexAtom, indexNeighbor, atom_type="Br"):
 
 
 def addAtom(mol, indexAtom, atom_type="N"):
-    """Add atom and connect to indexAtom with single bond"""
+    """Add atom and connect to indexAtom with single bond."""
 
     emol = Chem.EditableMol(mol)
     idx = emol.AddAtom(Chem.Atom(atom_type))
@@ -98,9 +97,8 @@ def addAtom(mol, indexAtom, atom_type="N"):
 
 
 def atom_remover(mol, pattern=None):
-    """
-    Generator function that removes a substructures and yields all the n structures
-    where each structure has one of the substructures removed.
+    """Generator function that removes a substructures and yields all the n
+    structures where each structure has one of the substructures removed.
 
     Args:
         mol (Chem.rdchem.Mol): The mol to remove substruct on
@@ -123,8 +121,7 @@ def atom_remover(mol, pattern=None):
 
 
 def single_atom_remover(mol, idx):
-    """
-    Function that removes an atom at specified idx
+    """Function that removes an atom at specified idx.
 
     Args:
         mol (Chem.rdchem.Mol): The mol to remove substruct on
@@ -142,8 +139,8 @@ def single_atom_remover(mol, idx):
 
 
 def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
-    """
-    Function that takes two mol objects at creates a core with ligand.
+    """Function that takes two mol objects at creates a core with ligand.
+
     Args:
         core (Chem.rdchem.Mol): The core to put ligand on. With dummy atoms at
             ligand positions.
@@ -194,7 +191,7 @@ def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
 
 
 def connectMols(core, NH3_flag=True):
-    """Connect NH3 to Mo core"""
+    """Connect NH3 to Mo core."""
 
     query = Chem.MolFromSmarts("[NX3;H3]")
     mol = Chem.MolFromSmiles("[NH3]")
@@ -221,10 +218,9 @@ def connectMols(core, NH3_flag=True):
 
 
 def create_prim_amine_revised(input_ligand):
-    """
-    A function that takes a ligand and splits on a nitrogen bond, and then gives
-    a ligand out that has an NH2 and a cut_idx that specifies the location of the primary
-    amine.
+    """A function that takes a ligand and splits on a nitrogen bond, and then
+    gives a ligand out that has an NH2 and a cut_idx that specifies the
+    location of the primary amine.
 
     Args:
         input_ligand (Chem.rdchem.Mol): Ligand to modify
@@ -371,8 +367,7 @@ def create_prim_amine_revised(input_ligand):
 
 
 def create_dummy_ligand(ligand, cut_idx=None):
-    """
-    Cut atom from ligand and put dummy idx
+    """Cut atom from ligand and put dummy idx.
 
     Args:
         ligand (mol): ligand to remove atom from
@@ -422,7 +417,7 @@ def embed_rdkit(
     force_constant=1e12,
     pruneRmsThresh=0.1,
 ):
-    """Embedding driver function
+    """Embedding driver function.
 
     Args:
         mol (Mol): Core+ligand

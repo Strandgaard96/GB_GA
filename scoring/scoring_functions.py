@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
-"""
-Module that contains submitit scoring functions. These submit multiple
-scoring calculation jobs.
+"""Module that contains submitit scoring functions.
+
+These submit multiple scoring calculation jobs.
 """
 
-import os
 import shutil
-import time
 from pathlib import Path
 
 import numpy as np
 import submitit
-from rdkit import Chem, rdBase
-from rdkit.Chem import rdFMCS
 
-from my_utils.xtb_utils import extract_energyxtb, write_to_db
-from scoring.scoring import (rdkit_embed_scoring,
-                             rdkit_embed_scoring_NH3plustoNH3,
-                             rdkit_embed_scoring_NH3toN2, scoring_submitter)
+from my_utils.xtb_utils import write_to_db
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3plustoNH3,
+    rdkit_embed_scoring_NH3toN2,
+    scoring_submitter,
+)
 
 funcs = {
     "rdkit_embed_scoring": rdkit_embed_scoring,
@@ -163,8 +162,8 @@ def slurm_scoring_conformers(conformers, scoring_args):
 
 
 def catch(func, *args, handle=lambda e: e, **kwargs):
-    """Helper function that takes the submitit result and returns an exception if
-    no results can be retrieved"""
+    """Helper function that takes the submitit result and returns an exception
+    if no results can be retrieved."""
     try:
         return func(*args, **kwargs)
     except Exception as e:
@@ -177,9 +176,8 @@ def catch(func, *args, handle=lambda e: e, **kwargs):
 
 
 def slurm_molS(sc_function, scoring_args):
-    """
-    To submit create_cycle_MS to the commandline and create all
-    Mo intermediates with a given ligand.
+    """To submit create_cycle_MS to the commandline and create all Mo
+    intermediates with a given ligand.
 
     Args:
         sc_function (func): molS driver function
@@ -187,7 +185,6 @@ def slurm_molS(sc_function, scoring_args):
 
     Returns:
         results List(tuples): Resulst of molS output, not used.
-
     """
     executor = submitit.AutoExecutor(
         folder=Path(scoring_args["run_dir"]) / "scoring_tmp",
@@ -210,9 +207,10 @@ def slurm_molS(sc_function, scoring_args):
 
 
 def slurm_molS_xtb(sc_function, scoring_args):
-    """
-    Function is outdated and should be updated. Was used to submit all
-    intermediates to xtb calcs after molS was used to create them.
+    """Function is outdated and should be updated.
+
+    Was used to submit all intermediates to xtb calcs after molS was
+    used to create them.
     """
     executor = submitit.AutoExecutor(
         folder=scoring_args[-1] / "scoring_tmp",
@@ -235,9 +233,10 @@ def slurm_molS_xtb(sc_function, scoring_args):
 
 
 def slurm_conformer_dft(sc_function, scoring_args):
-    """
-    Function is outdated and should be updated. Was used to submit all
-    intermediates to xtb calcs after molS was used to create them.
+    """Function is outdated and should be updated.
+
+    Was used to submit all intermediates to xtb calcs after molS was
+    used to create them.
     """
     executor = submitit.AutoExecutor(
         folder=scoring_args[-1] / "scoring_tmp",

@@ -8,25 +8,26 @@ from typing import List
 import numpy as np
 import pandas as pd
 from rdkit import Chem
-from rdkit.Chem import AllChem
 from tabulate import tabulate
 
-from descriptors.descriptors import (number_of_rotatable_bonds_target,
-                                     number_of_rotatable_bonds_target_clipped)
+from descriptors.descriptors import number_of_rotatable_bonds_target_clipped
 from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
-from scoring.make_structures import (atom_remover, create_prim_amine_revised,
-                                     mol_with_atom_index, single_atom_remover)
+from scoring.make_structures import (
+    atom_remover,
+    create_prim_amine_revised,
+    single_atom_remover,
+)
 
 _neutralize_reactions = None
 
 
 @dataclass
 class Individual:
-    """Dataclass for holding molecules with attributes
+    """Dataclass for holding molecules with attributes.
 
-    The central objects of the GA. The moles themselves plus
-    various attributes and debugging fields are set.
+    The central objects of the GA. The moles themselves plus various
+    attributes and debugging fields are set.
     """
 
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
@@ -65,12 +66,12 @@ class Individual:
         ]
 
     def get(self, prop):
-        """Get property from individual"""
+        """Get property from individual."""
         prop = getattr(self, prop)
         return prop
 
     def save(self, directory="."):
-        """Dump ind object into file"""
+        """Dump ind object into file."""
         filename = os.path.join(directory, f"ind.pkl")
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
@@ -78,7 +79,7 @@ class Individual:
 
 @dataclass(order=True)
 class Generation:
-    """Dataclass holding the Individuals in each generation
+    """Dataclass holding the Individuals in each generation.
 
     Contains functionality to get and set props from Individuals and
     display vaious scoring results
@@ -98,26 +99,26 @@ class Generation:
         )
 
     def assign_idx(self):
-        """Set idx on each molecule"""
+        """Set idx on each molecule."""
         for i, molecule in enumerate(self.molecules):
             setattr(molecule, "idx", (self.generation_num, i))
         self.size = len(self.molecules)
 
     def save(self, directory=None, name="GA.pkl"):
-        """Save instance to file for later retrieval"""
+        """Save instance to file for later retrieval."""
         filename = os.path.join(directory, name)
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
     def get(self, prop):
-        """Get property from molecules"""
+        """Get property from molecules."""
         properties = []
         for molecule in self.molecules:
             properties.append(getattr(molecule, prop))
         return properties
 
     def setprop(self, prop, list_of_values):
-        """Set property for molecules"""
+        """Set property for molecules."""
         for molecule, value in zip(self.molecules, list_of_values):
             setattr(molecule, prop, value)
 
@@ -127,7 +128,7 @@ class Generation:
                 getattr(molecule, prop).append(value)
 
     def sortby(self, prop, reverse=True):
-        """Sort molecule based on score"""
+        """Sort molecule based on score."""
         if reverse:
             self.molecules.sort(
                 key=lambda x: float("inf") if np.isnan(x.score) else x.score,
@@ -140,9 +141,8 @@ class Generation:
             )
 
     def handle_results(self, results):
-        """Extract the scoring results and set the properties on the
-        Individual objects.
-        """
+        """Extract the scoring results and set the properties on the Individual
+        objects."""
         optimized_mol1 = [res[0] for res in results]
         optimized_mol2 = [res[1] for res in results]
         en_dicts = [res[2] for res in results]
@@ -175,13 +175,13 @@ class Generation:
         self.setprop("score", new_scores)
 
     def prune(self, population_size):
-        """Sort by score and take the best scoring molecules"""
+        """Sort by score and take the best scoring molecules."""
         self.sortby("score", reverse=False)
         self.molecules = self.molecules[:population_size]
         self.size = len(self.molecules)
 
     def print(self, population="molecules", pass_text=None):
-        """Print nice table of output"""
+        """Print nice table of output."""
         table = []
         if population == "molecules":
             population = self.molecules
@@ -218,7 +218,7 @@ class Generation:
             return txt
 
     def print_fails(self):
-        """Log how many calcs in population failed"""
+        """Log how many calcs in population failed."""
         nO_NaN = 0
         nO_9999 = 0
         for ind in self.new_molecules:
@@ -238,7 +238,7 @@ class Generation:
         self,
         columns=["cut_idx", "score", "energy", "sa_score", "smiles"],
     ):
-        """Get dataframe of population"""
+        """Get dataframe of population."""
         df = pd.DataFrame(
             list(map(list, zip(*[self.get(prop) for prop in columns]))),
             index=pd.MultiIndex.from_tuples(
@@ -260,13 +260,13 @@ class Generation:
             "min_confs",
         ],
     ):
-        """Get dataframe of population"""
+        """Get dataframe of population."""
         df = pd.DataFrame(list(map(list, zip(*[self.get(prop) for prop in columns]))))
         df.columns = columns
         return df
 
     def update_property_cache(self):
-        """Update rdkit data to prevent errors"""
+        """Update rdkit data to prevent errors."""
         for mol in self.molecules:
 
             # Done to prevent ringinfo error
@@ -274,7 +274,7 @@ class Generation:
             mol.rdkit_mol.UpdatePropertyCache()
 
     def modify_population(self, supress_amines=False):
-        """Molecule mol modifier function
+        """Molecule mol modifier function.
 
         Preps molecules in population for scoring. Ensures that there is one
         primary amine attachment point
@@ -391,7 +391,7 @@ class Generation:
             ind.neutral_rdkit_mol = mol
 
     def get_sa(self):
-        """Get the SA score of the population"""
+        """Get the SA score of the population."""
 
         # Neutralize and prep molecules
         self.sa_prep()
@@ -404,7 +404,7 @@ class Generation:
         self.set_sa(sa_scores)
 
     def calculate_normalized_fitness(self):
-        """Normalize the scores to get probabilities for mating selection"""
+        """Normalize the scores to get probabilities for mating selection."""
 
         # onvert to high and low scores.
         scores = self.get("score")
@@ -425,7 +425,10 @@ class Generation:
             individual.normalized_fitness = shifted_score / sum_scores
 
     def set_sa(self, sa_scores):
-        """Set sa score. If score is high, then score is not modified"""
+        """Set sa score.
+
+        If score is high, then score is not modified
+        """
         for individual, sa_score in zip(self.molecules, sa_scores):
             individual.sa_score = sa_score
             # Scale the score with the sa_score (which is max 1)
@@ -434,7 +437,7 @@ class Generation:
 
 @dataclass(order=True)
 class Conformers:
-    """Dataclass holding the molecules for conformer screening
+    """Dataclass holding the molecules for conformer screening.
 
     Contains functionality to get and set props from Individuals and
     display vaious scoring results
@@ -450,20 +453,20 @@ class Conformers:
         return f"molecules_size={self.size})"
 
     def save(self, directory=None, name="Conformers.pkl"):
-        """Save instance to file for later retrieval"""
+        """Save instance to file for later retrieval."""
         filename = os.path.join(directory, name)
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
     def get(self, prop):
-        """Get property from molecules"""
+        """Get property from molecules."""
         properties = []
         for molecule in self.molecules:
             properties.append(getattr(molecule, prop))
         return properties
 
     def setprop(self, prop, list_of_values):
-        """Set property for molecules"""
+        """Set property for molecules."""
         for molecule, value in zip(self.molecules, list_of_values):
             setattr(molecule, prop, value)
 
@@ -473,7 +476,7 @@ class Conformers:
                 getattr(molecule, prop).append(value)
 
     def sortby(self, prop, reverse=False):
-        """Sort molecule based on score"""
+        """Sort molecule based on score."""
         if reverse:
             self.molecules.sort(
                 key=lambda x: float("inf") if np.isnan(x.get(prop)) else x.get(prop),
@@ -486,9 +489,8 @@ class Conformers:
             )
 
     def set_results(self, results):
-        """Extract the scoring results and set the properties on the
-        Individual objects.
-        """
+        """Extract the scoring results and set the properties on the Individual
+        objects."""
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]
         geometries2 = [res[2] for res in results]
@@ -502,9 +504,8 @@ class Conformers:
         self.setprop("score", energies)
 
     def handle_results(self, results):
-        """Extract the scoring results and set the properties on the
-        Individual objects.
-        """
+        """Extract the scoring results and set the properties on the Individual
+        objects."""
         optimized_mol1 = [res[0] for res in results]
         optimized_mol2 = [res[1] for res in results]
         en_dicts = [res[2] for res in results]

@@ -1,15 +1,9 @@
 import argparse
-import copy
-import json
 import logging
 import os
-import pathlib
-import pickle
 import random
 import sys
-import time
 from ast import literal_eval as make_tuple
-from copy import deepcopy
 from pathlib import Path
 
 import pandas as pd
@@ -19,12 +13,9 @@ source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 
 from dft.orca_driver import conformersearch_dft_driver
-from my_utils.classes import Conformers, Generation, Individual
+from my_utils.classes import Conformers, Individual
 from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc
-from scoring.scoring import (rdkit_embed_scoring,
-                             rdkit_embed_scoring_NH3plustoNH3,
-                             rdkit_embed_scoring_NH3toN2)
 
 ORCA_COMMANDS = {
     "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",

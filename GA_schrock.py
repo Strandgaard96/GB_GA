@@ -1,12 +1,10 @@
-"""
-
-This is the driver script for running a GA algorithm on the Schrock catalysts
+"""This is the driver script for running a GA algorithm on the Schrock
+catalysts.
 
 Example:
     How to run:
 
         $ python GA_schrock.py --args
-
 """
 
 import argparse
@@ -14,23 +12,21 @@ import copy
 import logging
 import os
 import pathlib
-import pickle
 import sys
 import time
-from copy import deepcopy
 from pathlib import Path
 
 import crossover as co
 import filters
 import GB_GA as ga
-from my_utils.classes import Generation, Individual
+from my_utils.classes import Generation
 from my_utils.utils import get_git_revision_short_hash
-from sa.neutralize import neutralize_molecules
-from sa.sascorer import get_sa_scores, reweigh_scores_by_sa
 from scoring import scoring_functions as sc
-from scoring.scoring import (rdkit_embed_scoring,
-                             rdkit_embed_scoring_NH3plustoNH3,
-                             rdkit_embed_scoring_NH3toN2)
+from scoring.scoring import (
+    rdkit_embed_scoring,
+    rdkit_embed_scoring_NH3plustoNH3,
+    rdkit_embed_scoring_NH3toN2,
+)
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 

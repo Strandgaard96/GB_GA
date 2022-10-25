@@ -4,13 +4,9 @@ import os
 import pickle
 import re
 import shutil
-import subprocess
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
-import numpy as np
 from rdkit import Chem
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -35,7 +31,7 @@ with open(
 
 
 def get_inputfile(options, charge, spin, file):
-    """Write Orca header"""
+    """Write Orca header."""
 
     header = "# ORCA input" + 2 * "\n"
 
@@ -64,7 +60,7 @@ def get_inputfile(options, charge, spin, file):
 
 
 def get_inputfile_simple(options, charge, spin, file):
-    """Write Orca header"""
+    """Write Orca header."""
 
     header = "# ORCA input" + 2 * "\n"
 
@@ -154,7 +150,7 @@ def get_arguments(arg_list=None):
             "rdkit_embed_scoring_NH3plustoNH3",
         ],
         required=True,
-        help="""Choose one of the specified scoring functions to know the 
+        help="""Choose one of the specified scoring functions to know the
         intermediates in question""",
     )
     parser.add_argument(
@@ -234,9 +230,8 @@ def write_orca_sh(
 
 
 def conformer_opt(args):
-    """
-    Driver to take final conformers after dft singlepoints and do full DFT
-    optimizations on them
+    """Driver to take final conformers after dft singlepoints and do full DFT
+    optimizations on them.
 
     Args:
         conformer_object: Conformer object containint all the molecules to
@@ -256,13 +251,13 @@ def conformer_opt(args):
     output_dir = args.output_dir
 
     # Get list to
-    molecules = conf.molecules[args.no_molecules[0]:args.no_molecules[1]]
+    molecules = conf.molecules[args.no_molecules[0] : args.no_molecules[1]]
 
     # idx for labeling folders
-    retained_idx = [i for i in range(args.no_molecules[0],args.no_molecules[1])]
+    retained_idx = [i for i in range(args.no_molecules[0], args.no_molecules[1])]
 
     # Loop over all the structures
-    for idx_l,elem in zip(retained_idx, molecules):
+    for idx_l, elem in zip(retained_idx, molecules):
 
         # Format the idx
         idx = re.sub(r"[()]", "", str(elem.idx))
@@ -273,7 +268,7 @@ def conformer_opt(args):
         for key, value in elem.final_structs.items():
 
             # Create folders based on idx and intermediates
-            mol_dir = output_dir / f'{idx_l}'/f"{idx}" / key
+            mol_dir = output_dir / f"{idx_l}" / f"{idx}" / key
             mol_dir.mkdir(exist_ok=True, parents=True)
 
             with cd(mol_dir):
@@ -317,7 +312,7 @@ def remove_confs(conf):
 
 
 def GA_singlepoints(args):
-    """Future function that do singlpoints on GA objects"""
+    """Future function that do singlpoints on GA objects."""
 
     # Extract dirs
     GA_dir = args.GA_dir
@@ -435,7 +430,7 @@ def write_xtb_from_struct(conf, molecule, xyzfile):
 
 
 def folder_orca_driver(args):
-    """Future function that do DFT on structures in a folder"""
+    """Future function that do DFT on structures in a folder."""
 
     # Extract dirs
     calc_dir = args.calc_dir
@@ -456,7 +451,7 @@ def folder_orca_driver(args):
 
 def conformersearch_dft_driver(args):
 
-    """Do DFT optimization on structures based on conformer search"""
+    """Do DFT optimization on structures based on conformer search."""
 
     # Directory for the conformer object
     calc_dir = args.calc_dir
@@ -490,15 +485,15 @@ def conformersearch_dft_driver(args):
         idx = idx.replace(",", "_").replace(" ", "")
 
         # Create folders based on idx and intermediates
-        mol_dir1 = output_dir_dft /f'{i}'/ f"{idx}" / key1
+        mol_dir1 = output_dir_dft / f"{i}" / f"{idx}" / key1
         mol_dir1.mkdir(exist_ok=True, parents=True)
 
         # Create folders based on idx and intermediates
-        mol_dir2 = output_dir_dft /f'{i}'/f"{idx}" / key2
+        mol_dir2 = output_dir_dft / f"{i}" / f"{idx}" / key2
         mol_dir2.mkdir(exist_ok=True, parents=True)
 
         # Save indvidual object for easier processing later
-        molecule.save(directory=output_dir_dft/f'{i}' / f"{idx}")
+        molecule.save(directory=output_dir_dft / f"{i}" / f"{idx}")
 
         xyzfile = "struct.xyz"
 
@@ -544,7 +539,7 @@ def conformersearch_dft_driver(args):
 
 
 def parts_opts(args):
-    """Future function that do DFT on structures in a folder"""
+    """Future function that do DFT on structures in a folder."""
 
     # Extract dirs
     calc_dir = args.calc_dir
@@ -606,5 +601,5 @@ if __name__ == "__main__":
 
     # Run chosen function
     func(args)
-
+    print("loool")
     sys.exit(0)

@@ -1,16 +1,13 @@
-"""
-Module that contains mol manipulations and various resuable functionality classes.
-"""
+"""Module that contains mol manipulations and various resuable functionality
+classes."""
 import concurrent.futures
 import os
-import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 from ase.calculators.singlepoint import SinglePointCalculator
-from ase.db import connect
 from ase.io import Trajectory, read
 from rdkit import Chem
 
@@ -18,35 +15,6 @@ from rdkit import Chem
 sys.path.insert(0, "../scoring")
 
 _neutralize_reactions = None
-
-
-def write_input_files(fragment, name="struct.xyz", destination="."):
-    """Utility method to write xyz input files from mol object"""
-
-    number_of_atoms = fragment.GetNumAtoms()
-    symbols = [a.GetSymbol() for a in fragment.GetAtoms()]
-    conformers = fragment.GetConformers()
-    file_paths = []
-    conf_paths = []
-    for i, conf in enumerate(conformers):
-        conf_path = os.path.join(destination, f"conf{i:03d}")
-        conf_paths.append(conf_path)
-
-        if os.path.exists(conf_path):
-            shutil.rmtree(conf_path)
-        os.makedirs(conf_path)
-
-        file_name = f"{name}{i:03d}.xyz"
-        file_path = os.path.join(conf_path, file_name)
-        with open(file_path, "w") as _file:
-            _file.write(str(number_of_atoms) + "\n")
-            _file.write(f"{Chem.MolToSmiles(fragment)}\n")
-            for atom, symbol in enumerate(symbols):
-                p = conf.GetAtomPosition(atom)
-                line = " ".join((symbol, str(p.x), str(p.y), str(p.z), "\n"))
-                _file.write(line)
-        file_paths.append(file_path)
-    return file_paths, conf_paths
 
 
 def mol_from_xyz(xyz_file, charge=0):
@@ -86,7 +54,7 @@ def hartree2kJmol(hartree):
 
 
 def write_to_traj(args):
-    """Write xtblog files to traj file"""
+    """Write xtblog files to traj file."""
 
     traj_dir, trajfile = args
     traj = Trajectory(traj_dir, mode="a")
@@ -101,7 +69,7 @@ def write_to_traj(args):
 
 
 def db_write_driver(output_dir=None, workers=6):
-    """Paralellize writing to db, not very robust"""
+    """Paralellize writing to db, not very robust."""
 
     database_dir = "ase.traj"
 
@@ -125,30 +93,12 @@ def db_write_driver(output_dir=None, workers=6):
 
 
 def get_git_revision_short_hash() -> str:
-    """Get the git hash of current commit for each GA run"""
+    """Get the git hash of current commit for each GA run."""
     return (
         subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
         .decode("ascii")
         .strip()
     )
-
-
-class cd:
-    """Context manager for changing the current working directory dynamically.
-    # See: https://book.pythontips.com/en/latest/context_managers.html"""
-
-    def __init__(self, newPath):
-        self.newPath = os.path.expanduser(newPath)
-
-    def __enter__(self):
-        self.savedPath = os.getcwd()
-        os.chdir(self.newPath)
-
-    def __exit__(self, etype, value, traceback):
-        # Print traceback if anything happens
-        if traceback:
-            print(sys.exc_info())
-        os.chdir(self.savedPath)
 
 
 if __name__ == "__main__":

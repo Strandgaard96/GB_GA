@@ -1,9 +1,0 @@
-!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J def2/J NormalPrint PrintMOs KDIIS SOSCF
-%cpcm epsilon 1.844
-end
-%basis
-NewGTO Mo "SARC-ZORA-TZVP"
-end
-%maxcore 8700
-%PAL NPROCS 40 END
-* xyzfile 0 2 mo.xyz

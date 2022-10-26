@@ -20,16 +20,12 @@ from contextlib import suppress
 from pathlib import Path
 
 from rdkit import Chem
+from support_mvp.auto import get_paths_molsimplify, shell
 
-from my_utils.auto import get_paths_molsimplify, shell
 from my_utils.utils import cd
 from my_utils.xtb_utils import run_xtb, xtb_optimize_schrock
 from scoring import scoring_functions as sc
-from scoring.make_structures import (
-    connect_ligand,
-    create_dummy_ligand,
-    embed_rdkit,
-)
+from scoring.make_structures import connect_ligand, create_dummy_ligand, embed_rdkit
 
 file = "templates/core_dummy.sdf"
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
@@ -138,6 +134,35 @@ def get_arguments(arg_list=None):
         help="How many cores to use for the xtb",
     )
     return parser.parse_args(arg_list)
+
+
+def get_paths_molsimplify(source, struct, dest):
+    """Get the paths for all molS results.
+
+    Create new folder structure
+    that contains suffix as folder name and
+    Args:
+        source (str): Folder to look for files with struct extention
+        struct (str): files types to look for in source.
+        dest (Path):
+    Returns:
+        paths List(Path): Returns path objects to xyz files in newly created tree.
+    """
+
+    paths = []
+
+    for root, dirs, files in os.walk(source):
+        for file in files:
+            if file.endswith(struct):
+
+                # Get intermediate name. A bit ugly and could break.
+                new_dir = root.split("/")[-2].split("intermediate_")[-1]
+                # Crreate this folder
+                os.mkdir(os.path.join(dest, new_dir))
+                # Copy the xyz file into the new directory and append the new file path
+                shutil.copy(os.path.join(root, file), os.path.join(dest, new_dir))
+                paths.append(Path(os.path.join(dest, new_dir, file)))
+    return paths
 
 
 def create_cycleMS(new_core=None, smi_path=None, run_dir=None, ncores=None):

@@ -13,6 +13,7 @@ source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 
 from dft.orca_driver import conformersearch_dft_driver
+
 from my_utils.classes import Conformers, Individual
 from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc

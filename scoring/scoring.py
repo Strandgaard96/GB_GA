@@ -27,7 +27,7 @@ from make_structures import (
 )
 
 from my_utils.utils import cd
-from my_utils.xtb_class import XTB_optimize_schrock
+from my_utils.xtb_utils import XTB_optimize_schrock
 
 hartree2kcalmol = 627.5094740631
 CORE_ELECTRONIC_ENERGY = -32.698

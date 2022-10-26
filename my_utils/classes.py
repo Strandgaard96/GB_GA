@@ -519,3 +519,21 @@ class Conformers:
         for mol, opt1, opt2 in zip(self.molecules, optimized_mol1, optimized_mol2):
             mol.optimized_mol1 = opt1
             mol.optimized_mol2 = opt2
+
+    def conf2pd_dft(
+        self,
+        columns=[
+            "smiles",
+            "idx",
+            "cut_idx",
+            "score",
+            "energy",
+            "dft_singlepoint_conf",
+            "final_dft_opt",
+            "scoring_function",
+        ],
+    ):
+        """Get dataframe of population."""
+        df = pd.DataFrame(list(map(list, zip(*[self.get(prop) for prop in columns]))))
+        df.columns = columns
+        return df

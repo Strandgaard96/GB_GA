@@ -12,7 +12,6 @@ import numpy as np
 # For highlight colors
 from rdkit import Chem
 
-
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 
@@ -325,48 +324,65 @@ def read_energy_opt_orca(logfile=None):
     return energy
 
 
-def rdkit_embed_scoring_calc(N2_NH3, NH3):
-    delta = N2_NH3 * kcal - (NH3 * kcal + reactions_dft_orca_sarcJ_tzp["N2"])
+def rdkit_embed_scoring_calc(Mo_N2_NH3, Mo_NH3):
+    delta = Mo_N2_NH3 * kcal - (Mo_NH3 * kcal + reactions_dft_orca_sarcJ_tzp["N2"])
     return delta
 
 
-def rdkit_embed_scoring_NH3toN2_calc(N2, NH3):
+def rdkit_embed_scoring_NH3toN2_calc(Mo_N2, Mo_NH3):
 
-    delta = (N2 * kcal + reactions_dft_orca_sarcJ_tzp["NH3"]) - (
-        NH3 * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
+    delta = (Mo_N2 * kcal + reactions_dft_orca_sarcJ_tzp["NH3"]) - (
+        Mo_NH3 * kcal + reactions_dft_orca_sarcJ_tzp["N2"]
     )
     return delta
 
 
-def rdkit_embed_scoring_NH3plustoNH3_calc(NH3plus, NH3):
-    delta = NH3 * kcal - NH3plus * kcal + reactions_dft_orca_sarcJ_tzp["delta_Cp"]
+def rdkit_embed_scoring_NH3plustoNH3_calc(Mo_NH3plus, Mo_NH3):
+    delta = Mo_NH3 * kcal - Mo_NH3plus * kcal + reactions_dft_orca_sarcJ_tzp["delta_Cp"]
     return delta
 
 
 def get_opts():
 
-    folder = Path("/home/magstr/dft_data/top10_opts/logfiles")
-    f = sorted(folder.glob("*"))
+    folder = Path("/home/magstr/dft_data/0_140_dft_opts")
+    f = sorted(folder.glob("*/*"))
 
-    deltas = []
-    score_list = []
+    ind_list = []
+
     for elem in f:
-        result_dict = {}
+        energy_dict = {}
         files = sorted(elem.rglob("orca.out"))
         keys = set([p.parent.name for p in sorted(elem.rglob("*orca.out"))])
-
         scoring = scoring_from_keys(keys)
 
         for file in files:
             name = file.parent.name
             en = read_energy_opt_orca(file)
-            result_dict[name] = en[-1]
 
-        delta = funcs[scoring](result_dict)
-        deltas.append(delta)
-        score_list.append(scoring)
-    print(f"Scores for top ten conformers {deltas}")
-    print(score_list)
+            # Get the last energy
+            energy_dict[name] = en[-1]
+
+        if "Mo_NH3+" in energy_dict.keys():
+            energy_dict["Mo_NH3plus"] = energy_dict.pop("Mo_NH3+", "Mo_NH3plus")
+
+        delta = funcs[scoring](**energy_dict)
+
+        # Add the results dict to the ind object
+        ind_paths = sorted(elem.rglob("*ind.pkl"))
+        # Get the ind object
+        ind_path = ind_paths[0]
+        with open(ind_path, "rb") as f:
+            ind = pickle.load(f)
+        setattr(ind, f"final_dft_opt", delta)
+
+        ind_list.append(ind)
+
+    final_ind_list = [ind for ind in ind_list if ind.final_dft_opt > -100]
+    # Save the final object for post-processing and analysis!
+    conf = Conformers(molecules=final_ind_list)
+    # Sort before saving
+    conf.sortby("final_dft_opt")
+    conf.save(directory="data", name="final_dft_opt.pkl")
 
 
 def scoring_from_keys(keys):

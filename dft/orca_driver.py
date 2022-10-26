@@ -271,10 +271,10 @@ def conformer_opt(args):
             mol_dir = output_dir / f"{idx_l}" / f"{idx}" / key
             mol_dir.mkdir(exist_ok=True, parents=True)
 
-            with cd(mol_dir):
+            # Save indvidual object for easier processing later
+            elem.save(directory=(output_dir / f"{idx_l}" / f"{idx}"))
 
-                # Save indvidual object for easier processing later
-                elem.save(directory=".")
+            with cd(mol_dir):
 
                 # Create xtb input file from struct
                 with open(xyzfile, "w+") as f:

@@ -17,12 +17,11 @@ from rdkit import Chem
 from rdkit.Chem import rdmolops
 from rdkit.Geometry import Point3D
 
-from my_utils.xtb_class import core
-
 from .xyz2mol import read_xyz_file, xyz2AC
 
-file = "templates/core_noHS.mol"
-core = Chem.MolFromMolFile(file, removeHs=False, sanitize=False)
+source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data")))
+file = source / "templates/core_noHS.mol"
+core = Chem.MolFromMolFile(str(file), removeHs=False, sanitize=False)
 """Mol:
 mol object of the Mo core with dummy atoms instead of ligands
 """

@@ -1,5 +1,6 @@
-"""
-Written by Jan H. Jensen 2018. 
+"""Written by Jan H.
+
+Jensen 2018.
 Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_baselines/tree/master/graph_ga
 """
 
@@ -16,7 +17,7 @@ from scoring.make_structures import create_prim_amine_revised
 
 
 def read_file(file_name):
-    """Read smiles from file and return mol list"""
+    """Read smiles from file and return mol list."""
     mol_list = []
     with open(file_name, "r") as file:
         for smiles in file:
@@ -89,11 +90,11 @@ def make_initial_population(population_size, file_name, rand=False):
 
 
 def make_initial_population_debug(population_size, file_name, rand=False):
-    """Function that runs localy and creates a small pop for debugging"""
+    """Function that runs localy and creates a small pop for debugging."""
     mol_list = read_file("data/ZINC_1000_amines.smi")
     initial_population = Generation(generation_num=0)
 
-    smiles = ["CCN", "NC1CCCCC1", "CCN", "CCN"]
+    smiles = ["CCN", "NC1CCC1", "CCN", "CCN"]
     idx = [2, 0, 2, 2]
 
     for i in range(population_size):
@@ -127,8 +128,7 @@ def make_mating_pool(population, mating_pool_size):
 
 
 def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
-    """
-    Perform crossover operating on the molecules in the mating pool
+    """Perform crossover operating on the molecules in the mating pool.
 
     Args:
         mating_pool List(Individual): List containing ind objects
@@ -178,7 +178,6 @@ def sanitize(molecules, population_size, prune_population):
         prune_population (bool): Flag to select the top scoring molecules.
 
     Returns:
-
     """
     if prune_population:
         smiles_list = []

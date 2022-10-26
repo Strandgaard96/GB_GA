@@ -25,8 +25,8 @@ from make_structures import (
     remove_N2,
     remove_NH3,
 )
+from support_mvp.auto import cd
 
-from my_utils.utils import cd
 from my_utils.xtb_utils import XTB_optimize_schrock
 
 hartree2kcalmol = 627.5094740631
@@ -54,19 +54,20 @@ NH3_ENERGY_gfn2: Electronic energy of pure NH3,
 used for scoring the NH3 dissacossiation reaction
 """
 
-file = "templates/core_dummy.sdf"
+source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data")))
+file = str(source / "templates/core_dummy.sdf")
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol:
 mol object of the Mo core with dummy atoms instead of ligands
 """
-file_NH3 = "templates/core_NH3_dummy.sdf"
+file_NH3 = str(source / "templates/core_NH3_dummy.sdf")
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 """Mol:
 mol object of the Mo core with NH3 in axial position and
 dummy atoms instead of ligands
 """
 
-file_N2_NH3 = "templates/core_N2_NH3_dummy.sdf"
+file_N2_NH3 = str(source / "templates/core_N2_NH3_dummy.sdf")
 core_N2_NH3 = Chem.SDMolSupplier(file_N2_NH3, removeHs=False, sanitize=False)
 """Mol:
 mol object of the Mo core with NH3 in axial position and

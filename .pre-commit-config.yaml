@@ -20,6 +20,19 @@ repos:
           - --expand-star-imports
           - --ignore-init-module-imports
 
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.7.0
+    hooks:
+      - id: isort
+        name: Sorts imports
+        args: [
+          # Align isort with black formatting
+          "--multi-line=3",
+          "--trailing-comma",
+          "--force-grid-wrap=0",
+          "--use-parentheses",
+          "--profile", "black"
+        ]
 
   - repo: https://github.com/psf/black
     rev: 22.6.0
@@ -41,17 +54,6 @@ repos:
 
   - repo: local
     hooks:
-      - id: jupyisort
-        name: Sorts ipynb imports
-        entry: jupytext --pipe-fmt ".py" --pipe "isort - --multi-line=3 --trailing-comma --force-grid-wrap=0 --use-parentheses" --sync
-        files: \.ipynb$
-        language: python
-
-      - id: jupyblack
-        name: Fixes ipynb format
-        entry: jupytext --pipe-fmt ".py" --pipe "black - " --sync
-        files: \.ipynb$
-        language: python
 
       - id: nbconvert
         name: Removes ipynb content

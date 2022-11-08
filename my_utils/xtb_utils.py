@@ -194,6 +194,33 @@ def read_results(output, err):
     return {"atoms": atoms, "coords": coords, "energy": energy}
 
 
+def xyz_to_conformer(mol, xyz_file):
+
+    atomic_symbols = []
+    xyz_coordinates = []
+    with open(xyz_file, "r") as file:
+        for line_number, line in enumerate(file):
+            if line_number == 0:
+                num_atoms = int(line)
+            elif line_number == 1:
+                comment = line  # might have useful information
+            else:
+                atomic_symbol, x, y, z = line.split()
+                atomic_symbols.append(atomic_symbol)
+                xyz_coordinates.append([float(x), float(y), float(z)])
+
+    # from https://github.com/rdkit/rdkit/issues/2413
+    conf = Chem.Conformer()
+    # in principal, you should check that the atoms match
+    for i in range(mol.GetNumAtoms()):
+        x, y, z = xyz_coordinates[i]
+        conf.SetAtomPosition(i, Point3D(x, y, z))
+
+    mol.AddConformer(conf, assignId=True)
+
+    return
+
+
 def write_xyz(atoms, coords, destination_dir):
     """Write .xyz file from atoms and coords."""
     file = destination_dir / "mol.xyz"

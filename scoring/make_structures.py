@@ -96,6 +96,24 @@ def addAtom(mol, indexAtom, atom_type="N"):
     return emol.GetMol(), idx
 
 
+def addAtom(mol, indexAtom, atom_type="N", order="single"):
+    """Add atom and connect to indexAtom with specified order."""
+
+    order_dict = {
+        "single": Chem.rdchem.BondType.SINGLE,
+        "double": Chem.rdchem.BondType.DOUBLE,
+        "triple": Chem.rdchem.BondType.TRIPLE,
+    }
+
+    emol = Chem.EditableMol(mol)
+    idx = emol.AddAtom(Chem.Atom(atom_type))
+    emol.AddBond(indexAtom, idx, order=order_dict[order])
+
+    f_mol = emol.GetMol()
+
+    return f_mol, idx
+
+
 def atom_remover(mol, pattern=None):
     """Generator function that removes a substructures and yields all the n
     structures where each structure has one of the substructures removed.
@@ -190,19 +208,17 @@ def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
     return mol
 
 
-def connectMols(core, NH3_flag=True):
+def connectMols(core, flag=True, pattern="[NH3]"):
+    # NOT WOKING CURRENTLY
     """Connect NH3 to Mo core."""
 
-    query = Chem.MolFromSmarts("[NX3;H3]")
-    mol = Chem.MolFromSmiles("[NH3]")
-    if NH3_flag:
-        mol.GetAtomWithIdx(0).SetFormalCharge(1)
+    mol = Chem.MolFromSmiles(pattern)
 
     combined = Chem.CombineMols(core, mol)
     emol = Chem.EditableMol(combined)
 
     # Get the idx of the Mo and NH3
-    NH3_match = combined.GetSubstructMatch(query)
+
     atom = combined.GetAtomWithIdx(NH3_match[0])
     NH3_idx = atom.GetIdx()
 
@@ -211,8 +227,12 @@ def connectMols(core, NH3_flag=True):
             Mo_idx = atom.GetIdx()
             break
 
-    emol.AddBond(Mo_idx, NH3_idx, order=Chem.rdchem.BondType.SINGLE)
+    Mo_bond_match = combined.GetSubstructMatch("[Mo]")
+
+    emol.AddBond(Mo_idx, NH3_idx, order=Chem.rdchem.BondType.TRIPLE)
     mol = emol.GetMol()
+    if flag:
+        mol.GetAtomWithIdx(NH3_idx).SetFormalCharge(1)
 
     return mol
 
@@ -414,8 +434,8 @@ def embed_rdkit(
     coreConfId=-1,
     randomseed=2342,
     numThreads=1,
-    force_constant=1e12,
-    pruneRmsThresh=0.1,
+    force_constant=1e6,
+    pruneRmsThresh=-1,
 ):
     """Embedding driver function.
 
@@ -432,7 +452,6 @@ def embed_rdkit(
     Returns:
         mol (Chem.rdchem.Mol): Embedded mol object
     """
-
     # Match the core+ligand to the Mo core.
     match = mol.GetSubstructMatch(core)
     if not match:
@@ -457,9 +476,8 @@ def embed_rdkit(
         randomSeed=2,
         numThreads=numThreads,
         pruneRmsThresh=pruneRmsThresh,
-        useRandomCoords=False,
+        useRandomCoords=True,
     )
-    Chem.SanitizeMol(mol)
 
     cids = list(cids)
 
@@ -482,7 +500,6 @@ def embed_rdkit(
         if not cids:
             print(coordMap, Chem.MolToSmiles(mol))
             raise ValueError("Could not embed molecule")
-
     # Rotate embedded conformations onto the core
     algMap = [(j, i) for i, j in enumerate(match)]
     for cid in cids:

@@ -331,6 +331,7 @@ def get_opts():
 
     for elem in f:
         energy_dict = {}
+        struct_dict = {}
         files = sorted(elem.rglob("orca.out"))
         keys = set([p.parent.name for p in sorted(elem.rglob("*orca.out"))])
         scoring = scoring_from_keys(keys)
@@ -339,6 +340,11 @@ def get_opts():
             name = file.parent.name
             en = read_energy_opt_orca(file)
 
+            with open(file.parent / "orca.xyz", "r") as f:
+                lines = f.readlines()
+
+            # Get the optimized struct
+            struct_dict[name] = lines
             # Get the last energy
             energy_dict[name] = en[-1]
 
@@ -354,7 +360,7 @@ def get_opts():
         with open(ind_path, "rb") as f:
             ind = pickle.load(f)
         setattr(ind, f"final_dft_opt", delta)
-
+        setattr(ind, f"final_structs", struct_dict)
         ind_list.append(ind)
 
     final_ind_list = [ind for ind in ind_list if ind.final_dft_opt > -100]
@@ -425,6 +431,9 @@ if __name__ == "__main__":
         "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2_calc,
         "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3_calc,
     }
+    # with open(f"data/final_dft_opt.pkl", "rb") as f:
+    #    conf = pickle.load(f)
+
     get_opts()
     # rename()
     # main()

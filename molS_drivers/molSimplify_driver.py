@@ -12,7 +12,6 @@ import concurrent.futures
 import json
 import os
 import pathlib
-import pickle
 import shutil
 import sys
 import time
@@ -20,14 +19,24 @@ from contextlib import suppress
 from pathlib import Path
 
 from rdkit import Chem
-from support_mvp.auto import get_paths_molsimplify, shell
+from support_mvp.auto import cd, shell
 
-from my_utils.utils import cd
-from my_utils.xtb_utils import run_xtb, xtb_optimize_schrock
+from my_utils.data_handler import renamed_load
+from my_utils.xtb_utils import run_xtb, xtb_optimize_schrock, xyz_to_conformer
 from scoring import scoring_functions as sc
-from scoring.make_structures import connect_ligand, create_dummy_ligand, embed_rdkit
+from scoring.make_structures import (
+    addAtom,
+    connect_ligand,
+    create_dummy_ligand,
+    embed_rdkit,
+    remove_N2,
+    remove_NH3,
+)
 
-file = "templates/core_dummy.sdf"
+dirname = os.path.dirname(__file__)
+
+source = Path(os.path.abspath(os.path.join(dirname, "../data")))
+file = str(source / "templates/core_dummy.sdf")
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol:
 mol object of the Mo core with dummy atoms instead of ligands
@@ -49,25 +58,31 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--run_dir",
         type=pathlib.Path,
-        default="molS_drivers/Runs",
+        default="Runs",
         help="Sets the output dir of the molSimplify commands",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=pathlib.Path,
+        default="cycle_creation",
+        help="Sets the output dir of the cycle creation using RdKit",
     )
     parser.add_argument(
         "--cycle_dir",
         type=pathlib.Path,
-        default="molS_drivers/Runs/Runs_cycle",
+        default="Runs/Runs_cycle",
         help="Sets the output dir of the cycle molSimplify commands",
     )
     parser.add_argument(
-        "--gen_path",
+        "--pickle_path",
         type=pathlib.Path,
-        default="/home/magstr/generation_data/vin_overnight2/GA01.pkl",
-        help="A generation pickle to load candidates from",
+        default="../data/final_dft_opt.pkl",
+        help="A pickle to load candidates from",
     )
     parser.add_argument(
         "--initial_opt",
         type=pathlib.Path,
-        default="molS_drivers/initial_opt/newcore.xyz",
+        default="initial_opt/newcore.xyz",
         help="Where to perform initial opt",
     )
     parser.add_argument(
@@ -76,27 +91,13 @@ def get_arguments(arg_list=None):
         default="/home/magstr/Documents/GB_GA/debug/conf001/xtbopt_bare.xyz",
         help="The structure with ligand and bare Mo",
     )
-    parser.add_argument(
-        "--cleanup",
-        dest="cleanup",
-        action="store_true",
-        help="Cleans xtb output folders",
-    )
-    parser.add_argument("--no_cleanup", dest="cleanup", action="store_false")
-    parser.set_defaults(cleanup=True)
+    parser.add_argument("--cleanup", dest="cleanup", action="store_true")
     parser.add_argument(
         "--create_cycle",
         dest="create_cycle",
         action="store_true",
         help="Variable to control if cycle is created with ligand",
     )
-    parser.add_argument(
-        "--no_create_cycle",
-        dest="create_cycle",
-        action="store_false",
-        help="Dont create cycle with molS",
-    )
-    parser.set_defaults(create_cycle=True)
     parser.add_argument(
         "--ligand_smi",
         type=str,
@@ -116,12 +117,6 @@ def get_arguments(arg_list=None):
         help="What primary amine to cut on",
     )
     parser.add_argument(
-        "--starting_struct",
-        type=str,
-        default="GA_bare",
-        help="Where to get the starting struct from",
-    )
-    parser.add_argument(
         "--newcore_path",
         type=pathlib.Path,
         default="newcore.xyz",
@@ -130,7 +125,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--ncores",
         type=int,
-        default=6,
+        default=3,
         help="How many cores to use for the xtb",
     )
     return parser.parse_args(arg_list)
@@ -277,10 +272,11 @@ def get_smicat(lig_smi=None):
     return connect_idx, new_lig_smi
 
 
-def create_custom_core_rdkit(ligand, newcore_path="newcore.xyz"):
+def create_custom_core_rdkit(ligand, args):
 
     ligand_cut = create_dummy_ligand(ligand.rdkit_mol, ligand.cut_idx)
     catalyst = connect_ligand(core[0], ligand_cut)
+    catalyst = Chem.AddHs(catalyst)
 
     # Embed catalyst
     catalyst_3d = embed_rdkit(
@@ -292,10 +288,9 @@ def create_custom_core_rdkit(ligand, newcore_path="newcore.xyz"):
     )
 
     # Save mol
-    with open(newcore_path, "w+") as f:
+    with open(args.newcore_path, "w+") as f:
         f.write(Chem.MolToXYZBlock(catalyst_3d))
-
-    return newcore_path
+    return args.newcore_path
 
 
 def extract_structure_scoring(ligand):
@@ -342,6 +337,71 @@ def create_custom_core(args):
     return
 
 
+def cycle_to_dft():
+
+    args = get_arguments()
+
+    # Create output dir
+    args.output_dir.mkdir(exist_ok=True, parents=True)
+
+    # Get path object for parameter dict
+    intermediate_smi_path = source / Path("intermediate_smiles.json")
+    # Get spin and charge dict
+    with open(intermediate_smi_path) as f:
+        parameters = json.load(f)
+
+    # Extract ligand object from GA.
+    with open(args.pickle_path, "rb") as f:
+        obj = renamed_load(f)
+
+    # Select which molecule to do:
+    idx = 57
+    ligand = obj.molecules[idx].rdkit_mol
+    mol = obj.molecules[idx].optimized_mol1
+
+    # Get the bare xyz file
+    file_bare = f"mol_bare.xyz"
+
+    # Remove previous conformers and add the 3D structure from dft op
+    # tmp_mol.RemoveAllConformers()
+
+    with open(file_bare, "w+") as f:
+        for line in obj.molecules[idx].final_structs["Mo_NH3"]:
+            f.write(line)
+
+    mol.RemoveAllConformers()
+
+    xyz_to_conformer(mol, file_bare)
+
+    mol = remove_NH3(mol)
+    mol = remove_N2(mol)
+    Chem.AddHs(mol)
+    # Create all the mols with the different intermediates.
+    Mo_match = mol.GetSubstructMatches(Chem.MolFromSmarts("[Mo]"))[0][0]
+
+    # Embed a structure with N2 to use as reference
+    Mo_N, idx = addAtom(mol, Mo_match, atom_type="N", order="triple")
+    Mo_N.UpdatePropertyCache()
+    Mo_N = Chem.AddHs(Mo_N)
+
+    with open("core_base.xyz", "w+") as f:
+        f.write(Chem.MolToXYZBlock(mol))
+
+    Mo_N = Chem.AddHs(Chem.MolFromSmiles(Chem.MolToSmiles(Mo_N)))
+
+    # Embed mol object
+    Mo_N_3d = embed_rdkit(
+        mol=Mo_N,
+        core=mol,
+    )
+    with open("embedding.xyz", "w+") as f:
+        f.write(Chem.MolToXYZBlock(Mo_N_3d))
+
+    # Get coordinates for the new structure
+
+    # Embed the second N
+
+
 def main():
     """Driver script.
 
@@ -352,7 +412,7 @@ def main():
     args = get_arguments()
 
     # Get path object for parameter dict
-    intermediate_smi_path = Path("data/intermediate_smiles.json")
+    intermediate_smi_path = source / Path("intermediate_smiles.json")
     # Get spin and charge dict
     with open(intermediate_smi_path) as f:
         parameters = json.load(f)
@@ -365,21 +425,19 @@ def main():
     # Create inital opt dir
     Path(args.initial_opt.parent).mkdir(parents=True, exist_ok=True)
 
-    # Get the starting core. Either form rdkit or from optimization
-    if args.starting_struct == "GA_bare":
-        # extract_structure(ligand)
-        shutil.copy(args.bare_struct, args.initial_opt)
-    else:
-        # Extract ligand object from GA.
-        with open(args.gen_path, "rb") as f:
-            gen = pickle.load(f)
-        # TODO add option to select ligand by idx, currently selecting best one
-        ligand = gen.survivors.molecules[-1]
-        create_custom_core_rdkit(ligand, args)
+    # Extract ligand object from GA.
+    with open(args.pickle_path, "rb") as f:
+        obj = renamed_load(f)
 
-    # Perform initial optimization of the struct before passing to molS
-    xyz_file = args.initial_opt.resolve()
+    # TODO add option to select ligand by idx, currently selecting best one
+    ligand = obj.molecules[57].rdkit_mol
+
     with cd(args.initial_opt.parent):
+
+        path = create_custom_core_rdkit(ligand, args)
+        xyz_file = path.resolve()
+        # Perform initial optimization of the struct before passing to molS
+
         run_xtb((xyz_file, "xtb --gfnff --opt", args.ncores, ".", "initial_opt"))
 
         # Prepare constrained opt string
@@ -422,9 +480,9 @@ def main():
             "ncores": args.ncores,
         }
 
-        # create_cycleMS(**scoring_args)
+        create_cycleMS(**scoring_args)
 
-        results = sc.slurm_molS(create_cycleMS, scoring_args)
+        # results = sc.slurm_molS(create_cycleMS, scoring_args)
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -453,4 +511,5 @@ if __name__ == "__main__":
     #    smi_path=intermediate_smi_path,
     #    run_dir=cycle_dir,
     # )
-    main()
+    # main()
+    cycle_to_dft()

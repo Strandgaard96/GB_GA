@@ -75,7 +75,7 @@ dummy atoms instead of ligands
 """
 
 
-with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
+with open(str(source / "intermediate_smiles.json"), "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
 """dict:
 Dictionary that contains the smiles string for each N-related intermediate

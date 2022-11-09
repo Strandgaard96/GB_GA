@@ -119,13 +119,13 @@ def get_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def submit_orca(args, key1, xyzfile):
+def submit_orca(args, key, xyzfile):
     # Create input file
     write_orca_input_file(
         structure_path=xyzfile,
         type_calc=args.type_calc,
-        charge=smi_dict[key1]["charge"],
-        spin=smi_dict[key1]["mul"],
+        charge=smi_dict[key]["charge"],
+        spin=smi_dict[key]["mul"],
         n_cores=args.n_cores,
         memory=args.memory,
     )
@@ -335,8 +335,7 @@ def folder_orca_driver(args):
         key = str(path.parent.name)
 
         with cd(path.parent):
-
-            submit_orca(args, key, xyzfile)
+            submit_orca(args, key, path.name)
 
 
 def conformersearch_dft_driver(args):

@@ -12,7 +12,6 @@ import json
 import os
 import pathlib
 import shutil
-import sys
 import time
 from contextlib import suppress
 from pathlib import Path
@@ -113,6 +112,12 @@ def get_arguments(arg_list=None):
         type=int,
         default=9,
         help="What primary amine to cut on",
+    )
+    parser.add_argument(
+        "--idx",
+        type=int,
+        default=0,
+        help="Which molecule to select for cycle creation",
     )
     parser.add_argument(
         "--newcore_path",
@@ -221,7 +226,7 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, ncores=None):
 
     # Finaly create directory that contains the simple core
     # (for consistentxtb calcs)
-    bare_core_dir = run_dir / "supercore_Mo" / "struct"
+    bare_core_dir = run_dir / "Mo" / "struct"
     bare_core_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(new_core, bare_core_dir / "struct.xyz")
 
@@ -374,7 +379,7 @@ def cycle_to_dft():
         obj = renamed_load(f)
 
     # Select which molecule to do:
-    idx = 50
+    idx = args.idx
     ligand = obj.molecules[idx].rdkit_mol
     mol = obj.molecules[idx].optimized_mol1
 
@@ -457,58 +462,53 @@ def main():
     with open(intermediate_smi_path) as f:
         parameters = json.load(f)
 
-    # Remove old cycle if dir exists, to prevent molS error.
-    dirpath = args.run_dir
-    if dirpath.exists() and dirpath.is_dir():
-        shutil.rmtree(dirpath)
-
-    # Create cycle dir
-    Path(args.cycle_dir).mkdir(parents=True, exist_ok=True)
-
     # Extract ligand object from GA.
     with open(args.pickle_path, "rb") as f:
         obj = renamed_load(f)
 
-    # TODO add option to select ligand by idx, currently selecting best one
-    ligand = obj.molecules[50]
+    for ligand in obj.molecules[5:10]:
 
-    # Print custom core to use and get path
-    mol = ligand.optimized_mol1
+        # Remove old cycle if dir exists, to prevent molS error.
+        dirpath = args.run_dir
+        if dirpath.exists() and dirpath.is_dir():
+            shutil.rmtree(dirpath)
 
-    mol = remove_NH3(mol)
-    mol = remove_N2(mol)
-    mol = Chem.AddHs(mol)
-    Mo_bare_dir = Path("core_base.xyz")
-    with open("core_base.xyz", "w+") as f:
-        f.write(Chem.MolToXYZBlock(mol))
+        # Create cycle dir
+        Path(args.cycle_dir).mkdir(parents=True, exist_ok=True)
 
-    xyz_file = Mo_bare_dir.resolve()
+        # Print custom core to use and get path
+        mol = ligand.optimized_mol1
 
-    if args.create_cycle:
-        # Pass the output structure to cycle creation
-        scoring_args = {
-            "new_core": Mo_bare_dir,
-            "smi_path": intermediate_smi_path,
-            "run_dir": args.cycle_dir,
-            "ncores": args.ncores,
-        }
+        mol = remove_NH3(mol)
+        mol = remove_N2(mol)
+        mol = Chem.AddHs(mol)
+        Mo_bare_dir = Path("core_base.xyz")
+        with open("core_base.xyz", "w+") as f:
+            f.write(Chem.MolToXYZBlock(mol))
 
-        create_cycleMS(**scoring_args)
+        xyz_file = Mo_bare_dir.resolve()
 
-        # results = sc.slurm_molS(create_cycleMS, scoring_args)
+        if args.create_cycle:
+            # Pass the output structure to cycle creation
+            scoring_args = {
+                "new_core": Mo_bare_dir,
+                "smi_path": intermediate_smi_path,
+                "run_dir": args.cycle_dir,
+                "ncores": args.ncores,
+            }
 
-    # Create xtb outpout folder
-    timestr = time.strftime("%Y%m%d-%H%M%S")
-    dest = Path("dft_folder") / (ligand.smiles + timestr)
-    dest.mkdir(parents=True, exist_ok=False)
+            create_cycleMS(**scoring_args)
 
-    # Create new dir for xtb calcs and get paths
-    struct = ".xyz"
-    paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
+            # results = sc.slurm_molS(create_cycleMS, scoring_args)
 
-    # Start DFT calcs
+        # Create xtb outpout folder
+        timestr = time.strftime("%Y%m%d-%H%M%S")
+        dest = Path("dft_folder") / (ligand.smiles + timestr)
+        dest.mkdir(parents=True, exist_ok=False)
 
-    sys.exit(0)
+        # Create new dir for xtb calcs and get paths
+        struct = ".xyz"
+        paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
 
 
 if __name__ == "__main__":

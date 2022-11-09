@@ -87,16 +87,7 @@ def replaceAtom(mol, indexAtom, indexNeighbor, atom_type="Br"):
     return emol.GetMol()
 
 
-def addAtom(mol, indexAtom, atom_type="N"):
-    """Add atom and connect to indexAtom with single bond."""
-
-    emol = Chem.EditableMol(mol)
-    idx = emol.AddAtom(Chem.Atom(atom_type))
-    emol.AddBond(indexAtom, idx, order=Chem.rdchem.BondType.SINGLE)
-    return emol.GetMol(), idx
-
-
-def addAtom(mol, indexAtom, atom_type="N", order="single"):
+def addAtom(mol, indexAtom, atom_type="N", order="single", flag=None):
     """Add atom and connect to indexAtom with specified order."""
 
     order_dict = {
@@ -110,6 +101,9 @@ def addAtom(mol, indexAtom, atom_type="N", order="single"):
     emol.AddBond(indexAtom, idx, order=order_dict[order])
 
     f_mol = emol.GetMol()
+
+    if flag:
+        f_mol.GetAtomWithIdx(indexAtom).SetFormalCharge(1)
 
     return f_mol, idx
 

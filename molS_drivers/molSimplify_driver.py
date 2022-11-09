@@ -8,7 +8,6 @@ Example:
 """
 
 import argparse
-import concurrent.futures
 import json
 import os
 import pathlib
@@ -19,11 +18,10 @@ from contextlib import suppress
 from pathlib import Path
 
 from rdkit import Chem
-from support_mvp.auto import cd, shell
+from support_mvp.auto import shell
 
 from my_utils.data_handler import renamed_load
-from my_utils.xtb_utils import run_xtb, xtb_optimize_schrock, xyz_to_conformer
-from scoring import scoring_functions as sc
+from my_utils.xtb_utils import xyz_to_conformer
 from scoring.make_structures import (
     addAtom,
     connect_ligand,
@@ -155,8 +153,11 @@ def get_paths_molsimplify(source, struct, dest):
                 # Crreate this folder
                 os.mkdir(os.path.join(dest, new_dir))
                 # Copy the xyz file into the new directory and append the new file path
-                shutil.copy(os.path.join(root, file), os.path.join(dest, new_dir))
-                paths.append(Path(os.path.join(dest, new_dir, file)))
+                shutil.copy(
+                    os.path.join(root, file),
+                    os.path.join(dest, new_dir + "/struct.xyz"),
+                )
+                paths.append(Path(os.path.join(dest, new_dir, "")))
     return paths
 
 
@@ -206,18 +207,36 @@ def create_cycleMS(new_core=None, smi_path=None, run_dir=None, ncores=None):
             )
         args.append((intermediate_cmd, key))
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=ncores) as executor:
-        results = executor.map(shell, args)
+    for elem in args:
+        shell(elem)
+
+    # with concurrent.futures.ThreadPoolExecutor(max_workers=ncores) as executor:
+    #    results = executor.map(shell, args)
 
     # Check for badjobs
-    if sorted(run_dir.rglob("*badjob*")):
+    badjob = sorted(run_dir.rglob("*badjob*"))
+    if badjob:
         print("WARNING: Some jobs didnt not complete correctly with MolS")
+        print(badjob)
 
     # Finaly create directory that contains the simple core
     # (for consistentxtb calcs)
-    bare_core_dir = run_dir / "intermediate_Mo" / "struct"
+    bare_core_dir = run_dir / "supercore_Mo" / "struct"
     bare_core_dir.mkdir(parents=True, exist_ok=True)
-    shutil.copy(new_core, bare_core_dir)
+    shutil.copy(new_core, bare_core_dir / "struct.xyz")
+
+    # Move logfiles into folder
+
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+
+    log_path = Path("logfiles" + timestr)
+    log_path.mkdir(exist_ok=True)
+    logfiles = sorted(Path(".").glob("*job.out"))
+    for file in logfiles:
+        shutil.move(str(file), str(log_path))
+    logfiles = sorted(Path(".").glob("*err.out"))
+    for file in logfiles:
+        shutil.move(str(file), str(log_path))
 
     return
 
@@ -355,7 +374,7 @@ def cycle_to_dft():
         obj = renamed_load(f)
 
     # Select which molecule to do:
-    idx = 57
+    idx = 50
     ligand = obj.molecules[idx].rdkit_mol
     mol = obj.molecules[idx].optimized_mol1
 
@@ -375,7 +394,11 @@ def cycle_to_dft():
 
     mol = remove_NH3(mol)
     mol = remove_N2(mol)
-    Chem.AddHs(mol)
+    mol = Chem.AddHs(mol)
+
+    with open("core_base.xyz", "w+") as f:
+        f.write(Chem.MolToXYZBlock(mol))
+
     # Create all the mols with the different intermediates.
     Mo_match = mol.GetSubstructMatches(Chem.MolFromSmarts("[Mo]"))[0][0]
 
@@ -384,9 +407,6 @@ def cycle_to_dft():
     Mo_N.UpdatePropertyCache()
     Mo_N = Chem.AddHs(Mo_N)
 
-    with open("core_base.xyz", "w+") as f:
-        f.write(Chem.MolToXYZBlock(mol))
-
     Mo_N = Chem.AddHs(Chem.MolFromSmiles(Chem.MolToSmiles(Mo_N)))
 
     # Embed mol object
@@ -394,12 +414,32 @@ def cycle_to_dft():
         mol=Mo_N,
         core=mol,
     )
-    with open("embedding.xyz", "w+") as f:
-        f.write(Chem.MolToXYZBlock(Mo_N_3d))
 
-    # Get coordinates for the new structure
+    # Save structres for the Mo_N states
+    with open("Mo_N.xyz", "w+") as f:
+        f.write(Chem.MolToXYZBlock(mol))
 
-    # Embed the second N
+    tmp = Chem.RemoveHs(Mo_N_3d)
+
+    # Create all the mols with the different intermediates.
+    N_Mo_match = tmp.GetSubstructMatches(Chem.MolFromSmarts("[N;D1,!X3]"))[0][0]
+
+    # Embed a structure with N2 to use as reference
+    Mo_N2, idx = addAtom(tmp, N_Mo_match, atom_type="N", order="triple", flag=True)
+
+    # Get the first N-Mo bond and change bond order
+    Mo_N2.GetBondBetweenAtoms(18, 17).SetBondType(Chem.rdchem.BondType.SINGLE)
+
+    # Cleanup before embedding
+    Mo_N2.UpdatePropertyCache()
+    Mo_N2 = Chem.AddHs(Mo_N2)
+    Mo_N2_mol = Chem.AddHs(Chem.MolFromSmiles(Chem.MolToSmiles(Mo_N2)))
+
+    # Embed mol object
+    Mo_N_3d = embed_rdkit(
+        mol=Mo_N2_mol,
+        core=mol,
+    )
 
 
 def main():
@@ -422,59 +462,32 @@ def main():
     if dirpath.exists() and dirpath.is_dir():
         shutil.rmtree(dirpath)
 
-    # Create inital opt dir
-    Path(args.initial_opt.parent).mkdir(parents=True, exist_ok=True)
+    # Create cycle dir
+    Path(args.cycle_dir).mkdir(parents=True, exist_ok=True)
 
     # Extract ligand object from GA.
     with open(args.pickle_path, "rb") as f:
         obj = renamed_load(f)
 
     # TODO add option to select ligand by idx, currently selecting best one
-    ligand = obj.molecules[57].rdkit_mol
+    ligand = obj.molecules[50]
 
-    with cd(args.initial_opt.parent):
+    # Print custom core to use and get path
+    mol = ligand.optimized_mol1
 
-        path = create_custom_core_rdkit(ligand, args)
-        xyz_file = path.resolve()
-        # Perform initial optimization of the struct before passing to molS
+    mol = remove_NH3(mol)
+    mol = remove_N2(mol)
+    mol = Chem.AddHs(mol)
+    Mo_bare_dir = Path("core_base.xyz")
+    with open("core_base.xyz", "w+") as f:
+        f.write(Chem.MolToXYZBlock(mol))
 
-        run_xtb((xyz_file, "xtb --gfnff --opt", args.ncores, ".", "initial_opt"))
-
-        # Prepare constrained opt string
-        cmd = []
-        xtb_string = f"xtb --gfn2"
-        intermediate_name = "Mo"
-        # Get intermediate parameters from the dict
-        charge = parameters[intermediate_name]["charge"]
-        spin = parameters[intermediate_name]["spin"]
-
-        # xtb options
-        XTB_OPTIONS = {
-            "opt": "tight",
-            "chrg": charge,
-            "uhf": spin,
-            "gbsa": "benzene",
-        }
-
-        for key, value in XTB_OPTIONS.items():
-            xtb_string += f" --{key} {value}"
-        cmd.append(xtb_string)
-        run_xtb(
-            (
-                xyz_file.parent / "xtbopt.xyz",
-                xtb_string,
-                args.ncores,
-                ".",
-                "initial_gfn2_opt",
-            )
-        )
-        final_core_path = xyz_file.parent / "xtbopt.xyz"
-    shutil.copy(final_core_path, "newcore.xyz")
+    xyz_file = Mo_bare_dir.resolve()
 
     if args.create_cycle:
         # Pass the output structure to cycle creation
         scoring_args = {
-            "new_core": "newcore.xyz",
+            "new_core": Mo_bare_dir,
             "smi_path": intermediate_smi_path,
             "run_dir": args.cycle_dir,
             "ncores": args.ncores,
@@ -486,19 +499,14 @@ def main():
 
     # Create xtb outpout folder
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    dest = args.xtbout / (args.ligand_smi + timestr)
+    dest = Path("dft_folder") / (ligand.smiles + timestr)
     dest.mkdir(parents=True, exist_ok=False)
 
     # Create new dir for xtb calcs and get paths
     struct = ".xyz"
     paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
 
-    # Start xtb calcs
-    xtb_args = [paths, parameters, args.ncores, args.run_dir]
-    results = sc.slurm_molS_xtb(xtb_optimize_schrock, xtb_args)
-
-    if args.cleanup:
-        collect_logfiles(dest=dest)
+    # Start DFT calcs
 
     sys.exit(0)
 
@@ -511,5 +519,5 @@ if __name__ == "__main__":
     #    smi_path=intermediate_smi_path,
     #    run_dir=cycle_dir,
     # )
-    # main()
-    cycle_to_dft()
+    main()
+    # cycle_to_dft()

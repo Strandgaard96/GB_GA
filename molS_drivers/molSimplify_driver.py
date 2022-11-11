@@ -466,7 +466,7 @@ def main():
     with open(args.pickle_path, "rb") as f:
         obj = renamed_load(f)
 
-    for ligand in obj.molecules[5:10]:
+    for ligand in obj.molecules[40:70]:
 
         # Remove old cycle if dir exists, to prevent molS error.
         dirpath = args.run_dir
@@ -504,11 +504,44 @@ def main():
         # Create xtb outpout folder
         timestr = time.strftime("%Y%m%d-%H%M%S")
         dest = Path("dft_folder") / (ligand.smiles + timestr)
-        dest.mkdir(parents=True, exist_ok=False)
+
+        isExist = os.path.exists(dest)
+        if not isExist:
+            dest.mkdir(parents=True, exist_ok=False)
 
         # Create new dir for xtb calcs and get paths
         struct = ".xyz"
         paths = get_paths_molsimplify(source=args.cycle_dir, struct=struct, dest=dest)
+
+        # Extremely quick and dirty creation of constrain files
+        create_constrain_files(paths)
+
+
+def create_constrain_files(paths=None):
+
+    # Get path object for parameter dict
+    intermediate_smi_path = source / Path("intermediate_smiles.json")
+    # Get spin and charge dict
+    with open(intermediate_smi_path) as f:
+        parameters = json.load(f)
+
+    for path in p:
+        tmp = Path(path)
+        with open(tmp, "r") as f:
+            data = f.readlines()
+
+        num_added = parameters[tmp.parent.name]["num_added"]
+
+        # Get constrain list
+        num_atoms = int(data[0])
+        diff = num_atoms - num_added + 1
+
+        match = [idx for idx in range(1, diff) if idx != 8]
+
+        with open(os.path.join(path.parent, "xcontrol.inp"), "w") as f:
+            f.write("$fix\n")
+            f.write(f' atoms: {",".join(map(str, match))}\n')
+            f.write("$end\n")
 
 
 if __name__ == "__main__":

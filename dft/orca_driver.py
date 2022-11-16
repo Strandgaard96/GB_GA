@@ -102,6 +102,12 @@ def get_arguments(arg_list=None):
         help="Which cluster the calc is running on",
     )
     parser.add_argument(
+        "--name",
+        type=str,
+        default="struct",
+        help="Name of file to opt",
+    )
+    parser.add_argument(
         "--no_molecules",
         type=int,
         default=[0, 10],
@@ -324,9 +330,10 @@ def folder_orca_driver(args):
 
     # Extract dirs
     calc_dir = args.calc_dir
+    name = args.name
 
     # Get all structures
-    paths = sorted(calc_dir.rglob("*.xyz"))
+    paths = sorted(calc_dir.rglob(f"*{name}.xyz"))
 
     # Loop over folders
     for path in paths:

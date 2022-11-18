@@ -27,7 +27,7 @@ def main():
 
     workers = n_cores // cpus_per_worker
 
-    p = Path("/home/magstr/Documents/GB_GA/molS_drivers/dft_folder_11_15")
+    p = Path("/home/magstr/Documents/GB_GA/molS_drivers/dft_folder_16_20")
     paths = sorted(p.rglob("struct.xyz"))
     print(f"cores: {n_cores} workers : {workers}]")
 

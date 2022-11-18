@@ -162,7 +162,7 @@ def get_paths_molsimplify(source, struct, dest):
                     os.path.join(root, file),
                     os.path.join(dest, new_dir + "/struct.xyz"),
                 )
-                paths.append(Path(os.path.join(dest, new_dir, "")))
+                paths.append(Path(os.path.join(dest, new_dir + "/struct.xyz")))
     return paths
 
 
@@ -466,7 +466,55 @@ def main():
     with open(args.pickle_path, "rb") as f:
         obj = renamed_load(f)
 
-    for ligand in obj.molecules[40:70]:
+    # idx for top ten mols
+    idxs = [
+        6,
+        8,
+        9,
+        11,
+        13,
+        14,
+        15,
+        16,
+        18,
+        19,
+        20,
+        21,
+        23,
+        25,
+        26,
+        95,
+        105,
+        106,
+        115,
+        119,
+        126,
+        128,
+        129,
+        132,
+        134,
+        135,
+        136,
+        139,
+        5,
+        7,
+        10,
+        12,
+        17,
+        22,
+        24,
+        29,
+        35,
+        40,
+        47,
+        65,
+        70,
+        83,
+        90,
+    ]
+    mol_list = [ind for i, ind in enumerate(obj.molecules) if i in idxs]
+    for ligand in mol_list:
+        print(ligand.smiles)
 
         # Remove old cycle if dir exists, to prevent molS error.
         dirpath = args.run_dir
@@ -503,7 +551,7 @@ def main():
 
         # Create xtb outpout folder
         timestr = time.strftime("%Y%m%d-%H%M%S")
-        dest = Path("dft_folder") / (ligand.smiles + timestr)
+        dest = Path("dft_folder_second") / (ligand.smiles)
 
         isExist = os.path.exists(dest)
         if not isExist:
@@ -525,7 +573,7 @@ def create_constrain_files(paths=None):
     with open(intermediate_smi_path) as f:
         parameters = json.load(f)
 
-    for path in p:
+    for path in paths:
         tmp = Path(path)
         with open(tmp, "r") as f:
             data = f.readlines()

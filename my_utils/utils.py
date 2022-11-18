@@ -1,11 +1,9 @@
 """Module that contains mol manipulations and various resuable functionality
 classes."""
-import concurrent.futures
 import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import Trajectory, read
@@ -68,30 +66,6 @@ def write_to_traj(args):
     return
 
 
-def db_write_driver(output_dir=None, workers=6):
-    """Paralellize writing to db, not very robust."""
-
-    database_dir = "ase.traj"
-
-    # Get traj paths for current gen
-    p = Path(output_dir)
-
-    trajs = p.rglob(f"0*/*/*traj*")
-
-    print("Printing optimized structures to database")
-    try:
-
-        args = [(database_dir, trajs) for i, trajs in enumerate(trajs)]
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-            results = executor.map(write_to_traj, args)
-    except Exception as e:
-        print(f"Failed to write to database at {logfile}")
-        print(e)
-
-    return
-
-
 def get_git_revision_short_hash() -> str:
     """Get the git hash of current commit for each GA run."""
     return (
@@ -99,7 +73,3 @@ def get_git_revision_short_hash() -> str:
         .decode("ascii")
         .strip()
     )
-
-
-if __name__ == "__main__":
-    db_write_driver("/home/magstr/generation_data/struct_test")

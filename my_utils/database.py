@@ -101,6 +101,7 @@ def write_to_db(args):
                     name=entry_name,
                     data={
                         "smiles": ind.smiles,
+                        "smiles": ind.smiles_sa,
                         "lowest_energy": flag,
                         "cut_idx": ind.cut_idx,
                     },
@@ -135,13 +136,14 @@ if __name__ == "__main__":
 
     # Get dir from command line
     dirs = sys.argv[1]
+    workers = sys.argv[2]
 
     print(f"CONNECTING TO {source/'ase.db'}")
     k = sorted(glob(os.path.join(dirs, "*/")))
 
     for dir in k:
         try:
-            db_write_driver(dir)
+            db_write_driver(dir, workers)
         except Exception as e:
             print(e)
             print(f"Something failed for {dir}")

@@ -118,7 +118,8 @@ def db_write_driver(ga_folder=None, workers=6):
 
     folder = Path(ga_folder)
 
-    logs = sorted(folder.rglob("*.log"))
+    # Get paths to all log files, while excluding the force-fiels opts.
+    logs = sorted(folder.rglob("[!ff]*.log"))
 
     [shutil.copy(x, x.parent / f"traj{i}.xyz") for i, x in enumerate(logs)]
 
@@ -135,8 +136,8 @@ def db_write_driver(ga_folder=None, workers=6):
 if __name__ == "__main__":
 
     # Get dir from command line
-    dirs = sys.argv[1]
-    workers = sys.argv[2]
+    dirs = str(sys.argv[1])
+    workers = int(sys.argv[2])
 
     print(f"CONNECTING TO {source/'ase.db'}")
     k = sorted(glob(os.path.join(dirs, "*/")))

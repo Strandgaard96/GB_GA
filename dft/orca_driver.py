@@ -18,6 +18,7 @@ from support_mvp.dft import write_orca_input_file, write_orca_sh
 ORCA_COMMANDS = {
     "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint KDIIS SOSCF",
     "sp_sarcJ": "!PBE D3BJ ZORA ZORA-def2-TZVP  SARC/J SPLIT-RI-J MiniPrint KDIIS SOSCF",
+    "sp_b3lyp": "!B3LYP RIJCOSX D3BJ ZORA ZORA-def2-TZVP SARC/J MiniPrint KDIIS SOSCF",
     "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint KDIIS SOSCF OPT",
     "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint KDIIS SOSCF FREQ",
     "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",

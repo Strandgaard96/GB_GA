@@ -218,45 +218,6 @@ class XTB_optimizer:
         return results
 
 
-def parse_sum_table(lines) -> dict:
-    """Parse the summary table from xtb log."""
-
-    properties = dict()
-
-    for line in lines:
-
-        if ":::" in line:
-            continue
-
-        if "..." in line:
-            continue
-
-        # Needs a loop break when the Hessian is computed.
-        if "Hessian" in line:
-            break
-
-        line_ = (
-            line.replace("w/o", "without")
-            .replace(":", "")
-            .replace("->", "")
-            .replace("/", "_")
-            .strip()
-        ).split()
-
-        if len(line_) < 2:
-            continue
-
-        value = float(line_[-2])
-        # unit = line[-1]
-        name_ = line_[:-2]
-        name = "_".join(name_).lower()
-        name = name.replace("-", "_").replace(".", "")
-
-        properties[name] = float(value)
-
-    return properties
-
-
 class XTB_optimize_file(XTB_optimizer):
     """Specific xtb optimizer class for the schrock intermediates."""
 
@@ -378,7 +339,7 @@ def xtb_folder_driver():
 
     results = slurm_xtb(score_func, sub_args)
 
-    print("lol")
+    print("Finished calcs")
 
     return
 

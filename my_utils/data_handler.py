@@ -1,6 +1,5 @@
 # improts
 import io
-import json
 import os
 import pickle
 import re
@@ -12,10 +11,13 @@ import numpy as np
 # For highlight colors
 from rdkit import Chem
 
-from my_utils.constants import HARTREE2EV, HARTREE2KCAL, kcal
+from my_utils.constants import HARTREE2EV, kcal
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
+
+from ppqm.xtb import read_properties
+from support_mvp.backup_plot_diagram.data_handler import get_energy_dicts
 
 # Custom functions
 from my_utils.classes import Conformers, Individual
@@ -125,139 +127,6 @@ def get_paths(endswith="xtbopt.xyz", middle=None):
             if file.endswith(".out"):
                 paths.append(Path(root))
     return paths
-
-
-def get_energy_dicts():
-    path = Path(
-        "/home/magstr/Documents/nitrogenase/niflheim_scripts/nitrogenase/reference_energies"
-    )
-    dict1_path = path / "gfn1_dict.json"
-    dict2_path = path / "gfn2_dict.json"
-    dict3_path = path / "dft_ams_dict.json"
-    dict4_path = path / "dft_orca_dict.json"
-    dict5_path = path / "dft_orca_dict_svp.json"
-    dict6_path = path / "dft_orca_sarcJ_dict.json"
-
-    # Check for existing reference energy_dicts for speedup
-    if (
-        (dict1_path.exists())
-        and (dict2_path.exists())
-        and (dict3_path.exists())
-        and (dict4_path.exists())
-        and (dict5_path.exists())
-        and (dict6_path.exists())
-    ):
-        with open(dict1_path, "r", encoding="utf-8") as f:
-            gfn1_dict = json.load(f)
-        with open(dict2_path, "r", encoding="utf-8") as f:
-            gfn2_dict = json.load(f)
-        with open(dict3_path, "r", encoding="utf-8") as f:
-            dft_ams_dict = json.load(f)
-        with open(dict4_path, "r", encoding="utf-8") as f:
-            dft_orca_dict = json.load(f)
-        with open(dict5_path, "r", encoding="utf-8") as f:
-            dft_orca_svp_dict = json.load(f)
-        with open(dict6_path, "r", encoding="utf-8") as f:
-            dft_orca_sarcJ_dict = json.load(f)
-
-        return (
-            gfn1_dict,
-            gfn2_dict,
-            dft_ams_dict,
-            dft_orca_dict,
-            dft_orca_svp_dict,
-            dft_orca_sarcJ_dict,
-        )
-
-    # Correction values
-    g1_lut_corr = 10
-    g1_cp_corr = -65
-
-    g2_lut_corr = 0
-    g2_cp_corr = -40
-
-    gfn1_folders = (path / "gas_gfn1").rglob("*job.out")
-    gfn2_folders = (path / "gas_gfn2").rglob("*job.out")
-
-    gfn1_dict = {}
-    for elem in gfn1_folders:
-        gfn1_dict[elem.parent.name] = (
-            HARTREE2KCAL * get_energies(paths=[elem], pattern="TOTAL ENERGY")[0]
-        )
-    gfn1_dict["delta_Cp"] = gfn1_dict["CrCp2+"] - gfn1_dict["CrCp2"] + g1_cp_corr
-    gfn1_dict["delta_Lu"] = gfn1_dict["Lu"] - gfn1_dict["LuH+"] + g1_lut_corr
-
-    gfn2_dict = {}
-    for elem in gfn2_folders:
-        gfn2_dict[elem.parent.name] = (
-            HARTREE2KCAL * get_energies(paths=[elem], pattern="TOTAL ENERGY")[0]
-        )
-    gfn2_dict["delta_Cp"] = gfn2_dict["CrCp2+"] - gfn2_dict["CrCp2"] + g2_cp_corr
-    gfn2_dict["delta_Lu"] = gfn2_dict["Lu"] - gfn2_dict["LuH+"] + g2_lut_corr
-
-    dft_ams_folders = (path / "schrock_parts_ams").rglob("*dft.out")
-    dft_ams_dict = {}
-    for elem in dft_ams_folders:
-        dft_ams_dict[elem.parent.name] = (
-            HARTREE2KCAL * get_energies(paths=[elem], pattern="current energy")[0]
-        )
-    dft_ams_dict["delta_Cp"] = dft_ams_dict["CrCp2+"] - dft_ams_dict["CrCp2"]
-    dft_ams_dict["delta_Lu"] = dft_ams_dict["Lu"] - dft_ams_dict["LuH+"]
-
-    dft_orca_folders = (path / "parts_orca").rglob("*orca.out")
-    dft_orca_dict = {}
-    for elem in dft_orca_folders:
-        dft_orca_dict[elem.parent.name] = (
-            HARTREE2KCAL * get_energies(paths=[elem], pattern="FINAL SINGLE POINT")[0]
-        )
-    dft_orca_dict["delta_Cp"] = dft_orca_dict["CrCp2+"] - dft_orca_dict["CrCp2"]
-    dft_orca_dict["delta_Lu"] = dft_orca_dict["Lu"] - dft_orca_dict["LuH+"]
-
-    dft_orca_svp_folders = (path / "parts_orca_svp").rglob("*orca.out")
-    dft_orca_svp_dict = {}
-    for elem in dft_orca_svp_folders:
-        dft_orca_svp_dict[elem.parent.name] = (
-            HARTREE2KCAL * get_energies(paths=[elem], pattern="FINAL SINGLE POINT")[0]
-        )
-    dft_orca_svp_dict["delta_Cp"] = (
-        dft_orca_svp_dict["CrCp2+"] - dft_orca_svp_dict["CrCp2"]
-    )
-    dft_orca_svp_dict["delta_Lu"] = dft_orca_svp_dict["Lu"] - dft_orca_svp_dict["LuH+"]
-
-    dft_orca_sarcJ_folders = (path / "parts_orca_nodef2").rglob("*orca.out")
-    dft_orca_sarcJ_dict = {}
-    for elem in dft_orca_sarcJ_folders:
-        dft_orca_sarcJ_dict[elem.parent.name] = (
-            HARTREE2KCAL * get_energies(paths=[elem], pattern="FINAL SINGLE POINT")[0]
-        )
-    dft_orca_sarcJ_dict["delta_Cp"] = (
-        dft_orca_sarcJ_dict["CrCp2+"] - dft_orca_sarcJ_dict["CrCp2"]
-    )
-    dft_orca_sarcJ_dict["delta_Lu"] = (
-        dft_orca_sarcJ_dict["Lu"] - dft_orca_sarcJ_dict["LuH+"]
-    )
-
-    with open(dict1_path, "w") as fp:
-        json.dump(gfn1_dict, fp)
-    with open(dict2_path, "w") as fp:
-        json.dump(gfn2_dict, fp)
-    with open(dict3_path, "w") as fp:
-        json.dump(dft_ams_dict, fp)
-    with open(dict4_path, "w") as fp:
-        json.dump(dft_orca_dict, fp)
-    with open(dict5_path, "w") as fp:
-        json.dump(dft_orca_svp_dict, fp)
-    with open(dict6_path, "w") as fp:
-        json.dump(dft_orca_sarcJ_dict, fp)
-
-    return (
-        gfn1_dict,
-        gfn2_dict,
-        dft_ams_dict,
-        dft_orca_dict,
-        dft_orca_svp_dict,
-        dft_orca_sarcJ_dict,
-    )
 
 
 def extract_scoring(mol_path, reverse=False, scoring=None, keys=None):
@@ -413,6 +282,13 @@ def main():
     conf.save(directory=".", name=f"{str(sys.argv[2])}")
 
 
+def get_xtb_free_energies(path):
+    with (open(path, "r", encoding="utf8")) as file:
+        lines = file.readlines()
+    props = read_properties(lines, options={"ohess": None})
+    return props
+
+
 if __name__ == "__main__":
 
     # Get the reference energy dicts.
@@ -423,6 +299,8 @@ if __name__ == "__main__":
         reactions_dft_orca_tzp,
         reactions_dft_orca_svp_tzp,
         reactions_dft_orca_sarcJ_tzp,
+        reactions_dft_orca_b3lyp,
+        reactions_dft_orca_r2scan,
     ) = get_energy_dicts()
 
     # Scoring function dict
@@ -434,6 +312,7 @@ if __name__ == "__main__":
     # with open(f"data/final_dft_opt.pkl", "rb") as f:
     #    conf = pickle.load(f)
 
-    get_opts()
+    print("Donzo")
+    # get_opts()
     # rename()
     # main()

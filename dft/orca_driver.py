@@ -12,17 +12,8 @@ from rdkit import Chem
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 from support_mvp.auto import cd, shell_pure
-from support_mvp.dft import write_orca_input_file, write_orca_sh
+from support_mvp.dft import ORCA_COMMANDS, write_orca_input_file, write_orca_sh
 
-# Dict for mapping options to input string
-ORCA_COMMANDS = {
-    "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint KDIIS SOSCF",
-    "sp_sarcJ": "!PBE D3BJ ZORA ZORA-def2-TZVP  SARC/J SPLIT-RI-J MiniPrint KDIIS SOSCF",
-    "sp_b3lyp": "!B3LYP RIJCOSX D3BJ ZORA ZORA-def2-TZVP SARC/J MiniPrint KDIIS SOSCF",
-    "opt": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint KDIIS SOSCF OPT",
-    "freq": "!PBE D3BJ ZORA ZORA-def2-SVP SARC/J SPLIT-RI-J NormalPrint KDIIS SOSCF FREQ",
-    "final_sp": "!B3LYP D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J RIJCOSX MiniPrint KDIIS SOSCF",
-}
 # Get dict with intermediate variables
 with open("data/intermediate_smiles.json", "r", encoding="utf-8") as f:
     smi_dict = json.load(f)

@@ -431,9 +431,10 @@ def parts_opts(args):
 
     # Extract dirs
     calc_dir = args.calc_dir
+    name = args.name
 
     # Get all structures
-    paths = sorted(calc_dir.rglob("*.xyz"))
+    paths = sorted(calc_dir.rglob(f"*{name}.xyz"))
 
     # Loop over folders
     for path in paths:

@@ -1,8 +1,6 @@
 # improts
-import io
 import os
 import pickle
-import re
 import sys
 from pathlib import Path
 
@@ -11,122 +9,21 @@ import numpy as np
 # For highlight colors
 from rdkit import Chem
 
-from my_utils.constants import HARTREE2EV, kcal
+from my_utils.constants import kcal
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 sys.path.insert(0, str(source))
 
 from ppqm.xtb import read_properties
-from support_mvp.backup_plot_diagram.data_handler import get_energy_dicts
+from support_mvp.backup_plot_diagram.data_handler import (
+    get_energy_dicts,
+    reactions_dft_orca_sarcJ_tzp,
+    read_energy_opt_orca,
+    read_properties_sp,
+)
 
 # Custom functions
 from my_utils.classes import Conformers, Individual
-
-
-# Crucial code for unpickling objects with old module names
-class RenameUnpickler(pickle.Unpickler):
-    def find_class(self, module, name):
-        renamed_module = module
-        if module == "my_utils.my_utils":
-            renamed_module = "my_utils.classes"
-
-        return super(RenameUnpickler, self).find_class(renamed_module, name)
-
-
-def renamed_load(file_obj):
-    return RenameUnpickler(file_obj).load()
-
-
-def renamed_loads(pickled_bytes):
-    file_obj = io.BytesIO(pickled_bytes)
-    return renamed_load(file_obj)
-
-
-def get_zpe(paths=None, pattern="Zero-point"):
-
-    regex = "[\\d]*[.][\\d]+"
-    energy = {}
-    for elem in paths:
-        name = "NEEDS FIXING"
-        with (open(elem, "r")) as file:
-            for line in file:
-                if re.search(pattern, line):
-                    num = re.findall(regex, line)
-                    energy[name] = float(num[0]) * HARTREE2EV
-    return energy
-
-
-def extract_energyxtb(logfile=None):
-    """Extracts xtb energies from xtb logfile using regex matching.
-
-    Args:
-        logfile (str): Specifies logfile to pull energy from
-
-    Returns:
-        energy (List[float]): List of floats containing the energy in each step
-    """
-
-    re_energy = re.compile("energy: (-\\d+\\.\\d+)")
-    energy = []
-    with logfile.open() as f:
-        for line in f:
-            if "energy" in line:
-                energy.append(float(re_energy.search(line).groups()[0]))
-    return energy
-
-
-def get_energies_Mo(paths=None, pattern="total energy"):
-    regex = "-[\\d]*[.][\\d]+"
-    energy = {}
-    for elem in paths:
-        r = re.compile("Mo*")
-        name = str(elem).split("/")
-        name = list(filter(r.match, name))[0]
-        print(name)
-        with (open(elem, "r", encoding="utf8")) as file:
-            file.seek(0, os.SEEK_END)  # seek to end of file; f.seek(0, 2) is legal
-            file.seek(file.tell() - 100 * 1024, os.SEEK_SET)  # go backwards 3 bytes
-            for line in file:
-                if re.search(pattern, line):
-                    num = re.findall(regex, line)
-                    energy[name] = float(num[0])
-    return energy
-
-
-def read_properties_sp(logfile):
-    """Read Singlepoint Energy."""
-    with logfile.open() as f:
-
-        for line in f:
-            if "FINAL SINGLE POINT ENERGY" in line:
-                scf_energy = float(line.split()[4])
-                break
-            else:
-                scf_energy = np.nan
-
-    return scf_energy
-
-
-def get_energies(paths=None, pattern="total energy"):
-    regex = "-[\\d]*[.][\\d]+"
-    energy = []
-    for elem in paths:
-        with (open(elem, "r", encoding="utf8")) as file:
-            for line in file:
-                if re.search(pattern, line):
-                    num = re.findall(regex, line)
-                    energy.append(float(num[0]))
-    return energy
-
-
-def get_paths(endswith="xtbopt.xyz", middle=None):
-
-    paths = []
-    for root, dirs, files in os.walk(base / middle):
-        for file in files:
-            if file.endswith(".out"):
-                paths.append(Path(root))
-    return paths
 
 
 def extract_scoring(mol_path, reverse=False, scoring=None, keys=None):
@@ -160,17 +57,6 @@ def extract_scoring(mol_path, reverse=False, scoring=None, keys=None):
         min_paths = [(0, 0)]
 
     return ind, delta, min_paths
-
-
-def read_energy_opt_orca(logfile=None):
-    """Read the energies of ORCA optimization file."""
-    re_energy = re.compile("(-\\d+\\.\\d+)")
-    energy = []
-    with logfile.open() as f:
-        for line in f:
-            if "FINAL SINGLE POINT" in line:
-                energy.append(float(re_energy.search(line).groups()[0]))
-    return energy
 
 
 def rdkit_embed_scoring_calc(Mo_N2_NH3, Mo_NH3):
@@ -292,16 +178,7 @@ def get_xtb_free_energies(path):
 if __name__ == "__main__":
 
     # Get the reference energy dicts.
-    (
-        reactions_gfn1_corrected,
-        reactions_gfn2_corrected,
-        reactions_dft_ams_tzp,
-        reactions_dft_orca_tzp,
-        reactions_dft_orca_svp_tzp,
-        reactions_dft_orca_sarcJ_tzp,
-        reactions_dft_orca_b3lyp,
-        reactions_dft_orca_r2scan,
-    ) = get_energy_dicts()
+    dicts = get_energy_dicts()
 
     # Scoring function dict
     funcs = {

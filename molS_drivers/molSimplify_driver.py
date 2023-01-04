@@ -19,7 +19,7 @@ from pathlib import Path
 from rdkit import Chem
 from support_mvp.auto import shell
 
-from my_utils.data_handler import renamed_load
+from my_utils.data_utils import renamed_load
 from my_utils.xtb_utils import xyz_to_conformer
 from scoring.make_structures import (
     addAtom,
@@ -551,7 +551,7 @@ def main():
 
         # Create xtb outpout folder
         timestr = time.strftime("%Y%m%d-%H%M%S")
-        dest = Path("dft_folder_second") / (ligand.smiles)
+        dest = Path("dft_folder_41_44") / (ligand.smiles)
 
         isExist = os.path.exists(dest)
         if not isExist:

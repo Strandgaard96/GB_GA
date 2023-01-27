@@ -1,7 +1,0 @@
-,score,energy,sa_score,rdkit_mol,DFT,smiles,cut_idx,scoring
-"(37, 36)",-65.2,-65.2388066227741,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f5142eb7030>,-27.1,CC(N)CCC1CCC1,8.0,rdkit_embed_scoring_NH3toN2
-"(33, 7)",-64.8,-68.58872679157095,0.9450150825726495,<rdkit.Chem.rdchem.Mol object at 0x7f5140d56970>,-30.5,CCCN1CCCC(N)(C2CCCC2)C1,8.0,rdkit_embed_scoring_NH3toN2
-"(11, 43)",-58.1,-58.11078407603615,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f51410779b0>,-40.2,CC(=O)c1ccc(F)c(C(=O)CN)c1,13.0,rdkit_embed_scoring
-"(24, 37)",-74.3,-74.25159643943877,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f51410775b0>,-20.5,NCCCc1ncnc2ccccc12,13.0,rdkit_embed_scoring
-"(50, 49)",-89.8,-89.77554889096791,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f51411e0cf0>,-40.0,Nc1cc([O-])c(F)c([O-])c1,6.0,rdkit_embed_scoring_NH3plustoNH3
-"(31, 17)",-88.6,-88.60618697087038,1.0,<rdkit.Chem.rdchem.Mol object at 0x7f5140f1bf30>,-40.4,Nc1c(F)c([O-])cc([O-])c1Cl,5.0,rdkit_embed_scoring_NH3plustoNH3

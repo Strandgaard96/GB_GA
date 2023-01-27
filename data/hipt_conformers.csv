@@ -1,2 +1,0 @@
-,score,energy,sa_score,rdkit_mol,DFT,smiles,cut_idx,scoring
-"(44, 48)",0,0,1,<rdkit.Chem.rdchem.Mol object at 0x7f1832ec0af0>,0,[NH2]c1cc(-c2c(C(C)C)cc(C(C)C)cc2C(C)C)cc(-c2c(C(C)C)cc(C(C)C)cc2C(C)C)c1,9,rdkit_embed_scoring_NH3plustoNH3

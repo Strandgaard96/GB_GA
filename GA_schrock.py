@@ -139,18 +139,11 @@ def get_arguments(arg_list=None):
     parser.add_argument("--ga_scoring", action="store_true")
     parser.add_argument("--supress_amines", action="store_true")
     parser.add_argument(
-        "--method",
-        type=str,
-        default="2",
-        help="gfn method to use",
-    )
-    parser.add_argument(
         "--energy_cutoff",
         type=float,
         default=0.0159,
         help="Cutoff for conformer energies",
     )
-    parser.add_argument("--bond_opt", action="store_true")
     parser.add_argument("--cleanup", action="store_true")
     parser.add_argument(
         "--scoring_func",
@@ -164,6 +157,13 @@ def get_arguments(arg_list=None):
         help="""Choose one of the specified scoring functions to be run.""",
     )
     # XTB specific params
+    parser.add_argument(
+        "--method",
+        type=str,
+        default="2",
+        help="gfn method to use",
+    )
+    parser.add_argument("--bond_opt", action="store_true")
     parser.add_argument(
         "--opt",
         type=str,

@@ -17,7 +17,6 @@ sys.path.insert(0, str(source))
 from ppqm.xtb import read_properties
 from support_mvp.backup_plot_diagram.data_handler import (
     get_energy_dicts,
-    reactions_dft_orca_sarcJ_tzp,
     read_energy_opt_orca,
     read_properties_sp,
 )

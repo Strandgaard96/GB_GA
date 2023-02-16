@@ -1,5 +1,7 @@
 """Driver script for running a GA algorithm.
 
+Written by Magnus Strandgaard 2023
+
 Example:
     How to run:
 
@@ -38,7 +40,7 @@ def get_arguments(arg_list=None):
         Otherwise default arguments are used
 
     Returns:
-        parser.parse_args(arg_list)(Namespace): Dictionary like class that contain the arguments
+        parser.parse_args(arg_list)(Namespace): Dictionary like class that contain the driver arguments.
 
     """
     parser = argparse.ArgumentParser(
@@ -97,12 +99,6 @@ def get_arguments(arg_list=None):
         type=float,
         default=0.5,
         help="Mutation rate",
-    )
-    parser.add_argument(
-        "--prune_population",
-        dest="prune_population",
-        default=True,
-        action="store_true",
     )
     parser.add_argument(
         "--sa_screening",
@@ -185,13 +181,13 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--average_size",
         type=int,
-        default=50,
+        default=12,
         help="Average number of atoms resulting from crossover",
     )
     parser.add_argument(
         "--size_stdev",
         type=int,
-        default="10",
+        default="3",
         help="STD of crossover molecule size distribution",
     )
     return parser.parse_args(arg_list)
@@ -207,15 +203,12 @@ def GA(args):
         gen: Generation class that contains the results of the final generation
     """
 
-    # Create initial population and get initial score. Check for debug option
-    # to enable fast debug
+    # Create initial population and get initial score. Option for debugging.
     if args["debug"]:
-        population = ga.make_initial_population_debug(
-            2, "data/ZINC_1000_amines.smi", rand=True
-        )
+        population = ga.make_initial_population_debug(2)
     else:
         population = ga.make_initial_population(
-            args["population_size"], args["file_name"], rand=True
+            args["population_size"], args["file_name"]
         )
 
     # Score initial population
@@ -226,7 +219,7 @@ def GA(args):
     population.update_property_cache()
 
     # Save current population for debugging
-    population.save(directory=args["output_dir"], name=f"GA_debug_firstit.pkl")
+    population.save(directory=args["output_dir"], name="GA_debug_firstit.pkl")
 
     # Functionality to check synthetic accessibility
     if args["sa_screening"]:
@@ -312,9 +305,7 @@ def GA(args):
 
         # The calculated population is merged with current top population
         population = ga.sanitize(
-            potential_survivors + new_population.molecules,
-            args["population_size"],
-            args["prune_population"],
+            potential_survivors + new_population.molecules, args["population_size"]
         )
 
         population.generation_num = generation_num
@@ -350,6 +341,7 @@ def GA(args):
 
 
 def main():
+    """Main function that starts the GA."""
     args = get_arguments()
     funcs = {
         "rdkit_embed_scoring": rdkit_embed_scoring,

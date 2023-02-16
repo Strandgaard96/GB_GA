@@ -174,7 +174,7 @@ class Generation:
         ]
         self.setprop("score", new_scores)
 
-    def prune(self, population_size):
+    def sort_by_score_and_prune(self, population_size):
         """Sort by score and take the best scoring molecules."""
         self.sortby("score", reverse=False)
         self.molecules = self.molecules[:population_size]

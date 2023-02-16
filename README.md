@@ -10,8 +10,17 @@ Repository for the paper: *Genetic algorithm for nitrogen fixation.*
 2. [Run](#run)
 
 
-## Run
+## How to run
 
+For simple use of the GA install the
+
+    requirements.txt file
+
+For use with molS install the
+
+    environment.yml file
+
+To run the ga activate the relevant environment and run:
 ```
 python GA_schrock.py
 ```

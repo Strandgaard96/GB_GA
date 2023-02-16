@@ -1,37 +1,12 @@
-name: GA_molS
+name: test_req2
 channels:
   - conda-forge
   - defaults
+  - rdkit
 dependencies:
-  - keras
-  - pymongo
-  - hyperopt
-  - pandas
-  - iodata
-  - openbabel
-  - pytorch
-  - tensorflow
-  - torchvision
-  - xtb
-  - python
-  - qt
-  - libffi
-  - scipy
-  - pyqt
+  - python=3.7
   - pip
   - pip:
-      -ase
-      -tabulate
-  - scikit-learn
-  - psi4
-  - gpy
-  - xtb-python
+      - -r file:/home/magstr/Documents/GB_GA/requirements.txt
   - rdkit
-  - networkx
-  - jupyterlab
-  - nb_conda_kernels
-  - nb_conda
-  - numpy==1.21.3
-  - submitit
-  - py3dmol
-prefix: /home/magstr/miniconda3/envs/GA_molS
+prefix: /home/magstr/miniconda3/envs/test_req2

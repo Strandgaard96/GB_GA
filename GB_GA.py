@@ -1,4 +1,4 @@
-"""Written by Jan H.
+"""Written by Jan H. and modified by Magnus Strandgaard 2023.
 
 Jensen 2018.
 Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_baselines/tree/master/graph_ga
@@ -26,74 +26,69 @@ def read_file(file_name):
     return mol_list
 
 
-def make_initial_population(population_size, file_name, rand=False):
-    """
+def make_initial_population(population_size, file_name):
+    """Create starting population from csv file.
 
     Args:
         population_size (int): How many molecules in starting population
         file_name (str): Name of csv til to load molecules from
-        rand (bool): Indicates whether molecules are randomly selected from file
 
     Returns:
-        initial_population Generation (class)
+        initial_population(Generation(class)): Class containing all molecules
     """
+
+    # Get list of moles from csv file and initialize Generation class.
     mol_list = read_file(file_name)
     initial_population = Generation(generation_num=0)
 
-    for i in range(population_size):
-        if rand:
+    for _ in range(population_size):
 
-            # Randomly coose mol until we find something with any amines
-            candidate_match = None
-            while not candidate_match:
-                mol = random.choice(mol_list)
-                candidate_match = mol.GetSubstructMatches(
-                    Chem.MolFromSmarts("[NX3;H2,H1,H0;!$(*n);!$(*N)]")
-                )
+        # Randomly choose mol until we find something with any amines
+        candidate_match = None
+        while not candidate_match:
+            mol = random.choice(mol_list)
 
-            # Check for prim amine
-            match = mol.GetSubstructMatches(
-                Chem.MolFromSmarts("[NX3;H2;!$(*n);!$(*N)]")
+            # Match amines, not bound to amines in rings or other amines
+            candidate_match = mol.GetSubstructMatches(
+                Chem.MolFromSmarts("[NX3;H2,H1,H0;!$(*n);!$(*N)]")
             )
-            if not match:
-                print(f"There are no primary amines to cut so creating new")
-                ligand, cut_idx = create_prim_amine_revised(mol)
-                # If we cannot split, simply add methyl as ligand
-                if not cut_idx:
-                    ligand = Chem.MolFromSmiles("CN")
-                    cut_idx = [[1]]
-                initial_population.molecules.append(
-                    Individual(ligand, cut_idx=cut_idx[0][0], original_mol=mol)
-                )
-            else:
-                initial_population.molecules.append(
-                    Individual(mol, cut_idx=random.choice(match)[0], original_mol=mol)
-                )
+
+        # Check for prim amine to cut on
+        match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!$(*n);!$(*N)]"))
+        # If not primary amines, create new ligand from secondary or teriary.
+        if not match:
+            print(f"There are no primary amines to cut so creating new")
+            ligand, cut_idx = create_prim_amine_revised(mol)
+
+            # If we cannot split, simply add methyl as ligand (instead of discarding)
+            if not cut_idx:
+                ligand = Chem.MolFromSmiles("CN")
+                cut_idx = [[1]]
+            initial_population.molecules.append(
+                Individual(ligand, cut_idx=cut_idx[0][0], original_mol=mol)
+            )
         else:
-            mol = mol_list[i]
-            # Check for primary amine first
-            match = mol.GetSubstructMatches(
-                Chem.MolFromSmarts("[NX3;H2;!$(*n);!$(*N)]")
+            initial_population.molecules.append(
+                Individual(mol, cut_idx=random.choice(match)[0], original_mol=mol)
             )
-            if not match == 0:
-                ligand, cut_idx = create_prim_amine_revised(mol)
-                initial_population.molecules.append(
-                    Individual(ligand, cut_idx=cut_idx), original_mol=mol
-                )
-            else:
-                initial_population.molecules.append(
-                    Individual(mol, cut_idx=random.choice(match), original_mol=mol)
-                )
+    # Assign idx to molecules to track origin
     initial_population.generation_num = 0
     initial_population.assign_idx()
     return initial_population
 
 
-def make_initial_population_debug(population_size, file_name, rand=False):
-    """Function that runs localy and creates a small pop for debugging."""
-    mol_list = read_file("data/ZINC_1000_amines.smi")
+def make_initial_population_debug(population_size):
+    """Function that runs localy and creates a small population for debugging.
+
+    Args:
+        population_size (int): How many molecules in starting population
+
+    Returns:
+        initial_population(Generation(class)): Class containing all molecules
+    """
     initial_population = Generation(generation_num=0)
 
+    # Smiles with primary amines and corresponding cut idx
     smiles = ["CCN", "NC1CCC1", "CCN", "CCN"]
     idx = [2, 0, 2, 2]
 
@@ -117,6 +112,7 @@ def make_mating_pool(population, mating_pool_size):
     Returns:
         mating_pool List(Individual): List of Individual objects
     """
+
     fitness = population.get("normalized_fitness")
     mating_pool = []
     for _ in range(mating_pool_size):
@@ -131,18 +127,17 @@ def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
     """Perform crossover operating on the molecules in the mating pool.
 
     Args:
-        mating_pool List(Individual): List containing ind objects
+        mating_pool (List(Individual)): List containing ind objects
         population_size (int): Size of whole population
-        mutation_rate (float): Determines how often a
-            mutation vs crossover operation is performed
+        mutation_rate (float): Probability of mutation
         molecule_filter List(Chem.rdchem.Mol): List of smart pattern mol objects
-            that ensure that toxic, etc molecules are not evolved
+            that ensure that toxic and other unwanted molecules are not evolved
 
     Returns:
         Generation(class): The object holding the new population
     """
     new_population = []
-    counter = 0
+    # Run mutation and crossover until we have N = population_size
     while len(new_population) < population_size:
         if random.random() > mutation_rate:
             parent_A = copy.deepcopy(random.choice(mating_pool))
@@ -157,14 +152,11 @@ def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
             parent = copy.deepcopy(random.choice(mating_pool))
             mutated_child, mutated = mu.mutate(parent.rdkit_mol, 1, molecule_filter)
             if mutated_child:
-                mutated_child = Individual(
-                    rdkit_mol=mutated_child,
-                )
-                new_population.append(mutated_child)
+                new_population.append(Individual(rdkit_mol=mutated_child))
     return Generation(molecules=new_population)
 
 
-def sanitize(molecules, population_size, prune_population):
+def sanitize(molecules, population_size):
     """Create a new population from the proposed molecules.
 
     If any molecules from newly scored molecules exists in population,
@@ -173,35 +165,22 @@ def sanitize(molecules, population_size, prune_population):
 
     Args:
         molecules List(Individual): List of molecules to operate on.
-            Contains newly scord molecules and the current best molecules.
+            Contains newly scored molecules and the current best molecules.
         population_size (int): How many molecules allowed in population.
-        prune_population (bool): Flag to select the top scoring molecules.
 
     Returns:
     """
-    if prune_population:
-        smiles_list = []
-        new_population = Generation()
-        for individual in molecules:
-            copy_individual = copy.deepcopy(individual)
-            if copy_individual.smiles not in smiles_list:
-                smiles_list.append(copy_individual.smiles)
-                new_population.molecules.append(copy_individual)
-    else:
-        copy_population = copy.deepcopy(molecules)
-        new_population = Generation(molecules=copy_population.molecules)
 
-    new_population.prune(population_size)
+    # Dont select duplicates
+    smiles_list = []
+    new_population = Generation()
+    for individual in molecules:
+        copy_individual = copy.deepcopy(individual)
+        if copy_individual.smiles not in smiles_list:
+            smiles_list.append(copy_individual.smiles)
+            new_population.molecules.append(copy_individual)
+
+    # Sort by score and take the top scoring molecules.
+    new_population.sort_by_score_and_prune(population_size)
 
     return new_population
-
-
-def debug():
-
-    mol = Chem.MolFromSmiles("c1ccc([C@@H]2C[C@H]2C[NH2+]Cc2nc3c(s2)CCC3)cc1")
-
-    ligand, cut_idx = create_prim_amine(mol)
-
-
-if __name__ == "__main__":
-    debug()

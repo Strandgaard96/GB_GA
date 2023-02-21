@@ -51,21 +51,3 @@ repos:
         entry: docformatter
         language: python
         types: [python]
-
-  - repo: local
-    hooks:
-
-      - id: nbconvert
-        name: Removes ipynb content
-        entry: jupyter nbconvert
-        args:
-          [
-            "--ClearOutputPreprocessor.enabled=True",
-            "--ClearMetadataPreprocessor.enabled=True",
-            "--RegexRemovePreprocessor.enabled=True",
-            "--to=notebook",
-            "--log-level=ERROR",
-            "--inplace",
-          ]
-        files: \.ipynb$
-        language: python

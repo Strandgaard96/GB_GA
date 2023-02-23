@@ -16,8 +16,8 @@ sys.path.insert(0, str(source))
 
 from ppqm.xtb import read_properties
 from support_mvp.backup_plot_diagram.data_handler import (
-    get_energy_dicts,
     read_energy_opt_orca,
+    read_parts,
     read_properties_sp,
 )
 
@@ -177,7 +177,7 @@ def get_xtb_free_energies(path):
 if __name__ == "__main__":
 
     # Get the reference energy dicts.
-    dicts = get_energy_dicts()
+    dicts = read_parts()
 
     # Scoring function dict
     funcs = {

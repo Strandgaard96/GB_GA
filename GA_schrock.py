@@ -1,5 +1,4 @@
-"""This is the driver script for running a GA algorithm on the Schrock
-catalysts.
+"""Driver script for running a GA algorithm.
 
 Example:
     How to run:
@@ -79,7 +78,7 @@ def get_arguments(arg_list=None):
         "--cpus_per_task",
         type=int,
         default=2,
-        help="Number of cores to distribute over",
+        help="Number of cores to distribute xTB over",
     )
     parser.add_argument(
         "--RMS_thresh",
@@ -121,7 +120,7 @@ def get_arguments(arg_list=None):
         "--output_dir",
         type=str,
         default="generation_debug",
-        help="Directory to put various files",
+        help="Directory to put output files",
     )
     parser.add_argument(
         "--database",
@@ -133,7 +132,7 @@ def get_arguments(arg_list=None):
         "--timeout",
         type=int,
         default=12,
-        help="Minutes before timeout",
+        help="Minutes before timeout in xTB optimization",
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--write_db", action="store_true")
@@ -222,10 +221,6 @@ def GA(args):
     # Score initial population
     results = sc.slurm_scoring(args["scoring_function"], population, args)
 
-    # Load GA object
-    # with open(f"debug/GA_debug_firstit.pkl", "rb") as f:
-    #    population = pickle.load(f)
-
     # Set results and do some rdkit hack to prevent weird molecules
     population.handle_results(results)
     population.update_property_cache()
@@ -240,7 +235,7 @@ def GA(args):
     # Reweight by rotatable bonds
     population.reweigh_rotatable_bonds()
 
-    # Normalize the score of population infividuals to value between 0 and 1
+    # Normalize the score of population individuals to value between 0 and 1
     population.sortby("score")
     population.calculate_normalized_fitness()
 
@@ -358,7 +353,6 @@ def GA(args):
 def main():
 
     args = get_arguments()
-    # a dictionary mapping strings of function names to function objects:
     funcs = {
         "rdkit_embed_scoring": rdkit_embed_scoring,
         "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2,
@@ -397,7 +391,7 @@ def main():
             ],
         )
 
-        # Log current git commit
+        # Log current git commit hash
         logging.info("Current git hash: %s", get_git_revision_short_hash())
 
         # Log the argparse set values
@@ -408,8 +402,7 @@ def main():
         t1 = time.time()
         logging.info(f"# Total duration: {(t1 - t0) / 60.0:.2f} minutes")
 
-    # Addded this to return to the commandline if running this driver
-    # on the frontend.
+    # Ensure the program exists when running on the frontend.
     sys.exit(0)
 
 

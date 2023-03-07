@@ -326,7 +326,6 @@ def create_prim_amine_revised(input_ligand):
     # Select the fragment that was cut from amine.
     # If there is only one fragment, it can break so i added the temporary
     # ff statement
-    # TODO: handle this better
     if len(frags) == 1:
         ligand = [frags[0]]
     else:

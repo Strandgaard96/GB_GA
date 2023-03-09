@@ -195,8 +195,8 @@ class XTB_optimizer:
         """From passed dict get xtb options if it has the appropriate keys and
         add to xtb string command."""
 
-        option_dict["charge"] = smi_dict["Mo_N2_NH3"]["charge"]
-        option_dict["uhf"] = smi_dict["Mo_N2_NH3"]["spin"]
+        option_dict["charge"] = smi_dict[option_dict["key"]]["charge"]
+        option_dict["uhf"] = smi_dict[option_dict["key"]]["spin"]
 
         # XTB options to check for
         options = ["gbsa", "spin", "charge", "uhf", "input"]

@@ -1,18 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Scoring module Module handling the driver for scoring ligand candidates.
-
-Contains various global variables that should be available to the
-scoring function at all times
-"""
+"""Scoring module handling the scoring of molecule candidates."""
 import copy
 import json
 import os
-import pickle
 import sys
 from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
+
+from my_utils.utils import energy_filter
 
 scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
@@ -27,32 +24,8 @@ from make_structures import (
 )
 from support_mvp.auto import cd
 
+from my_utils.constants import GAS_ENERGIES, hartree2kcalmol
 from my_utils.xtb_utils import XTB_optimize_schrock
-
-hartree2kcalmol = 627.5094740631
-CORE_ELECTRONIC_ENERGY = -32.698
-
-NH3_ENERGY_gfn2 = -4.427496335658
-N2_ENERGY_gfn2 = -5.766345142003
-CP_RED_ENERGY_gfn2 = 0.2788559959203811
-
-NH3_ENERGY_gfn1 = -4.834742774551
-N2_ENERGY_gfn1 = -6.331044264474
-CP_RED_ENERGY_gfn1 = 0.2390159933706209
-
-GAS_ENERGIES = {
-    "2": (NH3_ENERGY_gfn2, N2_ENERGY_gfn2, CP_RED_ENERGY_gfn2),
-    "1": (NH3_ENERGY_gfn1, N2_ENERGY_gfn1, CP_RED_ENERGY_gfn1),
-}
-
-
-"""int: Module level constants
-hartree2kcalmol: Handles conversion from hartree to kcal/mol
-CORE_ELECTRONIC_ENERGY: The electronic energy of the Mo core with cut
-ligands
-NH3_ENERGY_gfn2: Electronic energy of pure NH3,
-used for scoring the NH3 dissacossiation reaction
-"""
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data")))
 file = str(source / "templates/core_dummy.sdf")
@@ -84,6 +57,15 @@ and the charge and spin for the specific intermediate
 
 
 def scoring_submitter(mol, scoring_args):
+    """Utility function to distribute molecules to their designates scoring
+    function.
+
+    Args:
+        mol (Chem.mol): The mol object to score
+        scoring_args (dict): Scoring arguments.
+
+    Returns:
+    """
 
     scoring_args["output_dir"] = scoring_args["output_dir"] / mol.scoring_function
 
@@ -101,7 +83,7 @@ def scoring_submitter(mol, scoring_args):
 
 
 def rdkit_embed_scoring(ligand, scoring_args):
-    """Score the NH3 -> N2_NH3 exchange.
+    """Score the NH3 -> N2 binding.
 
     Args:
         ligand (Chem.rdchem.Mol): ligand to put on Mo core
@@ -141,17 +123,20 @@ def rdkit_embed_scoring(ligand, scoring_args):
         # Perform calculation
         optimized_mol1, energies = optimizer.optimize_schrock()
 
+    # Get conformers
     confs = optimized_mol1.GetConformers()
     if len(confs) == 0:
         return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Remove fonformers that are too far from the minimum energy conf
+    # Remove conformers that are too far from the minimum energy conf
     energies, new_mol = energy_filter(confs, energies, optimized_mol1, scoring_args)
 
+    # Create duplicate mol object for removing conformers
     single_conf = copy.deepcopy(new_mol)
 
+    # During GA scoring, only one conformer is needed for the next step.
+    # The rest of the conformers are discarded.
     if scoring_args.get("ga_scoring", False):
-        # Copy into new mol object
         # Remove higher energy conformes from mol object
         minidx = np.argmin(energies)
         discard_conf = [
@@ -227,27 +212,23 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_NH3_3d, scoring_options=scoring_args)
 
         # Perform calculation
-        print("scoring part 1")
         optimized_mol1, energies = optimizer.optimize_schrock()
 
     confs = optimized_mol1.GetConformers()
     if len(confs) == 0:
         return None, None, {"energy1": None, "energy2": None, "score": np.nan}
 
-    # Remove fonformers that are too far from the minimum energy conf
-    print("filtering")
+    # Remove conformers that are too far from the minimum energy conf
     energies, new_mol = energy_filter(confs, energies, optimized_mol1, scoring_args)
 
     single_conf = copy.deepcopy(new_mol)
 
-    print("removing min confs")
     minidx = np.argmin(energies)
     discard_conf = [x for x in range(len(single_conf.GetConformers())) if x != minidx]
     for elem in discard_conf:
         single_conf.RemoveConformer(elem)
 
     # Replace NH3 with N2
-    print("replace substruct")
     Mo_N2 = Chem.ReplaceSubstructs(
         single_conf,
         Chem.AddHs(Chem.MolFromSmarts("[NH3]")),
@@ -264,7 +245,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
     Mo_N2.GetAtomWithIdx(match[1]).SetFormalCharge(1)
 
     # Embed catalyst
-    print("ga_scoring")
     if scoring_args.get("ga_scoring", False):
         Mo_N2_3d = embed_rdkit(
             mol=Mo_N2, core=Mo_3d, numConfs=1, pruneRmsThresh=scoring_args["RMS_thresh"]
@@ -286,7 +266,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         optimizer = XTB_optimize_schrock(mol=Mo_N2_3d, scoring_options=scoring_args)
 
         # Perform calculation
-        print("score part 2")
         optimized_mol2, energies2 = optimizer.optimize_schrock()
 
     confs = optimized_mol2.GetConformers()
@@ -384,44 +363,3 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
     en_dict = {"energy1": energies, "energy2": energies2, "score": energy_diff}
 
     return new_mol, new_mol2, en_dict
-
-
-# "----- Scoring util -------
-def energy_filter(confs, energies, optimized_mol, scoring_args):
-
-    mask = energies < (energies.min() + scoring_args["energy_cutoff"])
-    print(mask, energies)
-    confs = list(np.array(confs)[mask])
-    new_mol = copy.deepcopy(optimized_mol)
-    new_mol.RemoveAllConformers()
-    for c in confs:
-        new_mol.AddConformer(c, assignId=True)
-    energies = energies[mask]
-
-    return energies, new_mol
-
-
-if __name__ == "__main__":
-
-    # Current dir:
-    gen = Path("/home/magstr/Documents/GB_GA/debug/35980807_9_submitted.pkl")
-
-    # 370399_submitted.pkl
-    with open(gen, "rb") as f:
-        gen0 = pickle.load(f)
-    ind = gen0.args[0]
-
-    dic = gen0.args[1]
-    dic["cpus_per_task"] = 4
-    dic["n_confs"] = 2
-
-    # METHYL SIMPLE
-    # ind = Individual(
-    #    rdkit_mol=Chem.MolFromSmiles("Nc1cc([O-])c(F)c([O-])c1"), cut_idx=6, idx=(0, 0)
-    # )
-
-    # The three scoring functions
-    res = rdkit_embed_scoring_NH3toN2(ind, dic)
-    # res = rdkit_embed_scoring_NH3plustoNH3(ind, dic)
-    # res = rdkit_embed_scoring(ind, dic)
-    print("YOU MAAAADE IT")

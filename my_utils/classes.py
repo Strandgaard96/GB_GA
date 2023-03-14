@@ -1,3 +1,5 @@
+"""Module containing classes used in the GA and conformer searches."""
+
 import copy
 import os
 import pickle
@@ -13,21 +15,34 @@ from tabulate import tabulate
 from descriptors.descriptors import number_of_rotatable_bonds_target_clipped
 from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
-from scoring.make_structures import (
-    atom_remover,
-    create_prim_amine_revised,
-    single_atom_remover,
-)
-
-_neutralize_reactions = None
+from scoring.make_structures import atom_remover, create_prim_amine, single_atom_remover
 
 
 @dataclass
 class Individual:
-    """Dataclass for holding molecules with attributes.
+    """Dataclass for storing data for each molecule.
 
     The central objects of the GA. The moles themselves plus various
     attributes and debugging fields are set.
+
+    Attributes:
+        rdkit_mol: The rdkit mol object
+        original_mol: The mol object at the start of a generation.
+        rdkit_mol_sa: Mol object where the primary amine is replaced with a hydrogen.
+         Used for the SA score.
+        optimized_mol1: The mol object of Schrock core + moiety for the first structure in the scoring
+        function. The mol contains the optimized geometries.
+        ptimized_mol2: The mol object of Schrock core + moiety for the second structure in the scoring
+        function. The mol contains the optimized geometries.
+        cut_idx: The index of the primary amine that denotes the attachment point.
+        idx: The generation idx of the molecule.
+        smiles: SMILES representation of molecule.
+        smiles_sa: SMILES representation of the molecule with primary amine replaced with
+        hydrogen for SA score.
+        score: GA score for the molecule.
+        normalized_fitness: Normalized score value for the current population.
+        energy: Reaction energy for the scoring step.
+        sa_score: Synthetic accessibility score.
     """
 
     rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
@@ -82,7 +97,7 @@ class Generation:
     """Dataclass holding the Individuals in each generation.
 
     Contains functionality to get and set props from Individuals and
-    display vaious scoring results
+    display various scoring results
     """
 
     molecules: List[Individual] = field(repr=True, default_factory=list)
@@ -158,7 +173,12 @@ class Generation:
             mol.optimized_mol2 = opt2
 
     def reweigh_rotatable_bonds(self, nrb_target=4, nrb_standard_deviation=2):
+        """Scale the current scores by the number of rotational bonds.
 
+        Args:
+            nrb_target: Limit for number of rotational bonds.
+            nrb_standard_deviation: STD defines the width of the gaussian above the limit nrb_target.
+        """
         number_of_rotatable_target_scores = [
             number_of_rotatable_bonds_target_clipped(
                 p.rdkit_mol, nrb_target, nrb_standard_deviation
@@ -181,7 +201,7 @@ class Generation:
         self.size = len(self.molecules)
 
     def print(self, population="molecules", pass_text=None):
-        """Print nice table of output."""
+        """Print nice table of population attributes."""
         table = []
         if population == "molecules":
             population = self.molecules
@@ -248,9 +268,8 @@ class Generation:
         df.columns = columns
         return df
 
-    def gen2pd_dft(
-        self,
-        columns=[
+    def gen2pd_dft(self):
+        columns = [
             "smiles",
             "idx",
             "cut_idx",
@@ -258,8 +277,7 @@ class Generation:
             "energy",
             "dft_singlepoint_conf",
             "min_confs",
-        ],
-    ):
+        ]
         """Get dataframe of population."""
         df = pd.DataFrame(list(map(list, zip(*[self.get(prop) for prop in columns]))))
         df.columns = columns
@@ -295,7 +313,7 @@ class Generation:
             # Create primary amine if it doesnt have one.
             if not match:
                 try:
-                    output_ligand, cut_idx = create_prim_amine_revised(mol.rdkit_mol)
+                    output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
 
                     # Handle if None is returned
                     if not (output_ligand or cut_idx):
@@ -370,8 +388,6 @@ class Generation:
             mol.rdkit_mol_sa = removed_mol
             mol.smiles_sa = Chem.MolToSmiles(removed_mol)
 
-        global _neutralize_reactions
-        if _neutralize_reactions is None:
             _neutralize_reactions = read_neutralizers()
 
         neutral_molecules = []
@@ -437,10 +453,10 @@ class Generation:
 
 @dataclass(order=True)
 class Conformers:
-    """Dataclass holding the molecules for conformer screening.
+    """Dataclass holding the molecules in the conformer screening.
 
     Contains functionality to get and set props from Individuals and
-    display vaious scoring results
+    display various scoring results
     """
 
     molecules: List[Individual] = field(repr=True, default_factory=list)
@@ -489,8 +505,7 @@ class Conformers:
             )
 
     def set_results(self, results):
-        """Extract the scoring results and set the properties on the Individual
-        objects."""
+        """Extract the scoring results and set the Individual properties."""
         energies = [res[0] for res in results]
         geometries = [res[1] for res in results]
         geometries2 = [res[2] for res in results]
@@ -520,20 +535,20 @@ class Conformers:
             mol.optimized_mol1 = opt1
             mol.optimized_mol2 = opt2
 
-    def conf2pd_dft(
-        self,
-        columns=[
-            "smiles",
-            "idx",
-            "cut_idx",
-            "score",
-            "energy",
-            "dft_singlepoint_conf",
-            "final_dft_opt",
-            "scoring_function",
-        ],
-    ):
+    def conf2pd_dft(self):
         """Get dataframe of population."""
+        columns = (
+            [
+                "smiles",
+                "idx",
+                "cut_idx",
+                "score",
+                "energy",
+                "dft_singlepoint_conf",
+                "final_dft_opt",
+                "scoring_function",
+            ],
+        )
         df = pd.DataFrame(list(map(list, zip(*[self.get(prop) for prop in columns]))))
         df.columns = columns
         return df

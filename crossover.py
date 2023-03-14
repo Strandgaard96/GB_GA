@@ -297,24 +297,11 @@ def crossover(parent_A, parent_B, filter):
 
 
 if __name__ == "__main__":
-    smiles1 = "CC(C)(C)c1ccc2occ(CC(=O)Nc3ccccc3F)c2c1"
 
     smiles1 = "Cc1ccc(S(=O)(=O)N2C(N)=C(C#N)C(c3ccc(Cl)cc3)C2C(=O)c2ccccc2)cc1"
-    smiles2 = "CC(C#N)CNC(=O)c1cccc(Oc2cccc(C(F)(F)F)c2)c1"
     smiles2 = "C[C@@H]1CC(Nc2cncc(-c3nncn3C)c2)C[C@@H](C)C1"
 
     mol1 = Chem.MolFromSmiles(smiles1)
     mol2 = Chem.MolFromSmiles(smiles2)
 
     child = crossover(mol1, mol2, None)
-
-    # mutation_rate = 1.0
-    # mutated_child = mutate(child,mutation_rate)
-
-    # for i in range(100):
-    #   child = crossover(mol1,mol2, None)
-
-
-# %%
-
-# %%

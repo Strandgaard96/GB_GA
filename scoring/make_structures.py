@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Module that performs the handling mol ligands.
-
-Conversion between x-amines to dummy atoms and subsequent placement on
-Mo core
-"""
+"""Module that performs the handling mol ligands."""
 
 import random
-import sys
-from io import StringIO
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
-
-# Options to visualise molecules
 
 
 def mol_with_atom_index(mol):
@@ -194,46 +186,15 @@ def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
     # Sanitation ensures that it is a reasonable molecule.
     Chem.SanitizeMol(mol)
 
-    # If this is not done, the ligand i placed in zero.
-    # This command removes the 3D coordinates of the core such
-    # that the 2D mol is displayed nicely.
+    # Ensure not coordinates exist yet.
     mol.RemoveAllConformers()
 
     return mol
 
 
-def connectMols(core, flag=True, pattern="[NH3]"):
-    # NOT WOKING CURRENTLY
-    """Connect NH3 to Mo core."""
-
-    mol = Chem.MolFromSmiles(pattern)
-
-    combined = Chem.CombineMols(core, mol)
-    emol = Chem.EditableMol(combined)
-
-    # Get the idx of the Mo and NH3
-
-    atom = combined.GetAtomWithIdx(NH3_match[0])
-    NH3_idx = atom.GetIdx()
-
-    for atom in combined.GetAtoms():
-        if atom.GetAtomicNum() == 42:
-            Mo_idx = atom.GetIdx()
-            break
-
-    Mo_bond_match = combined.GetSubstructMatch("[Mo]")
-
-    emol.AddBond(Mo_idx, NH3_idx, order=Chem.rdchem.BondType.TRIPLE)
-    mol = emol.GetMol()
-    if flag:
-        mol.GetAtomWithIdx(NH3_idx).SetFormalCharge(1)
-
-    return mol
-
-
-def create_prim_amine_revised(input_ligand):
+def create_prim_amine(input_ligand):
     """A function that takes a ligand and splits on a nitrogen bond, and then
-    gives a ligand out that has an NH2 and a cut_idx that specifies the
+    gives a ligand that has a primary amine and a cut_idx that specifies the
     location of the primary amine.
 
     Args:
@@ -282,7 +243,7 @@ def create_prim_amine_revised(input_ligand):
     l = list(matches)
     random.shuffle(l)
 
-    # Loop throgh matching amines and find one that works
+    # Loop through matching amines and find one that works
     indices = []
     for match in l:
 
@@ -291,7 +252,6 @@ def create_prim_amine_revised(input_ligand):
 
         # Create list of tuples that contain the amine idx and idx of each of the three
         # neighbors that are not another amine.
-
         banned_atoms = [7, 8]
         for x in atom.GetNeighbors():
             if x.GetAtomicNum() == 12:
@@ -301,7 +261,7 @@ def create_prim_amine_revised(input_ligand):
             ):
                 indices = [(match[0], x.GetIdx())]
 
-        # Break loop of a valid match is found
+        # Break loop if a valid match is found
         if indices:
             break
 
@@ -324,7 +284,7 @@ def create_prim_amine_revised(input_ligand):
     frags = Chem.GetMolFrags(frag, asMols=True, sanitizeFrags=False)
 
     # Select the fragment that was cut from amine.
-    # If there is only one fragment, it can break so i added the temporary
+    # If there is only one fragment, it can break so I added the temporary
     # ff statement
     if len(frags) == 1:
         ligand = [frags[0]]
@@ -342,13 +302,12 @@ def create_prim_amine_revised(input_ligand):
         return None, None
 
     # Put primary amine on the dummy location for the ligand just created.
-    # Currently only the first ligand is selected.
     N_mol = Chem.MolFromSmiles("N")
     lig = AllChem.ReplaceSubstructs(
         ligand[0], dummy, N_mol, replacementConnectionPoint=0, replaceAll=True
     )[0]
 
-    # Get idx where to cut and we just return of of them.
+    # Get idx where to cut.
     prim_amine_index = lig.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
     if len(prim_amine_index) > 1:
         print(
@@ -358,7 +317,7 @@ def create_prim_amine_revised(input_ligand):
         # Substructure match primary amine
         prim_match = Chem.MolFromSmarts("[NX3;H2]")
 
-        # Remove the primary amines and chose on of the structures
+        # Remove the primary amines and chose one of the structures
         ms = [x for x in atom_remover(lig, pattern=prim_match)]
         lig = random.choice(ms)
 
@@ -370,6 +329,7 @@ def create_prim_amine_revised(input_ligand):
     output_ligand.UpdatePropertyCache()
     prim_amine_index = output_ligand.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2]"))
 
+    # Last error check step
     if not prim_amine_index:
         print(
             f"Something was wrong for this molecule with smiles {Chem.MolToSmiles(input_ligand)}"
@@ -389,12 +349,11 @@ def create_dummy_ligand(ligand, cut_idx=None):
     Returns:
         ligands (Chem.rdchem.Mol) : ligand with dummy atom
     """
-    # TODO AllChem.ReplaceCore() could be used here instead
 
     # Initialize dummy mol
     dummy = Chem.MolFromSmiles("*")
 
-    # Get the neigbouring bonds to the amine given by cut_idx
+    # Get the neighbouring bonds to the amine given by cut_idx
     atom = ligand.GetAtomWithIdx(cut_idx)
 
     # Create list of tuples that contain the amine idx and idx of neighbor.
@@ -449,9 +408,6 @@ def embed_rdkit(
     match = mol.GetSubstructMatch(core)
     if not match:
         raise ValueError("molecule doesn't match the core")
-    sio = sys.stderr = StringIO()
-    # if not AllChem.UFFHasAllMoleculeParams(mol):
-    #    raise Exception(Chem.MolToSmiles(mol), sio.getvalue())
 
     # Get the coordinates for the core, which constrains the embedding
     coordMap = {}
@@ -460,7 +416,6 @@ def embed_rdkit(
         corePtI = coreConf.GetAtomPosition(i)
         coordMap[idxI] = corePtI
 
-    # The random seed might be irrelevant here as randomcoords are false
     cids = AllChem.EmbedMultipleConfs(
         mol=mol,
         numConfs=numConfs,
@@ -477,7 +432,6 @@ def embed_rdkit(
     # If embedding failed, retry with other parameters.
     # ignoreSmoothingFailures removed the majority of embedding errors for me
     if not cids:
-        # Retry with a different random seed
         cids = AllChem.EmbedMultipleConfs(
             mol=mol,
             numConfs=numConfs,
@@ -493,6 +447,7 @@ def embed_rdkit(
         if not cids:
             print(coordMap, Chem.MolToSmiles(mol))
             raise ValueError("Could not embed molecule")
+
     # Rotate embedded conformations onto the core
     algMap = [(j, i) for i, j in enumerate(match)]
     for cid in cids:

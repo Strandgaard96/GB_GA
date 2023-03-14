@@ -1,18 +1,18 @@
-"""Module that contains mol manipulations and various resuable functionality
-classes."""
+"""Module that contains mol manipulations and various reusable
+functionality."""
+import copy
 import os
 import shutil
 import subprocess
 import sys
 
+import numpy as np
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import Trajectory, read
 from rdkit import Chem
 
-# Needed for when debugging
+# Needed for debugging
 sys.path.insert(0, "../scoring")
-
-_neutralize_reactions = None
 
 
 def mol_from_xyz(xyz_file, charge=0):
@@ -73,3 +73,17 @@ def get_git_revision_short_hash() -> str:
         .decode("ascii")
         .strip()
     )
+
+
+def energy_filter(confs, energies, optimized_mol, scoring_args):
+
+    mask = energies < (energies.min() + scoring_args["energy_cutoff"])
+    print(mask, energies)
+    confs = list(np.array(confs)[mask])
+    new_mol = copy.deepcopy(optimized_mol)
+    new_mol.RemoveAllConformers()
+    for c in confs:
+        new_mol.AddConformer(c, assignId=True)
+    energies = energies[mask]
+
+    return energies, new_mol

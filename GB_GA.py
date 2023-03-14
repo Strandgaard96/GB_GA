@@ -13,7 +13,7 @@ from rdkit import Chem
 import crossover as co
 import mutate as mu
 from my_utils.classes import Generation, Individual
-from scoring.make_structures import create_prim_amine_revised
+from scoring.make_structures import create_prim_amine
 
 
 def read_file(file_name):
@@ -58,7 +58,7 @@ def make_initial_population(population_size, file_name):
         # If not primary amines, create new ligand from secondary or teriary.
         if not match:
             print(f"There are no primary amines to cut so creating new")
-            ligand, cut_idx = create_prim_amine_revised(mol)
+            ligand, cut_idx = create_prim_amine(mol)
 
             # If we cannot split, simply add methyl as ligand (instead of discarding)
             if not cut_idx:

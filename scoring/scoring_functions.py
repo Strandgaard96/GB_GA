@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module that contains submitit scoring functions.
-
-These submit multiple scoring calculation jobs.
-"""
+"""Module that contains submitit functionality to submitit scoring function."""
 
 import shutil
 from pathlib import Path
@@ -11,18 +8,7 @@ import numpy as np
 import submitit
 
 from my_utils.xtb_utils import write_to_db
-from scoring.scoring import (
-    rdkit_embed_scoring,
-    rdkit_embed_scoring_NH3plustoNH3,
-    rdkit_embed_scoring_NH3toN2,
-    scoring_submitter,
-)
-
-funcs = {
-    "rdkit_embed_scoring": rdkit_embed_scoring,
-    "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2,
-    "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3,
-}
+from scoring.scoring import scoring_submitter
 
 
 def slurm_scoring(sc_function, population, scoring_args):
@@ -202,57 +188,5 @@ def slurm_molS(sc_function, scoring_args):
     job = executor.submit(sc_function, **scoring_args)
 
     results = catch(job.result, handle=lambda e: None)
-
-    return results
-
-
-def slurm_molS_xtb(sc_function, scoring_args):
-    """Function is outdated and should be updated.
-
-    Was used to submit all intermediates to xtb calcs after molS was
-    used to create them.
-    """
-    executor = submitit.AutoExecutor(
-        folder=scoring_args[-1] / "scoring_tmp",
-        slurm_max_num_timeout=0,
-    )
-    executor.update_parameters(
-        name=f"xtb",
-        cpus_per_task=scoring_args[-2],
-        slurm_mem_per_cpu="2GB",
-        timeout_min=10,
-        slurm_partition="kemi1",
-        slurm_array_parallelism=2,
-    )
-
-    job = executor.submit(sc_function, scoring_args)
-
-    results = catch(job.result, handle=lambda e: (None, None))
-
-    return results
-
-
-def slurm_conformer_dft(sc_function, scoring_args):
-    """Function is outdated and should be updated.
-
-    Was used to submit all intermediates to xtb calcs after molS was
-    used to create them.
-    """
-    executor = submitit.AutoExecutor(
-        folder=scoring_args[-1] / "scoring_tmp",
-        slurm_max_num_timeout=0,
-    )
-    executor.update_parameters(
-        name=f"xtb",
-        cpus_per_task=scoring_args[-2],
-        slurm_mem_per_cpu="2GB",
-        timeout_min=10,
-        slurm_partition="kemi1",
-        slurm_array_parallelism=2,
-    )
-
-    job = executor.submit(sc_function, scoring_args)
-
-    results = catch(job.result, handle=lambda e: (None, None))
 
     return results

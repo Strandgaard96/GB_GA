@@ -250,7 +250,6 @@ def GA(args):
 
     # Start evolving
     for generation in range(args["generations"]):
-
         # Counter for tracking generation number
         generation_num = generation + 1
         logging.info("Starting generation %d", generation_num)
@@ -351,7 +350,6 @@ def GA(args):
 
 
 def main():
-
     args = get_arguments()
     funcs = {
         "rdkit_embed_scoring": rdkit_embed_scoring,
@@ -372,7 +370,6 @@ def main():
 
     # Run the GA
     for i in range(args.n_tries):
-
         # Start the time
         t0 = time.time()
         # Create output_dir

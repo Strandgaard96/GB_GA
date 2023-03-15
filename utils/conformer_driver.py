@@ -14,9 +14,9 @@ sys.path.insert(0, str(source))
 
 from dft.orca_driver import conformersearch_dft_driver
 
-from my_utils.classes import Conformers, Individual
-from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc
+from utils.classes import Conformers, Individual
+from utils.utils import get_git_revision_short_hash
 
 ORCA_COMMANDS = {
     "sp": "!PBE D3BJ ZORA ZORA-def2-TZVP SARC/J SPLIT-RI-J MiniPrint PrintMOs KDIIS SOSCF",

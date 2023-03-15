@@ -1,3 +1,5 @@
+"""Module for xtb functionality."""
+
 import concurrent.futures
 import copy
 import os
@@ -10,9 +12,6 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-from ase.calculators.singlepoint import SinglePointCalculator
-from ase.db import connect
-from ase.io import read
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 from rdkit.Geometry import Point3D
@@ -34,7 +33,7 @@ def run_xtb(args):
         args (tuple): runner parameters
 
     Returns:
-        results: Energy and geometry of calculated structures
+        results (tuple): Energy and geometries of calculated structures
     """
     xyz_file, xtb_cmd, numThreads, conf_path, logname = args
     print(f"running {xyz_file} on {numThreads} core(s) starting at {datetime.now()}")
@@ -55,49 +54,25 @@ def run_xtb(args):
         cwd=cwd,
     )
 
-    # Hardcoded wait time. Stops the xtb optimization after 8 minutes.
+    # Hardcoded wait time. Stops the xtb optimization after 8 minutes. This is done to ensure that something
+    # is returned from each conformer xtb opt. Otherwise, one conformer failing would result in
+    # the whole molecule returning 0
     try:
         output, err = popen.communicate(timeout=8 * 60)
     except subprocess.TimeoutExpired:
         popen.kill()
         output, err = popen.communicate()
 
-    # Save logfiles
+    # Save xtb output files
     with open(Path(conf_path) / f"{logname}job.out", "w") as f:
         f.write(output)
     with open(Path(conf_path) / f"{logname}err.out", "w") as f:
         f.write(err)
 
+    # Get results from output
     results = read_results(output, err)
 
     return results
-
-
-def write_to_db(database_dir=None, logfiles=None, trajfile=None):
-    """Function that writes the given structures and energies to an ASE
-    database.
-
-    Args:
-        database_dir: path to put database.
-        logfiles: xtb logfiles to read energies from.
-        trajfile: trajectory files from xtb optimizations
-
-    Returns:
-        None
-    """
-    with connect(database_dir) as db:
-        for i, (traj, logfile) in enumerate(zip(trajfile, logfiles)):
-
-            energies = extract_energyxtb(logfile)
-            structs = read(traj, index=":")
-            for struct, energy in zip(structs, energies):
-                id = db.reserve(name=str(traj) + str(i))
-                if id is None:
-                    continue
-                struct.calc = SinglePointCalculator(struct, energy=energy)
-                db.write(struct, id=id, name=str(traj))
-
-    return
 
 
 def extract_energyxtb(logfile=None):
@@ -120,14 +95,7 @@ def extract_energyxtb(logfile=None):
 
 
 def read_results(output, err):
-    """Get coordinates and energy from xtb output.
-
-    Args:
-        output:
-        err:
-
-    Returns:
-    """
+    """Get coordinates and energy from xtb output."""
 
     if not "normal termination" in err:
         return {"atoms": None, "coords": None, "energy": None}
@@ -152,6 +120,7 @@ def read_results(output, err):
 
 
 def xyz_to_conformer(mol, xyz_file):
+    """Take xyz coordinates and add them as a conformer on a mol object."""
 
     atomic_symbols = []
     xyz_coordinates = []
@@ -168,7 +137,7 @@ def xyz_to_conformer(mol, xyz_file):
 
     # from https://github.com/rdkit/rdkit/issues/2413
     conf = Chem.Conformer()
-    # in principal, you should check that the atoms match
+    # In principal, you should check that the atoms match
     for i in range(mol.GetNumAtoms()):
         x, y, z = xyz_coordinates[i]
         conf.SetAtomPosition(i, Point3D(x, y, z))
@@ -194,18 +163,22 @@ def write_xyz(atoms, coords, destination_dir):
 def check_bonds(mol, conf_paths, charge):
     """Check for broken/formed bonds in the optimization.
 
+    The bonds are only checked on the ligands.
+
     Args:
         charge (charge): Charge of molecule for xyz2mol
         mol (Chem.rdchem.Mol): Starting mol object
     Returns:
-        bond_changes
+        bond_changes (List): List of booleans. Indicates which conformers had bond change
     """
+
     bond_changes = []
     for path in conf_paths:
 
         try:
-            # Initialize paths
+            # Get optimized structure path
             file = path + f"/xtbopt.xyz"
+            # Prepare path for file to put the structure with Mo removed
             file_noMo = path + "/xtbopt_noMo.xyz"
 
             print("Getting the adjacency matrices")
@@ -215,15 +188,20 @@ def check_bonds(mol, conf_paths, charge):
                     lines = file_input.readlines()
                     new_str = str(int(lines[0]) - 1) + "\n"
                     lines[0] = new_str
+                    # Remove the molybdenum
                     for i, line in enumerate(lines):
                         if "Mo " in line:
                             lines.pop(i)
                     output.writelines(lines)
+            # Read atoms and coordinates
             atoms, _, coordinates = read_xyz_file(file_noMo)
+            # Get adjacency matrix after optmization
             after_ac, opt_mol = xyz2AC(atoms, coordinates, charge, use_huckel=True)
 
+            # Get adjacency matrix before optimization
             before_ac = rdmolops.GetAdjacencyMatrix(mol)
-            # Remove the Mo row:
+
+            # Remove the Mo row from berfore_ac:
             idx = mol.GetSubstructMatch(Chem.MolFromSmarts("[Mo]"))[0]
             intermediate = np.delete(before_ac, idx, axis=0)
             before_ac = np.delete(intermediate, idx, axis=1)
@@ -235,6 +213,7 @@ def check_bonds(mol, conf_paths, charge):
             else:
                 bond_changes.append(False)
         except:
+            # Assign bond change if anything breaks
             print(f"Something failed for {path}")
             bond_changes.append(True)
 
@@ -283,7 +262,7 @@ class XTB_optimizer:
         # xtb options
         self.XTB_OPTIONS = {}
 
-        # Start with ff optimization
+        # Get default cmd string
         cmd = f"xtb --gfn{self.method}"
         for key, value in self.XTB_OPTIONS.items():
             cmd += f" --{key} {value}"
@@ -408,14 +387,13 @@ class XTB_optimize_schrock(XTB_optimizer):
             N2_sub_match = np.array(molecule.GetSubstructMatch(N2_match)) + 1
             match.extend(N2_sub_match)
         if Mo_bond:
-            # Constrain everything that is not spcified in core.
+            # Constrain all atoms not in core.
             # If N2 or NH3 flag was also set, these are also not contrained
             idxs = []
             for elem in molecule.GetAtoms():
                 idxs.append(elem.GetIdx() + 1)
             match = [idx for idx in idxs if idx not in match]
 
-        # Loop conformer paths
         for elem in path:
             # Write the xcontrol file
             with open(os.path.join(elem, "xcontrol.inp"), "w") as f:
@@ -479,7 +457,7 @@ class XTB_optimize_schrock(XTB_optimizer):
             self.mol, "xtbmol", destination=self.name
         )
 
-        # Make input constrain file. Constrain only to Mo core atoms
+        # Make input constrain file. Constrain core atoms and N2/NH3 moieties
         self._make_input_constrain_file(
             self.mol, core=core, path=conf_paths, NH3=True, N2=True
         )
@@ -515,13 +493,13 @@ class XTB_optimize_schrock(XTB_optimizer):
             for i, xyz_file in enumerate(xyz_files)
         ]
 
-        # Optimize with current input constrain file. Only the Mo core.
+        # Optimize with current input constrain file.
         result = self.optimize(args)
 
         # Store the log file
         self.copy_logfile(conf_paths, name="constrained_opt.log")
 
-        # Constrain only N reactants and Mo. Let the rest of the core optimize
+        # Constrain only N reactants and Mo. Let the rest of the atoms optimize
         self._make_input_constrain_file(
             self.mol,
             core=Chem.MolFromSmiles("[Mo]"),
@@ -545,6 +523,7 @@ class XTB_optimize_schrock(XTB_optimizer):
 
         self.copy_logfile(conf_paths, name="Mo_gascon.log")
 
+        # Decides if final Mo-NxHx optmization is preformed
         if self.options.get("bond_opt", False):
 
             # Get constrain file for only Mo plus NH3 or N2 atoms.
@@ -571,6 +550,7 @@ class XTB_optimize_schrock(XTB_optimizer):
 
             result = self.optimize(args)
 
+        # Decides if final full relaxation is performed. This is used in the conformers search
         if self.options.get("full_relax", False):
             self._constrain_N(self.mol, path=conf_paths, NH3=True, N2=True)
             # Optimize the Mo-N* bond
@@ -624,9 +604,6 @@ class XTB_optimize_schrock(XTB_optimizer):
         for i in range(len(confs)):
             confs[i].SetId(i)
 
-        # if "constrain_atoms" in options and len(options["constrain_atoms"]) > 0:
-        #    _ = AllChem.AlignMolConformers(mol_opt, atomIds=options["constrain_atoms"])
-
         # Clean up
         if self.options["cleanup"]:
             if len(confs) == 0:
@@ -636,26 +613,6 @@ class XTB_optimize_schrock(XTB_optimizer):
 
         return mol_opt, np.array(energies)
 
-    def _get_results(self, result):
-        """Parse xtb output tuple."""
-        energies = []
-        geometries = []
-        for e, g in result:
-            energies.append(e)
-            geometries.append(g)
-        arr = np.array(energies, dtype=np.float)
-        try:
-            minidx = np.nanargmin(arr)
-            return energies, geometries, minidx
-        except ValueError:
-            print(
-                "All-Nan slice encountered, setting minidx to None and returning 9999 energy"
-            )
-            energies = 9999
-            geometries = None
-            minidx = None
-            return energies, geometries, minidx
-
     @staticmethod
     def _add_conformer2mol(mol, atoms, coords, energy=None, bond_change=None):
         """Add Conformer to rdkit.mol object."""
@@ -664,7 +621,7 @@ class XTB_optimize_schrock(XTB_optimizer):
             # assert that same atom type
             assert (
                 mol.GetAtomWithIdx(i).GetSymbol() == atoms[i]
-            ), "Order of atoms if not the same in CREST output and rdkit Mol"
+            ), "Order of atoms is not the same in CREST output and rdkit Mol"
             x, y, z = coords[i]
             conf.SetAtomPosition(i, Point3D(x, y, z))
         mol.AddConformer(conf, assignId=True)
@@ -682,7 +639,3 @@ class XTB_optimize_schrock(XTB_optimizer):
         elif not conformers[-1].Is3D():
             raise Exception("Conformer is not 3D")
         return n_confs
-
-
-if __name__ == "__main__":
-    print("None")

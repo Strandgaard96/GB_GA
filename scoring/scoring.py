@@ -24,7 +24,6 @@ from make_structures import (
 )
 from support_mvp.auto import cd
 
-from my_utils.constants import GAS_ENERGIES, hartree2kcalmol
 from my_utils.xtb_utils import XTB_optimize_schrock
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data")))

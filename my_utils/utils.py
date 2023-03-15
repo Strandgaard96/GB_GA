@@ -1,8 +1,6 @@
 """Module that contains mol manipulations and various reusable
 functionality."""
 import copy
-import os
-import shutil
 import subprocess
 import sys
 
@@ -37,20 +35,6 @@ def mols_from_smi_file(smi_file, n_mols=None):
     return mols
 
 
-def mkdir(directory, overwrite=False):
-    if os.path.exists(directory) and overwrite:
-        shutil.rmtree(directory)
-    os.mkdir(directory)
-
-
-def hartree2kcalmol(hartree):
-    return hartree * 627.5095
-
-
-def hartree2kJmol(hartree):
-    return hartree * 2625.50
-
-
 def write_to_traj(args):
     """Write xtblog files to traj file."""
 
@@ -76,6 +60,18 @@ def get_git_revision_short_hash() -> str:
 
 
 def energy_filter(confs, energies, optimized_mol, scoring_args):
+    """Filter out higher energy conformers based on energy cutoff.
+
+    Args:
+        confs: Sequnce of conformers objects.
+        energies (List): List of conformer energies
+        optimized_mol (Chem.Mol): Optimized mol object
+        scoring_args: Scoring function arg dict
+
+    Returns:
+        energies: Filtered energies
+        new_mol: Mol object with filtered conformers
+    """
 
     mask = energies < (energies.min() + scoring_args["energy_cutoff"])
     print(mask, energies)

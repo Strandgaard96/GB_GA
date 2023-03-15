@@ -7,7 +7,6 @@ from pathlib import Path
 import numpy as np
 import submitit
 
-from my_utils.xtb_utils import write_to_db
 from scoring.scoring import scoring_submitter
 
 
@@ -53,27 +52,6 @@ def slurm_scoring(sc_function, population, scoring_args):
 
     if scoring_args["cleanup"]:
         shutil.rmtree("scoring_tmp")
-
-    # Collect results in database
-    if scoring_args["write_db"]:
-        # Get traj paths for current gen
-        p = Path(scoring_args["output_dir"])
-        gen_no = f"{population.molecules[0].idx[0]}".zfill(3)
-
-        trajs = sorted(p.rglob(f"{gen_no}*/*/*traj*"))
-        logfiles = [p.parent / "xtbopt.log" for p in trajs]
-
-        print("Printing optimized structures to database")
-        try:
-            # Write to database
-            write_to_db(
-                database_dir=scoring_args["database"],
-                logfiles=logfiles,
-                trajfile=trajs,
-            )
-        except Exception as e:
-            print(f"Failed to write to database at {logfile}")
-            print(e)
 
     return results
 
@@ -122,27 +100,6 @@ def slurm_scoring_conformers(conformers, scoring_args):
 
     if scoring_args["cleanup"]:
         shutil.rmtree(Path(scoring_args["output_dir"]) / "scoring_tmp")
-
-    # Collect results in database
-    if scoring_args["write_db"]:
-        # Get traj paths for current gen
-        p = Path(scoring_args["output_dir"])
-        gen_no = f"{conformers.molecules[0].idx[0]}".zfill(3)
-
-        trajs = sorted(p.rglob(f"{gen_no}*/*/*traj*"))
-        logfiles = [p.parent / "xtbopt.log" for p in trajs]
-
-        print("Printing optimized structures to database")
-        try:
-            # Write to database
-            write_to_db(
-                database_dir=scoring_args["database"],
-                logfiles=logfiles,
-                trajfile=trajs,
-            )
-        except Exception as e:
-            print(f"Failed to write to database at {logfile}")
-            print(e)
 
     return results
 

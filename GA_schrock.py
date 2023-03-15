@@ -20,14 +20,14 @@ from pathlib import Path
 import crossover as co
 import filters
 import GB_GA as ga
-from my_utils.classes import Generation
-from my_utils.utils import get_git_revision_short_hash
 from scoring import scoring_functions as sc
 from scoring.scoring import (
     rdkit_embed_scoring,
     rdkit_embed_scoring_NH3plustoNH3,
     rdkit_embed_scoring_NH3toN2,
 )
+from utils.classes import Generation
+from utils.utils import get_git_revision_short_hash
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
 

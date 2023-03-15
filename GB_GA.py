@@ -12,8 +12,8 @@ from rdkit import Chem
 
 import crossover as co
 import mutate as mu
-from my_utils.classes import Generation, Individual
 from scoring.make_structures import create_prim_amine
+from utils.classes import Generation, Individual
 
 
 def read_file(file_name):

@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from rdkit import Chem
 
-from my_utils.utils import energy_filter
+from utils.utils import energy_filter
 
 scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
@@ -22,9 +22,21 @@ from make_structures import (
     remove_N2,
     remove_NH3,
 )
-from support_mvp.auto import cd
 
-from my_utils.xtb_utils import XTB_optimize_schrock
+from utils.utils import cd
+from utils.xtb_utils import XTB_optimize_schrock
+
+NH3_ENERGY_gfn2 = -4.427496335658
+N2_ENERGY_gfn2 = -5.766345142003
+CP_RED_ENERGY_gfn2 = 0.2788559959203811
+NH3_ENERGY_gfn1 = -4.834742774551
+N2_ENERGY_gfn1 = -6.331044264474
+CP_RED_ENERGY_gfn1 = 0.2390159933706209
+GAS_ENERGIES = {
+    "2": (NH3_ENERGY_gfn2, N2_ENERGY_gfn2, CP_RED_ENERGY_gfn2),
+    "1": (NH3_ENERGY_gfn1, N2_ENERGY_gfn1, CP_RED_ENERGY_gfn1),
+}
+hartree2kcalmol = 627.51
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data")))
 file = str(source / "templates/core_dummy.sdf")

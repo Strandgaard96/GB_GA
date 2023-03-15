@@ -9,7 +9,7 @@ import concurrent.futures
 import os
 from pathlib import Path
 
-from support_mvp.auto import cd, shell
+from utils.utils import cd, shell
 
 # Get dict with intermediate variables
 with open(source / "data/intermediate_smiles.json", "r", encoding="utf-8") as f:

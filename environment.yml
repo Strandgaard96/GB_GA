@@ -1,12 +1,13 @@
-name: test_req2
+name: GA_env
 channels:
+  - rdkit
   - conda-forge
   - defaults
-  - rdkit
 dependencies:
   - python=3.7
   - pip
   - pip:
-      - -r file:/home/magstr/Documents/GB_GA/requirements.txt
-  - rdkit
-prefix: /home/magstr/miniconda3/envs/test_req2
+      - -r requirements.txt
+  - rdkit=2021.09.5
+  - xtb
+prefix: /home/magstr/miniconda3/envs/GA_env

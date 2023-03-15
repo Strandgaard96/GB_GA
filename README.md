@@ -6,19 +6,16 @@
 
 Repository for the paper: *Genetic algorithm for nitrogen fixation.*
 
-1. [GA](#ga)
-2. [Run](#run)
+1. [GA](#gb-ga)
+2. [Run](#how-to-run)
+3. [Parameters](#parameters)
 
 
 ## How to run
 
-For simple use of the GA install the
+For simple use of the GA install with conda
 
-    requirements.txt file
-
-For use with molS install the
-
-    environment.yml file
+    conda env create --file environment.yml
 
 To run the ga activate the relevant environment and run:
 ```

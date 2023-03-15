@@ -39,9 +39,7 @@ A list of possible arguments.
 | `--prune_population` | If there are duplicates within the current population these are removed.                                             |
 | `--sa_screening`     | Decides if synthetic accessibility score is enabled. Highly recommended to turn this on.                             |
 | `--file_name`        | Path to the database extract to create starting population.                                                          |
-| `--output_dir`       | Sets output directory for all files generated during generations.                                                    |
-| `--write_db`         | Writes structures to ASE database each generation.                                                                   |
-| `--database`         | Name of database to write to.                                                                                        |
+| `--output_dir`       | Sets output directory for all files generated during generations.                                                    |                                                                                   |
 | `--timeout`          | How many minutes each slurm job is allowed to run                                                                    |
 | `--debug`            | If set the starting population is a set of 4 small molecules that can run fast locally. Used for debugging.          |
 | `--ga_scoring`       | If set, removes all higher energy conformers in GA.                                                                  |

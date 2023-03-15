@@ -44,10 +44,10 @@ A list of possible arguments.
 | `--database`         | Name of database to write to.                                                                                        |
 | `--timeout`          | How many minutes each slurm job is allowed to run                                                                    |
 | `--debug`            | If set the starting population is a set of 4 small molecules that can run fast locally. Used for debugging.          |
-| `--ga_scoring`       | If set, removes all higher energy conformers in GA. MAYBE REMOVE THIS FOR THE PAPER REPO                             |
+| `--ga_scoring`       | If set, removes all higher energy conformers in GA.                                                                  |
 | `--supress_amines`   | Supress amine heavy molecules by converting any primary amines to hydrogen in generations.                           |
-| `--method`           | Whih gfn method to use.                                                                                              |
-| `--energy_cutoff`    | MAYBE ALSO NOT NEEDED.                                                                                               |
+| `--method`           | Which gfn method to use.                                                                                             |
+| `--energy_cutoff`    | Sets energy cutoff on the conformer filtering.                                                                       |
 | `--bond_opt`         | Decides if a final Mo-N bond optimization is performed during scoring.                                               |
 | `--cleanup`          | If enabled, all scoring files are removed after scoring. Only the optimized structures and their energies are saved. |
 | `--scoring_func`     | Which scoring function to use.                                                                                       |

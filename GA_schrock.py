@@ -12,7 +12,6 @@ import argparse
 import copy
 import logging
 import os
-import pathlib
 import sys
 import time
 from pathlib import Path
@@ -119,19 +118,12 @@ def get_arguments(arg_list=None):
         help="Directory to put output files",
     )
     parser.add_argument(
-        "--database",
-        type=pathlib.Path,
-        default="ase_database.db",
-        help="Path to database to write files to",
-    )
-    parser.add_argument(
         "--timeout",
         type=int,
         default=12,
         help="Minutes before timeout in xTB optimization",
     )
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--write_db", action="store_true")
     parser.add_argument("--ga_scoring", action="store_true")
     parser.add_argument("--supress_amines", action="store_true")
     parser.add_argument(
@@ -205,7 +197,7 @@ def GA(args):
 
     # Create initial population and get initial score. Option for debugging.
     if args["debug"]:
-        population = ga.make_initial_population_debug(2)
+        population = ga.make_initial_population_debug(population_size=2)
     else:
         population = ga.make_initial_population(
             args["population_size"], args["file_name"]

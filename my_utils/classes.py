@@ -12,7 +12,7 @@ import pandas as pd
 from rdkit import Chem
 from tabulate import tabulate
 
-from descriptors.descriptors import number_of_rotatable_bonds_target_clipped
+from my_utils.gaussians import number_of_rotatable_bonds_target_clipped
 from sa.neutralize import read_neutralizers
 from sa.sascorer import sa_target_score_clipped
 from scoring.make_structures import atom_remover, create_prim_amine, single_atom_remover

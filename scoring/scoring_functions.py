@@ -28,7 +28,7 @@ def slurm_scoring(sc_function, population, scoring_args):
         cpus_per_task=scoring_args["cpus_per_task"],
         slurm_mem_per_cpu="500MB",
         timeout_min=scoring_args["timeout"],
-        slurm_partition="kemi1",
+        slurm_partition=scoring_args["partition"],
         slurm_array_parallelism=100,
     )
 
@@ -138,7 +138,7 @@ def slurm_molS(sc_function, scoring_args):
         cpus_per_task=scoring_args["ncores"],
         slurm_mem_per_cpu="2GB",
         timeout_min=10,
-        slurm_partition="kemi1",
+        slurm_partition=scoring_args["partition"],
         slurm_array_parallelism=2,
     )
 

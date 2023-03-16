@@ -123,6 +123,12 @@ def get_arguments(arg_list=None):
         default=12,
         help="Minutes before timeout in xTB optimization",
     )
+    parser.add_argument(
+        "--partition",
+        type=str,
+        default="kemi1",
+        help="Which cluster partition to run scoring on",
+    )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--ga_scoring", action="store_true")
     parser.add_argument("--supress_amines", action="store_true")

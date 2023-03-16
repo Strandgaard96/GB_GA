@@ -1,5 +1,3 @@
-[ChemRxiv](linkb)  |  [Paper](linke)
-
 
 # GB-GA
 [Graph-based genetic algorithm](http://dx.doi.org/10.1039/C8SC05372C)
@@ -17,9 +15,9 @@ For simple use of the GA install with conda
 
     conda env create --file environment.yml
 
-To run the ga activate the relevant environment and run:
+To run the ga activate the relevant environment and run the following for a quick run on a local installation:
 ```
-python GA_schrock.py
+python GA_schrock.py --supress_amines --debug --average_size 10 --size_stdev 2 --scoring_func rdkit_embed_scoringNH3toN2 --cpus_per_task 2 --population_size 3 --mating_pool_size 4
 ```
 
 ## Parameters
@@ -36,7 +34,6 @@ A list of possible arguments.
 | `--RMS_thresh`       | RMS cutoff value for RDKit conformer embedding.                                                                      |
 | `--generations`      | How many evolution cycles of the population is performed.                                                            |
 | `--mutation_rate`    | Decides the probability of performing a mutation operation instead of crossover.                                     |
-| `--prune_population` | If there are duplicates within the current population these are removed.                                             |
 | `--sa_screening`     | Decides if synthetic accessibility score is enabled. Highly recommended to turn this on.                             |
 | `--file_name`        | Path to the database extract to create starting population.                                                          |
 | `--output_dir`       | Sets output directory for all files generated during generations.                                                    |                                                                                   |
@@ -58,6 +55,7 @@ A list of possible arguments.
 
 # Authors
 __Magnus Strandgaard__<sup>1</sup>
+__Jan H. Jensen__<sup>1</sup>
 
 <sup>1</sup> Department of Chemistry, University of Copenhagen, 2100 Copenhagen Ø, Denmark.
 Heres my email: _mastr@chem.ku.dk_.

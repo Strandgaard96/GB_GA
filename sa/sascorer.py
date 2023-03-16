@@ -20,13 +20,11 @@
 import math
 import os.path as op
 import pickle
-from collections import defaultdict
-from typing import List
 
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
 
-from modifiers import gaussian_modifier_clipped
+from utils.gaussians import gaussian_modifier_clipped
 
 _fscores = None
 
@@ -34,9 +32,11 @@ _fscores = None
 def sa_target_score_clipped(
     m, target: float = 2.230044, sigma: float = 0.6526308
 ) -> float:
-    """Computes a synthesizability multiplier for a (range of) synthetic accessibility score(s)
-    The return value is between 1 (perfectly synthesizable) and 0 (not synthesizable).
-    Based on the work of https://arxiv.org/pdf/2002.07007. Default values from paper.
+    """Computes a synthesizability multiplier for a (range of) synthetic
+    accessibility score(s) The return value is between 1 (perfectly
+    synthesizable) and 0 (not synthesizable). Based on the work of
+    https://arxiv.org/pdf/2002.07007. Default values from paper.
+
     :param m: RDKit molecule
     :param target: the target logp value
     :param sigma: the width of the gaussian distribution
@@ -46,7 +46,8 @@ def sa_target_score_clipped(
 
 
 def reweigh_scores_by_sa(population):
-    """Reweighs scores with synthetic accessibility score
+    """Reweighs scores with synthetic accessibility score.
+
     :param population: list of RDKit molecules to be re-weighted
     :param scores: list of docking scores
     :return: list of re-weighted docking scores
@@ -64,7 +65,8 @@ def reweigh_scores_by_sa(population):
 
 
 def get_sa_scores(population):
-    """Reweighs scores with synthetic accessibility score
+    """Reweighs scores with synthetic accessibility score.
+
     :param population: list of RDKit molecules to be re-weighted
     :param scores: list of docking scores
     :return: list of re-weighted docking scores

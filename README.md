@@ -11,7 +11,7 @@ Repository for the paper: *Genetic algorithm for nitrogen fixation.*
 
 ## How to run
 
-For simple use of the GA install with conda
+For simple use of the GA install with conda install the env file.
 
     conda env create --file environment.yml
 

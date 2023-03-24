@@ -4,10 +4,9 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.7
   - pip
   - pip:
       - -r requirements.txt
-  - rdkit=2021.09.5
+  - rdkit=2022.09.5
   - xtb
 prefix: /home/magstr/miniconda3/envs/GA_env

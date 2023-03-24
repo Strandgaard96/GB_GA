@@ -5,7 +5,6 @@ import pickle
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import submitit
 from rdkit import Chem
@@ -47,7 +46,7 @@ class Individual:
     cut_idx: int = field(default=None, repr=False, compare=False)
     idx: tuple = field(default=(None, None), repr=False, compare=False)
     smiles: str = field(init=False, compare=True, repr=True)
-    smiles_sa: str = field(init=False, compare=True, repr=False)
+    smiles_sa: str = field(init=False, compare=False, repr=False)
     score: float = field(default=None, repr=False, compare=False)
     normalized_fitness: float = field(default=None, repr=False, compare=False)
     energy: float = field(default=None, repr=False, compare=False)
@@ -67,11 +66,18 @@ class Individual:
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
+    def get_props(self):
+        return vars(self)
+
+    # To enable the set method and comparing the smiles of molecules.
     def __hash__(self) -> int:
         return hash(self.smiles)
 
 
 class OutputHandler:
+    def __init__(self, args):
+        self.args = args
+
     @staticmethod
     def save(molecules, directory=None, name=None):
         """Save instance to file for later retrieval."""
@@ -79,58 +85,44 @@ class OutputHandler:
         with open(filename, "ab+") as output:
             pickle.dump(molecules, output, pickle.HIGHEST_PROTOCOL)
 
-    def write_out(self):
-        with open(args["output_dir"] + "/GA0.out", "w") as f:
+    def write_out(self, molecules, name=None):
+        self.molecules = molecules
+        with open(self.args["output_dir"] / name, "w") as f:
             f.write(self.print(pass_text=True) + "\n")
             f.write(self.print_fails())
 
     def print(self, pass_text=None):
         """Print nice table of population attributes."""
         table = []
+        relevant_props = [
+            "smiles",
+            "idx",
+            "normalized_fitness",
+            "energy",
+            "score",
+            "sa_score",
+        ]
         for individual in self.molecules:
-            table.append(individual.list_of_props())
-        print(
-            tabulate(
-                table,
-                headers=[
-                    "idx",
-                    "normalized_fitness",
-                    "score",
-                    "energy",
-                    "sa_score",
-                    "smiles",
-                ],
-            )
-        )
+            props = individual.get_props()
+            property_row = [props[key] for key in relevant_props]
+            table.append(property_row)
+        txt = tabulate(table, headers=relevant_props)
+        print(txt)
         if pass_text:
-            txt = tabulate(
-                table,
-                headers=[
-                    "idx",
-                    "normalized_fitness",
-                    "score",
-                    "energy",
-                    "sa_score",
-                    "smiles",
-                ],
-            )
             return txt
 
     def print_fails(self):
         """Log how many calcs in population failed."""
         nO_NaN = 0
-        nO_9999 = 0
-        for ind in self.new_molecules:
-            tmp = ind.energy
-            if np.isnan(tmp):
-                nO_NaN += 1
-            elif tmp > 5000:
-                nO_9999 += 1
-        table = [[nO_NaN, nO_9999, nO_NaN + nO_9999]]
+
+        [nO_NaN + 1 for x in self.molecules if not x.energy]
+
+        table = [[nO_NaN]]
         txt = tabulate(
             table,
-            headers=["Number of NaNs", "Number of high energies", "Total"],
+            headers=["Number of NaNs"],
         )
+        print(txt)
         return txt
 
     def pop2pd(
@@ -235,7 +227,7 @@ class DataLoader:
         smiles = ["CCN", "NC1CCC1", "CCN", "CCN"]
         idx = [2, 0, 2, 2]
 
-        for i in range(smiles):
+        for i in range(len(smiles)):
             ligand = Chem.MolFromSmiles(smiles[i])
             cut_idx = [[idx[i]]]
             initial_population.append(Individual(ligand, cut_idx=cut_idx[0][0]))

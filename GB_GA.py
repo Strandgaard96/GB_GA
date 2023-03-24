@@ -32,10 +32,11 @@ class GeneticAlgorithm(ABC):
 
     def __init__(self, args):
         self.args = args
+        self.generation_num = 0
         self.data_loader = DataLoader(args)
         self.scorer = Scoring(args)
         self.sascorer = SaScorer()
-        self.output_handler = OutputHandler()
+        self.output_handler = OutputHandler(args)
 
     def reproduce(self, population_size, mutation_rate, molecule_filter) -> list:
 
@@ -83,7 +84,7 @@ class GeneticAlgorithm(ABC):
             key=lambda x: (self.maximize_score - 0.5) * float("-inf")
             if math.isnan(x.score)
             else x.score,
-            reverse=True,
+            reverse=False,
         )
         return tmp[: self.args["population_size"]]
 
@@ -127,7 +128,7 @@ class GeneticAlgorithm(ABC):
             )
 
         for individual, shifted_score in zip(self.population, shifted_scores):
-            individual.normalized_fitness = shifted_score / sum_scores
+            individual.normalized_fitness = abs(shifted_score / sum_scores)
 
     def save(self, directory=None, name="GA.pkl"):
         """Save instance to file for later retrieval."""
@@ -135,11 +136,13 @@ class GeneticAlgorithm(ABC):
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
+    def assign_idx(self):
+        for i, molecule in enumerate(self.population):
+            setattr(molecule, "idx", (self.generation_num, i))
+
     def run(self):
 
-        generation_num = 0
-
-        self.population = self.data_loader.load_data()
+        self.population = self.data_loader.load_debug()
 
         self.population = self.scorer.score_population(self.population)
 
@@ -153,8 +156,11 @@ class GeneticAlgorithm(ABC):
         # Normalize the score of population individuals to value between 0 and 1
         self.calculate_normalized_fitness()
 
-        # Save the generation as pickle file and print current output
+        # Save the generation as pickle file
+        self.assign_idx()
         self.save(directory=self.args["output_dir"], name="GA00.pkl")
+
+        self.output_handler.write_out(self.population, name="GA0.out")
 
         logging.info("Finished initial generation")
 
@@ -162,8 +168,8 @@ class GeneticAlgorithm(ABC):
         for generation in range(self.args["generations"]):
 
             # Counter for tracking generation number
-            generation_num += 1
-            logging.info("Starting generation %d", generation_num)
+            self.generation_num += 1
+            logging.info("Starting generation %d", self.generation_num)
 
             # If debugging simply reuse previous pop
             if self.args["debug"]:
@@ -188,7 +194,7 @@ class GeneticAlgorithm(ABC):
             self.output_handler.save(
                 children,
                 directory=self.args["output_dir"],
-                name=f"GA{generation_num:02d}_debug2.pkl",
+                name=f"GA{self.generation_num:02d}_debug2.pkl",
             )
             self.population = self.prune(self.population + self.children)
 
@@ -199,11 +205,14 @@ class GeneticAlgorithm(ABC):
             # Normalize new scores to prep for next gen
             self.calculate_normalized_fitness()
 
+            self.assign_idx()
+            self.output_handler.write_out(self.population, name="GA0.out")
             self.save(
-                directory=self.args["output_dir"], name=f"GA{generation_num:02d}.pkl"
+                directory=self.args["output_dir"],
+                name=f"GA{self.generation_num:02d}.pkl",
             )
             # Save data from current generation
-            logging.info(f"Gen No. {generation_num} finished")
+            logging.info(f"Gen No. {self.generation_num} finished")
 
             # Print gen table to output file
             # TODO

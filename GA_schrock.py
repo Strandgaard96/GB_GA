@@ -15,28 +15,16 @@ import sys
 import time
 from pathlib import Path
 
-_logger = logging.getLogger(__name__)
-import uuid
+from scoring.scoring_functions import calculate_score
 
-from rdkit.Chem import rdDistGeom
+_logger = logging.getLogger(__name__)
 
 import crossover as co
 import filters
-from GB_GA import GeneticAlgorithm
+from GeneticAlgorithm import GeneticAlgorithm
 from utils.utils import get_git_revision_short_hash
-from utils.xtb import xtb_calculate
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
-from rdkit import Chem
-from rdkit.Chem import Descriptors
-
-PRE_OPT = {
-    "gfn": 2,
-    "opt": True,
-}
-
-HEADER1 = ["Conf-ID", "GFN-2 OPT [Hartree]"]
-ROW_FORMAT1 = "{:>15}{:>25}"
 
 
 def get_arguments(arg_list=None):
@@ -199,64 +187,6 @@ def get_arguments(arg_list=None):
         help="STD of crossover molecule size distribution",
     )
     return parser.parse_args(arg_list)
-
-
-def calculate_score(ind, n_cores: int = 1, envvar_scratch: str = "SCRATCH"):
-    import socket
-
-    print(socket.gethostname())
-    # Setup scrach directory
-    scratch = os.environ.get(envvar_scratch, ".")
-    calc_dir = Path(scratch)
-    start_time = time.time()
-    jobid = os.getenv("SLURM_ARRAY_ID", str(uuid.uuid4()))
-    calc_dir = calc_dir / jobid
-    calc_dir.mkdir(exist_ok=True)
-
-    # Setup logging to stdout
-    _logger.setLevel(logging.INFO)
-    _logger.addHandler(logging.StreamHandler())
-    _logger.warning(socket.gethostname())
-    _logger.info(f"Calculating score for  SMILES: {ind.smiles}\n")
-
-    start = time.time()
-
-    mol = Chem.AddHs(ind.rdkit_mol)
-    cid = rdDistGeom.EmbedMultipleConfs(
-        mol,
-        numConfs=1,
-        useRandomCoords=True,
-        pruneRmsThresh=0.25,
-    )
-    if cid == 0:
-        pass
-    logP = Descriptors.MolLogP(mol)
-
-    _logger.info(f"Embedded {ind.rdkit_mol.GetNumConformers()} conformers.")
-
-    # Determine connectivity for mol4
-    mol_adj = Chem.GetAdjacencyMatrix(mol)
-
-    mol4_atoms = [a.GetSymbol() for a in mol.GetAtoms()]
-    mol4_results = []
-    fail_results = []
-    _logger.info(f"{ROW_FORMAT1.format(*HEADER1)}")
-    for conf in mol.GetConformers():
-        cid = conf.GetId()
-        mol4_coords = conf.GetPositions()
-
-        # Pre-optimization of mol4
-        _, mol4_opt_coords, energy = xtb_calculate(
-            atoms=mol4_atoms,
-            coords=mol4_coords,
-            options=PRE_OPT,
-            scr=calc_dir,
-            n_cores=4,
-        )
-
-    ind.score = logP
-    ind.rdkit_mol = mol
-    return ind
 
 
 def main():

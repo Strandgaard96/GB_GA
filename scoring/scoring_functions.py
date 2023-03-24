@@ -8,52 +8,7 @@ import numpy as np
 import submitit
 
 from scoring.scoring import scoring_submitter
-
-
-def slurm_scoring(sc_function, population, scoring_args):
-    """Evaluates a scoring function for population on SLURM cluster
-    Args:
-        sc_function (function): Scoring function to use for each molecule
-        population List(Individual): List of molecules objects to score
-        scoring_args (dict): Relevant scoring args for submitit or XTB
-    Returns:
-        results List(tuple): List of tuples containing result for each molecule
-    """
-    executor = submitit.AutoExecutor(
-        folder=Path(scoring_args["output_dir"]) / "scoring_tmp",
-        slurm_max_num_timeout=0,
-    )
-    executor.update_parameters(
-        name=f"sc_g{population.molecules[0].idx[0]}",
-        cpus_per_task=scoring_args["cpus_per_task"],
-        slurm_mem_per_cpu="500MB",
-        timeout_min=scoring_args["timeout"],
-        slurm_partition="kemi1",
-        slurm_array_parallelism=100,
-    )
-
-    jobs = executor.map_array(
-        sc_function, population.molecules, [scoring_args for p in population.molecules]
-    )
-
-    # Get the jobs results. Assign None variables if an error is returned for the given molecule
-    # (np.nan, None, None, None) for (energy, geometry1, geometry2, minidx)
-    results = [
-        catch(
-            job.result,
-            handle=lambda e: (
-                None,
-                None,
-                {"energy1": None, "energy2": None, "score": np.nan},
-            ),
-        )
-        for job in jobs
-    ]
-
-    if scoring_args["cleanup"]:
-        shutil.rmtree("scoring_tmp")
-
-    return results
+from utils.utils import catch
 
 
 def slurm_scoring_conformers(conformers, scoring_args):
@@ -102,16 +57,6 @@ def slurm_scoring_conformers(conformers, scoring_args):
         shutil.rmtree(Path(scoring_args["output_dir"]) / "scoring_tmp")
 
     return results
-
-
-def catch(func, *args, handle=lambda e: e, **kwargs):
-    """Helper function that takes the submitit result and returns an exception
-    if no results can be retrieved."""
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        print(e)
-        return handle(e)
 
 
 ### MolSimplify

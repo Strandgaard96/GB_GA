@@ -145,3 +145,21 @@ class cd:
         if traceback:
             print(sys.exc_info())
         os.chdir(self.savedPath)
+
+
+def read_file(file_name):
+    """Read smiles from file and return mol generator."""
+    mol_list = []
+    with open(file_name, "r") as file:
+        for smiles in file:
+            yield Chem.MolFromSmiles(smiles)
+
+
+def catch(func, *args, handle=lambda e: e, **kwargs):
+    """Helper function that takes the submitit result and returns an exception
+    if no results can be retrieved."""
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        print(e)
+        return handle(e)

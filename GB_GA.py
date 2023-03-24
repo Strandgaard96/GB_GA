@@ -4,183 +4,206 @@ Jensen 2018.
 Many subsequent changes inspired by https://github.com/BenevolentAI/guacamol_baselines/tree/master/graph_ga
 """
 
-import copy
+import logging
+import math
+import os
+import pickle
 import random
+from abc import ABC
 
 import numpy as np
 from rdkit import Chem
 
 import crossover as co
 import mutate as mu
-from scoring.make_structures import create_prim_amine
-from utils.classes import Generation, Individual
+from utils.classes import DataLoader, Individual, OutputHandler, Scoring
+from utils.sa import SaScorer
 
 
-def read_file(file_name):
-    """Read smiles from file and return mol list."""
-    mol_list = []
-    with open(file_name, "r") as file:
-        for smiles in file:
-            mol_list.append(Chem.MolFromSmiles(smiles))
-
-    return mol_list
-
-
-def make_initial_population(population_size, file_name):
-    """Create starting population from csv file.
-
-    Args:
-        population_size (int): How many molecules in starting population
-        file_name (str): Name of csv til to load molecules from
-
-    Returns:
-        initial_population(Generation(class)): Class containing all molecules
+class GeneticAlgorithm(ABC):
     """
 
-    # Get list of moles from csv file and initialize Generation class.
-    mol_list = read_file(file_name)
-    initial_population = Generation(generation_num=0)
-
-    for _ in range(population_size):
-
-        # Randomly choose mol until we find something with any amines
-        candidate_match = None
-        while not candidate_match:
-            mol = random.choice(mol_list)
-
-            # Match amines, not bound to amines in rings or other amines
-            candidate_match = mol.GetSubstructMatches(
-                Chem.MolFromSmarts("[NX3;H2,H1,H0;!$(*n);!$(*N)]")
-            )
-
-        # Check for prim amine to cut on
-        match = mol.GetSubstructMatches(Chem.MolFromSmarts("[NX3;H2;!$(*n);!$(*N)]"))
-        # If not primary amines, create new ligand from secondary or teriary.
-        if not match:
-            print(f"There are no primary amines to cut so creating new")
-            ligand, cut_idx = create_prim_amine(mol)
-
-            # If we cannot split, simply add methyl as ligand (instead of discarding)
-            if not cut_idx:
-                ligand = Chem.MolFromSmiles("CN")
-                cut_idx = [[1]]
-            initial_population.molecules.append(
-                Individual(ligand, cut_idx=cut_idx[0][0], original_mol=mol)
-            )
-        else:
-            initial_population.molecules.append(
-                Individual(mol, cut_idx=random.choice(match)[0], original_mol=mol)
-            )
-    # Assign idx to molecules to track origin
-    initial_population.generation_num = 0
-    initial_population.assign_idx()
-    return initial_population
-
-
-def make_initial_population_debug(population_size):
-    """Function that runs localy and creates a small population for debugging.
-
     Args:
-        population_size (int): How many molecules in starting population
+        args(dict): Dictionary containing all the commandline input args.
 
     Returns:
-        initial_population(Generation(class)): Class containing all molecules
-    """
-    initial_population = Generation(generation_num=0)
-
-    # Smiles with primary amines and corresponding cut idx
-    smiles = ["CCN", "NC1CCC1", "CCN", "CCN"]
-    idx = [2, 0, 2, 2]
-
-    for i in range(population_size):
-
-        ligand = Chem.MolFromSmiles(smiles[i])
-        cut_idx = [[idx[i]]]
-        initial_population.molecules.append(Individual(ligand, cut_idx=cut_idx[0][0]))
-    initial_population.generation_num = 0
-    initial_population.assign_idx()
-    return initial_population
-
-
-def make_mating_pool(population, mating_pool_size):
-    """Select candidates from population based on fitness(score)
-
-    Args:
-        population Generation(class): The generation object
-        mating_pool_size (int): The size of the mating pool
-
-    Returns:
-        mating_pool List(Individual): List of Individual objects
+        gen: MoleculeHandler class that contains the results of the final generation
     """
 
-    fitness = population.get("normalized_fitness")
-    mating_pool = []
-    for _ in range(mating_pool_size):
-        mating_pool.append(
-            copy.deepcopy(np.random.choice(population.molecules, p=fitness))
-        )
+    def __init__(self, args):
+        self.args = args
+        self.data_loader = DataLoader(args)
+        self.scorer = Scoring(args)
+        self.sascorer = SaScorer()
+        self.output_handler = OutputHandler()
 
-    return mating_pool
+    def reproduce(self, population_size, mutation_rate, molecule_filter) -> list:
 
+        new_population = []
+        # Run mutation and crossover until we have N = population_size
+        while len(new_population) < population_size:
+            if random.random() > mutation_rate:
+                parent1, parent2 = np.random.choice(
+                    self.molecules,
+                    p=[ind.fitness for ind in self.molecules],
+                    size=2,
+                    replace=False,
+                )
+                new_child = co.crossover(
+                    parent1.rdkit_mol, parent2.rdkit_mol, molecule_filter
+                )
+            else:
+                mutate_parent = np.random.choice(
+                    mating_pool,
+                    p=[ind.fitness for ind in mating_pool],
+                    size=1,
+                    replace=False,
+                )
+                new_child, mutated = mu.mutate(
+                    mutate_parent.rdkit_mol, 1, molecule_filter
+                )
 
-def reproduce(mating_pool, population_size, mutation_rate, molecule_filter):
-    """Perform crossover operating on the molecules in the mating pool.
-
-    Args:
-        mating_pool (List(Individual)): List containing ind objects
-        population_size (int): Size of whole population
-        mutation_rate (float): Probability of mutation
-        molecule_filter List(Chem.rdchem.Mol): List of smart pattern mol objects
-            that ensure that toxic and other unwanted molecules are not evolved
-
-    Returns:
-        Generation(class): The object holding the new population
-    """
-    new_population = []
-    # Run mutation and crossover until we have N = population_size
-    while len(new_population) < population_size:
-        if random.random() > mutation_rate:
-            parent_A = copy.deepcopy(random.choice(mating_pool))
-            parent_B = copy.deepcopy(random.choice(mating_pool))
-            new_child = co.crossover(
-                parent_A.rdkit_mol, parent_B.rdkit_mol, molecule_filter
-            )
             if new_child:
-                new_child = Individual(rdkit_mol=new_child)
-                new_population.append(new_child)
-        else:
-            parent = copy.deepcopy(random.choice(mating_pool))
-            mutated_child, mutated = mu.mutate(parent.rdkit_mol, 1, molecule_filter)
-            if mutated_child:
-                new_population.append(Individual(rdkit_mol=mutated_child))
-    return Generation(molecules=new_population)
+                new_population.append(Individual(rdkit_mol=new_child))
+        return new_population
 
+    def prune(self, population: list) -> list:
+        """Keep the best individuals in the population, cut down to
+        'population_size'.
 
-def sanitize(molecules, population_size):
-    """Create a new population from the proposed molecules.
+        Args:
+            population (list): List of all individuals
 
-    If any molecules from newly scored molecules exists in population,
-    we only select one. Finaly the prune class method is called to
-    return only the top scoring molecules.
+        Returns:
+            list: List of kept individuals
+        """
+        # TODO CHEECK THAT THIS SET WORK AS EXPECTED
+        tmp = list(set(population))
+        tmp.sort(
+            key=lambda x: (self.maximize_score - 0.5) * float("-inf")
+            if math.isnan(x.score)
+            else x.score,
+            reverse=True,
+        )
+        return tmp[: self.args["population_size"]]
 
-    Args:
-        molecules List(Individual): List of molecules to operate on.
-            Contains newly scored molecules and the current best molecules.
-        population_size (int): How many molecules allowed in population.
+    def reweigh_rotatable_bonds(self, nrb_target=4, nrb_standard_deviation=2):
+        """Scale the current scores by the number of rotational bonds.
 
-    Returns:
-    """
+        Args:
+            nrb_target: Limit for number of rotational bonds.
+            nrb_standard_deviation: STD defines the width of the gaussian above the limit nrb_target.
+        """
+        number_of_rotatable_target_scores = [
+            number_of_rotatable_bonds_target_clipped(
+                p.rdkit_mol, nrb_target, nrb_standard_deviation
+            )
+            for p in self.molecules
+        ]
 
-    # Dont select duplicates
-    smiles_list = []
-    new_population = Generation()
-    for individual in molecules:
-        copy_individual = copy.deepcopy(individual)
-        if copy_individual.smiles not in smiles_list:
-            smiles_list.append(copy_individual.smiles)
-            new_population.molecules.append(copy_individual)
+        new_scores = [
+            score * scale
+            for score, scale in zip(
+                self.get("score"), number_of_rotatable_target_scores
+            )
+        ]
+        self.setprop("score", new_scores)
 
-    # Sort by score and take the top scoring molecules.
-    new_population.sort_by_score_and_prune(population_size)
+    def calculate_normalized_fitness(self):
+        """Normalize the scores to get probabilities for mating selection."""
 
-    return new_population
+        # convert to high and low scores.
+        scores = [ind.score for ind in self.population]
+
+        max_score = np.nanmax(scores)
+        shifted_scores = [
+            0 if np.isnan(score) else score - max_score for score in scores
+        ]
+        sum_scores = sum(shifted_scores)
+        if sum_scores == 0:
+            print(
+                "WARNING: Shifted scores are zero. Normalized fitness is therefore dividing with "
+                "zero, could be because the population only contains one individual"
+            )
+
+        for individual, shifted_score in zip(self.population, shifted_scores):
+            individual.normalized_fitness = shifted_score / sum_scores
+
+    def save(self, directory=None, name="GA.pkl"):
+        """Save instance to file for later retrieval."""
+        filename = os.path.join(directory, name)
+        with open(filename, "ab+") as output:
+            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+
+    def run(self):
+
+        generation_num = 0
+
+        self.population = self.data_loader.load_data()
+
+        self.population = self.scorer.score_population(self.population)
+
+        # Save current population for debugging
+        self.save(directory=self.args["output_dir"], name="GA_debug_firstit.pkl")
+
+        # Functionality to check synthetic accessibility
+        if self.args["sa_screening"]:
+            self.sascorer.get_sa()
+
+        # Normalize the score of population individuals to value between 0 and 1
+        self.calculate_normalized_fitness()
+
+        # Save the generation as pickle file and print current output
+        self.save(directory=self.args["output_dir"], name="GA00.pkl")
+
+        logging.info("Finished initial generation")
+
+        # Start evolving
+        for generation in range(self.args["generations"]):
+
+            # Counter for tracking generation number
+            generation_num += 1
+            logging.info("Starting generation %d", generation_num)
+
+            # If debugging simply reuse previous pop
+            if self.args["debug"]:
+                children = [
+                    Individual(Chem.MolFromSmiles("CCCCN")),
+                    Individual(Chem.MolFromSmiles("CCCN")),
+                    Individual(Chem.MolFromSmiles("CCN")),
+                ]
+            else:
+                children = self.reproduce(
+                    self.args["population_size"],
+                    self.args["mutation_rate"],
+                    molecule_filter=molecule_filter,
+                )
+
+            # Calculate new scores
+            logging.info("Getting scores for new population")
+
+            self.children = self.scorer.score_population(children)
+
+            # Save for debugging
+            self.output_handler.save(
+                children,
+                directory=self.args["output_dir"],
+                name=f"GA{generation_num:02d}_debug2.pkl",
+            )
+            self.population = self.prune(self.population + self.children)
+
+            # Functionality to compute synthetic accessibility
+            if self.args["sa_screening"]:
+                self.sascorer.get_sa()
+
+            # Normalize new scores to prep for next gen
+            self.calculate_normalized_fitness()
+
+            self.save(
+                directory=self.args["output_dir"], name=f"GA{generation_num:02d}.pkl"
+            )
+            # Save data from current generation
+            logging.info(f"Gen No. {generation_num} finished")
+
+            # Print gen table to output file
+            # TODO

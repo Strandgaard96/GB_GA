@@ -9,7 +9,6 @@ Example:
 """
 
 import argparse
-import copy
 import logging
 import os
 import sys
@@ -18,17 +17,12 @@ from pathlib import Path
 
 import crossover as co
 import filters
-import GB_GA as ga
-from scoring import scoring_functions as sc
-from scoring.scoring import (
-    rdkit_embed_scoring,
-    rdkit_embed_scoring_NH3plustoNH3,
-    rdkit_embed_scoring_NH3toN2,
-)
-from utils.classes import Generation
+from GB_GA import GeneticAlgorithm
 from utils.utils import get_git_revision_short_hash
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
+from rdkit import Chem
+from rdkit.Chem import AllChem, Descriptors
 
 
 def get_arguments(arg_list=None):
@@ -50,12 +44,6 @@ def get_arguments(arg_list=None):
         type=int,
         default=10,
         help="Sets the size of population pool.",
-    )
-    parser.add_argument(
-        "--mating_pool_size",
-        type=int,
-        default=3,
-        help="Size of mating pool",
     )
     parser.add_argument(
         "--seed",
@@ -82,6 +70,22 @@ def get_arguments(arg_list=None):
         help="Number of cores to distribute xTB over",
     )
     parser.add_argument(
+        "--mem_per_cpu",
+        type=str,
+        default="500MB",
+        help="Mem per cpu allocated for submitit job",
+    )
+    parser.add_argument(
+        "--partition",
+        choices=[
+            "kemi1",
+            "xeon24",
+            "xeon40",
+        ],
+        required=True,
+        help="""Choose partitoin to run on""",
+    )
+    parser.add_argument(
         "--RMS_thresh",
         type=float,
         default=0.25,
@@ -106,7 +110,7 @@ def get_arguments(arg_list=None):
         action="store_true",
     )
     parser.add_argument(
-        "--file_name",
+        "--filename",
         type=str,
         default="data/ZINC_250k.smi",
         help="",
@@ -114,7 +118,7 @@ def get_arguments(arg_list=None):
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="generation_debug",
+        default="debug/generation_debug",
         help="Directory to put output files",
     )
     parser.add_argument(
@@ -137,9 +141,7 @@ def get_arguments(arg_list=None):
         "--scoring_func",
         dest="func",
         choices=[
-            "rdkit_embed_scoring",
-            "rdkit_embed_scoring_NH3toN2",
-            "rdkit_embed_scoring_NH3plustoNH3",
+            "logP",
         ],
         required=True,
         help="""Choose one of the specified scoring functions to be run.""",
@@ -185,161 +187,25 @@ def get_arguments(arg_list=None):
     return parser.parse_args(arg_list)
 
 
-def GA(args):
-    """
-
-    Args:
-        args(dict): Dictionary containing all the commandline input args.
-
-    Returns:
-        gen: Generation class that contains the results of the final generation
-    """
-
-    # Create initial population and get initial score. Option for debugging.
-    if args["debug"]:
-        population = ga.make_initial_population_debug(population_size=2)
-    else:
-        population = ga.make_initial_population(
-            args["population_size"], args["file_name"]
-        )
-
-    # Score initial population
-    results = sc.slurm_scoring(args["scoring_function"], population, args)
-
-    # Set results and do some rdkit hack to prevent weird molecules
-    population.handle_results(results)
-    population.update_property_cache()
-
-    # Save current population for debugging
-    population.save(directory=args["output_dir"], name="GA_debug_firstit.pkl")
-
-    # Functionality to check synthetic accessibility
-    if args["sa_screening"]:
-        population.get_sa()
-
-    # Reweight by rotatable bonds
-    population.reweigh_rotatable_bonds()
-
-    # Normalize the score of population individuals to value between 0 and 1
-    population.sortby("score")
-    population.calculate_normalized_fitness()
-
-    # Save the generation as pickle file and print current output
-    population.save(directory=args["output_dir"], name="GA00.pkl")
-    population.print()
-    with open(args["output_dir"] + "/GA0.out", "w") as f:
-        f.write(population.print(population="molecules", pass_text=True) + "\n")
-        f.write(population.print_fails())
-
-    logging.info("Finished initial generation")
-
-    # Start evolving
-    for generation in range(args["generations"]):
-        # Counter for tracking generation number
-        generation_num = generation + 1
-        logging.info("Starting generation %d", generation_num)
-
-        # Ensure no weird RDKit erorrs
-        population.update_property_cache()
-
-        # Get mating pool
-        mating_pool = ga.make_mating_pool(population, args["mating_pool_size"])
-
-        # If debugging simply reuse previous pop
-        if args["debug"]:
-            new_population = Generation(
-                generation_num=generation_num,
-                molecules=population.molecules,
-            )
-        else:
-            new_population = ga.reproduce(
-                mating_pool,
-                args["population_size"],
-                args["mutation_rate"],
-                molecule_filter=molecule_filter,
-            )
-
-        # Save current population for debugging
-        new_population.save(
-            directory=args["output_dir"], name=f"GA{generation_num:02d}_debug.pkl"
-        )
-
-        logging.info("Creating attachment points for new population")
-
-        # Process population to ensure good attachment points
-        new_population.modify_population(supress_amines=True)
-
-        # Assign generation and population idx to the population
-        new_population.generation_num = generation_num
-        new_population.assign_idx()
-
-        # Calculate new scores
-        logging.info("Getting scores for new population")
-        results = sc.slurm_scoring(args["scoring_function"], new_population, args)
-
-        new_population.handle_results(results)
-        new_population.save(
-            directory=args["output_dir"], name=f"GA{generation_num:02d}_debug2.pkl"
-        )
-
-        # Functionality to compute synthetic accessibility
-        if args["sa_screening"]:
-            new_population.get_sa()
-
-        # Reweight by rotatable bonds
-        new_population.reweigh_rotatable_bonds()
-
-        # Sort scores, possibly scaled by SA screening
-        new_population.sortby("score")
-
-        # Create tmp population from current best molecules
-        potential_survivors = copy.deepcopy(population.molecules)
-
-        # The calculated population is merged with current top population
-        population = ga.sanitize(
-            potential_survivors + new_population.molecules, args["population_size"]
-        )
-
-        population.generation_num = generation_num
-
-        # Normalize new scores to prep for next gen
-        population.calculate_normalized_fitness()
-
-        # Collect result molecules in class.
-        current_gen = Generation(
-            generation_num=generation_num,
-            molecules=population.molecules,
-            new_molecules=new_population.molecules,
-        )
-        # Save data from current generation
-        logging.info("Saving current generation")
-        current_gen.save(
-            directory=args["output_dir"], name=f"GA{generation_num:02d}.pkl"
-        )
-
-        # Print gen table to output file
-        current_gen.print()
-        current_gen.print_fails()
-
-        # Print to individual generation files to keep track on the fly
-        with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
-            f.write(current_gen.print(population="molecules", pass_text=True) + "\n")
-            f.write(
-                current_gen.print(population="new_molecules", pass_text=True) + "\n"
-            )
-            f.write(current_gen.print_fails())
-
-    return current_gen
+def calculate_score(ind):
+    start = time.time()
+    try:
+        cid = AllChem.EmbedMolecule(Chem.AddHs(ind.rdkit_mol), useRandomCoords=True)
+        if cid != 0:
+            raise Exception("Embedding failed")
+        logP = Descriptors.MolLogP(ind.rdkit_mol)
+    except Exception as e:
+        self.error = str(e)
+        logP = math.nan
+    ind.score = logP
+    return ind
 
 
 def main():
     """Main function that starts the GA."""
     args = get_arguments()
-    funcs = {
-        "rdkit_embed_scoring": rdkit_embed_scoring,
-        "rdkit_embed_scoring_NH3toN2": rdkit_embed_scoring_NH3toN2,
-        "rdkit_embed_scoring_NH3plustoNH3": rdkit_embed_scoring_NH3plustoNH3,
-    }
+
+    funcs = {"logP": calculate_score}
 
     # Get arguments as dict and add scoring function to dict.
     args_dict = vars(args)
@@ -377,7 +243,8 @@ def main():
 
         # Log the argparse set values
         logging.info("Input args: %r", args)
-        generations = GA(GA_args)
+        GA = GeneticAlgorithm(GA_args)
+        GA.run()
 
         # Final output handling and logging
         t1 = time.time()

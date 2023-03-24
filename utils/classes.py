@@ -1,24 +1,20 @@
 """Module containing classes used in the GA and conformer searches."""
 
-import copy
 import os
 import pickle
-import random
 from dataclasses import dataclass, field
-from typing import List
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import submitit
 from rdkit import Chem
 from tabulate import tabulate
 
-from sa.neutralize import read_neutralizers
-from sa.sascorer import sa_target_score_clipped
-from scoring.make_structures import atom_remover, create_prim_amine, single_atom_remover
-from utils.gaussians import number_of_rotatable_bonds_target_clipped
+from utils.utils import catch, read_file
 
 
-@dataclass
+@dataclass(eq=True)
 class Individual:
     """Dataclass for storing data for each molecule.
 
@@ -30,10 +26,6 @@ class Individual:
         original_mol: The mol object at the start of a generation.
         rdkit_mol_sa: Mol object where the primary amine is replaced with a hydrogen.
          Used for the SA score.
-        optimized_mol1: The mol object of Schrock core + moiety for the first structure in the scoring
-        function. The mol contains the optimized geometries.
-        ptimized_mol2: The mol object of Schrock core + moiety for the second structure in the scoring
-        function. The mol contains the optimized geometries.
         cut_idx: The index of the primary amine that denotes the attachment point.
         idx: The generation idx of the molecule.
         smiles: SMILES representation of molecule.
@@ -45,17 +37,11 @@ class Individual:
         sa_score: Synthetic accessibility score.
     """
 
-    rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=False)
+    rdkit_mol: Chem.rdchem.Mol = field(repr=False, compare=True)
     original_mol: Chem.rdchem.Mol = field(
         default_factory=Chem.rdchem.Mol, repr=False, compare=False
     )
     rdkit_mol_sa: Chem.rdchem.Mol = field(
-        default_factory=Chem.rdchem.Mol, repr=False, compare=False
-    )
-    optimized_mol1: Chem.rdchem.Mol = field(
-        default_factory=Chem.rdchem.Mol, repr=False, compare=False
-    )
-    optimized_mol2: Chem.rdchem.Mol = field(
         default_factory=Chem.rdchem.Mol, repr=False, compare=False
     )
     cut_idx: int = field(default=None, repr=False, compare=False)
@@ -70,18 +56,8 @@ class Individual:
     def __post_init__(self):
         self.smiles = Chem.MolToSmiles(self.rdkit_mol)
 
-    def list_of_props(self):
-        return [
-            self.idx,
-            self.normalized_fitness,
-            self.score,
-            self.energy,
-            self.sa_score,
-            self.smiles,
-        ]
-
     def get(self, prop):
-        """Get property from individual."""
+        """Get property from an individual."""
         prop = getattr(self, prop)
         return prop
 
@@ -91,125 +67,28 @@ class Individual:
         with open(filename, "ab+") as output:
             pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
 
+    def __hash__(self) -> int:
+        return hash(self.smiles)
 
-@dataclass(order=True)
-class Generation:
-    """Dataclass holding the Individuals in each generation.
 
-    Contains functionality to get and set props from Individuals and
-    display various scoring results
-    """
-
-    molecules: List[Individual] = field(repr=True, default_factory=list)
-    new_molecules: List[Individual] = field(repr=False, default_factory=list)
-    generation_num: int = field(init=True, default=None)
-    size: int = field(default=None, init=True, repr=True)
-
-    def __post_init__(self):
-        self.size = len(self.molecules)
-
-    def __repr__(self):
-        return (
-            f"" f"(generation_num={self.generation_num!r}, molecules_size={self.size})"
-        )
-
-    def assign_idx(self):
-        """Set idx on each molecule."""
-        for i, molecule in enumerate(self.molecules):
-            setattr(molecule, "idx", (self.generation_num, i))
-        self.size = len(self.molecules)
-
-    def save(self, directory=None, name="GA.pkl"):
+class OutputHandler:
+    @staticmethod
+    def save(molecules, directory=None, name=None):
         """Save instance to file for later retrieval."""
         filename = os.path.join(directory, name)
         with open(filename, "ab+") as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(molecules, output, pickle.HIGHEST_PROTOCOL)
 
-    def get(self, prop):
-        """Get property from molecules."""
-        properties = []
-        for molecule in self.molecules:
-            properties.append(getattr(molecule, prop))
-        return properties
+    def write_out(self):
+        with open(args["output_dir"] + "/GA0.out", "w") as f:
+            f.write(self.print(pass_text=True) + "\n")
+            f.write(self.print_fails())
 
-    def setprop(self, prop, list_of_values):
-        """Set property for molecules."""
-        for molecule, value in zip(self.molecules, list_of_values):
-            setattr(molecule, prop, value)
-
-    def appendprop(self, prop, list_of_values):
-        for molecule, value in zip(self.molecules, list_of_values):
-            if value:
-                getattr(molecule, prop).append(value)
-
-    def sortby(self, prop, reverse=True):
-        """Sort molecule based on score."""
-        if reverse:
-            self.molecules.sort(
-                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
-                reverse=reverse,
-            )
-        else:
-            self.molecules.sort(
-                key=lambda x: float("inf") if np.isnan(x.score) else x.score,
-                reverse=reverse,
-            )
-
-    def handle_results(self, results):
-        """Extract the scoring results and set the properties on the Individual
-        objects."""
-        optimized_mol1 = [res[0] for res in results]
-        optimized_mol2 = [res[1] for res in results]
-        en_dicts = [res[2] for res in results]
-        self.setprop("energy_dict", en_dicts)
-
-        # Extract scores and set on the Individals
-        self.setprop("score", [en["score"] for en in en_dicts])
-        self.setprop("pre_score", [en["score"] for en in en_dicts])
-        self.setprop("energy", [en["score"] for en in en_dicts])
-
-        for mol, opt1, opt2 in zip(self.molecules, optimized_mol1, optimized_mol2):
-            mol.optimized_mol1 = opt1
-            mol.optimized_mol2 = opt2
-
-    def reweigh_rotatable_bonds(self, nrb_target=4, nrb_standard_deviation=2):
-        """Scale the current scores by the number of rotational bonds.
-
-        Args:
-            nrb_target: Limit for number of rotational bonds.
-            nrb_standard_deviation: STD defines the width of the gaussian above the limit nrb_target.
-        """
-        number_of_rotatable_target_scores = [
-            number_of_rotatable_bonds_target_clipped(
-                p.rdkit_mol, nrb_target, nrb_standard_deviation
-            )
-            for p in self.molecules
-        ]
-
-        new_scores = [
-            score * scale
-            for score, scale in zip(
-                self.get("score"), number_of_rotatable_target_scores
-            )
-        ]
-        self.setprop("score", new_scores)
-
-    def sort_by_score_and_prune(self, population_size):
-        """Sort by score and take the best scoring molecules."""
-        self.sortby("score", reverse=False)
-        self.molecules = self.molecules[:population_size]
-        self.size = len(self.molecules)
-
-    def print(self, population="molecules", pass_text=None):
+    def print(self, pass_text=None):
         """Print nice table of population attributes."""
         table = []
-        if population == "molecules":
-            population = self.molecules
-        elif population == "new_molecules":
-            population = self.new_molecules
-        for individual in population:
+        for individual in self.molecules:
             table.append(individual.list_of_props())
-        print(f"\nGeneration {self.generation_num:02d}")
         print(
             tabulate(
                 table,
@@ -254,7 +133,7 @@ class Generation:
         )
         return txt
 
-    def gen2pd(
+    def pop2pd(
         self,
         columns=["cut_idx", "score", "energy", "sa_score", "smiles"],
     ):
@@ -268,7 +147,7 @@ class Generation:
         df.columns = columns
         return df
 
-    def gen2pd_dft(self):
+    def pop2pd_dft(self):
         columns = [
             "smiles",
             "idx",
@@ -283,272 +162,82 @@ class Generation:
         df.columns = columns
         return df
 
-    def update_property_cache(self):
-        """Update rdkit data to prevent errors."""
-        for mol in self.molecules:
 
-            # Done to prevent ringinfo error
-            Chem.GetSymmSSSR(mol.rdkit_mol)
-            mol.rdkit_mol.UpdatePropertyCache()
+class Scoring:
+    """Score a population of molecules."""
 
-    def modify_population(self, supress_amines=False):
-        """Molecule mol modifier function.
+    def __init__(self, args):
+        self.args = args
 
-        Preps molecules in population for scoring. Ensures that there is one
-        primary amine attachment point
+    def score_population(self, molecules):
+        """Run scoring."""
+        # Setup submitit executor
+        self._initialize_submitit(name=f"sc_g{molecules[0].idx[0]}")
 
-        supresss_amines: Decides whether primary amines other than the
-        attachment point are changed to hydrogen.
-        """
-        # Loop over molecules in popualtion
-        for mol in self.molecules:
+        jobs = self.executor.map_array(self.args["scoring_function"], molecules)
 
-            # Check for primary amine
-            match = mol.rdkit_mol.GetSubstructMatches(
-                Chem.MolFromSmarts("[NX3;H2;!$(*n);!$(*N)]")
-            )
-            # Set current mol for future debugging
-            mol.original_mol = mol.rdkit_mol
-
-            # Create primary amine if it doesnt have one.
-            if not match:
-                try:
-                    output_ligand, cut_idx = create_prim_amine(mol.rdkit_mol)
-
-                    # Handle if None is returned
-                    if not (output_ligand or cut_idx):
-                        output_ligand = Chem.MolFromSmiles("CCCCCN")
-                        cut_idx = [[1]]
-                except Exception as e:
-                    print("Could not create primary amine, setting methyl as ligand")
-                    output_ligand = Chem.MolFromSmiles("CN")
-                    cut_idx = [[1]]
-
-                # rdkit hack to ensure smiles look ok
-                mol.rdkit_mol = output_ligand
-                mol.cut_idx = cut_idx[0][0]
-                mol.smiles = Chem.MolToSmiles(output_ligand)
-
-            else:
-                cut_idx = random.choice(match)
-                mol.cut_idx = cut_idx[0]
-
-                # Remove additional primary amine groups to prevent XTB exploit
-                if supress_amines:
-
-                    # Check for N-N bound amines
-                    nn_match = mol.rdkit_mol.GetSubstructMatches(
-                        Chem.MolFromSmarts("[NX3;H2;$(*N),$(*n)]")
-                    )
-
-                    # Enable NH2 amine supressor if there are multiple
-                    # primary amines
-                    if len(match) > 1:
-
-                        # Substructure match the NH3
-                        prim_match = Chem.MolFromSmarts("[NX3;H2]")
-
-                        # Remove the primary amines
-                        ms = [
-                            x for x in atom_remover(mol.rdkit_mol, pattern=prim_match)
-                        ]
-                        removed_mol = random.choice(ms)
-                        prim_amine_index = removed_mol.GetSubstructMatches(
-                            Chem.MolFromSmarts("[NX3;H2]")
-                        )
-                        mol.rdkit_mol = removed_mol
-                        mol.cut_idx = prim_amine_index[0][0]
-                        mol.smiles = Chem.MolToSmiles(removed_mol)
-
-                    elif nn_match:
-
-                        # Replace tricky primary amines in the frag:
-                        prim_match = Chem.MolFromSmarts("[NX3;H2;$(*N),$(*n)]")
-
-                        rm = Chem.ReplaceSubstructs(
-                            mol.rdkit_mol,
-                            prim_match,
-                            Chem.MolFromSmiles("[H]"),
-                            replaceAll=True,
-                        )[0]
-                        rm = Chem.RemoveHs(rm)
-                        prim_amine_index = rm.GetSubstructMatches(
-                            Chem.MolFromSmarts("[NX3;H2]")
-                        )
-                        mol.rdkit_mol = rm
-                        mol.cut_idx = prim_amine_index[0][0]
-                        mol.smiles = Chem.MolToSmiles(rm)
-
-    ### SA functionality
-    def sa_prep(self):
-        for mol in self.molecules:
-            prim_match = Chem.MolFromSmarts("[NX3;H2]")
-            # Remove the cut idx amine to prevent it hogging the SA score
-            removed_mol = single_atom_remover(mol.rdkit_mol, mol.cut_idx)
-            mol.rdkit_mol_sa = removed_mol
-            mol.smiles_sa = Chem.MolToSmiles(removed_mol)
-
-            _neutralize_reactions = read_neutralizers()
-
-        neutral_molecules = []
-        for ind in self.molecules:
-            c_mol = ind.rdkit_mol_sa
-            mol = copy.deepcopy(c_mol)
-            mol.UpdatePropertyCache()
-            Chem.rdmolops.FastFindRings(mol)
-            assert mol is not None
-            for reactant_mol, product_mol in _neutralize_reactions:
-                while mol.HasSubstructMatch(reactant_mol):
-                    rms = Chem.ReplaceSubstructs(mol, reactant_mol, product_mol)
-                    if rms[0] is not None:
-                        mol = rms[0]
-            mol.UpdatePropertyCache()
-            Chem.rdmolops.FastFindRings(mol)
-            ind.neutral_rdkit_mol = mol
-
-    def get_sa(self):
-        """Get the SA score of the population."""
-
-        # Neutralize and prep molecules
-        self.sa_prep()
-
-        # Get the scores
-        sa_scores = [
-            sa_target_score_clipped(ind.neutral_rdkit_mol) for ind in self.molecules
+        # Get the jobs results.
+        scored_molecules = [
+            catch(job.result, handle=lambda e: self.molecules[i])
+            for i, job in enumerate(jobs)
         ]
-        # Set the scores
-        self.set_sa(sa_scores)
 
-    def calculate_normalized_fitness(self):
-        """Normalize the scores to get probabilities for mating selection."""
+        return scored_molecules
 
-        # onvert to high and low scores.
-        scores = self.get("score")
-        scores = [-s for s in scores]
+    def _initialize_submitit(self, name=None):
 
-        min_score = np.nanmin(scores)
-        shifted_scores = [
-            0 if np.isnan(score) else score - min_score for score in scores
-        ]
-        sum_scores = sum(shifted_scores)
-        if sum_scores == 0:
-            print(
-                "WARNING: Shifted scores are zero. Normalized fitness is therefore dividing with "
-                "zero, could be because the population only contains one individual"
-            )
-
-        for individual, shifted_score in zip(self.molecules, shifted_scores):
-            individual.normalized_fitness = shifted_score / sum_scores
-
-    def set_sa(self, sa_scores):
-        """Set sa score.
-
-        If score is high, then score is not modified
-        """
-        for individual, sa_score in zip(self.molecules, sa_scores):
-            individual.sa_score = sa_score
-            # Scale the score with the sa_score (which is max 1)
-            individual.score = sa_score * individual.pre_score
-
-
-@dataclass(order=True)
-class Conformers:
-    """Dataclass holding the molecules in the conformer screening.
-
-    Contains functionality to get and set props from Individuals and
-    display various scoring results
-    """
-
-    molecules: List[Individual] = field(repr=True, default_factory=list)
-
-    @property
-    def size(self):
-        return len(self.molecules)
-
-    def __repr__(self):
-        return f"molecules_size={self.size})"
-
-    def save(self, directory=None, name="Conformers.pkl"):
-        """Save instance to file for later retrieval."""
-        filename = os.path.join(directory, name)
-        with open(filename, "ab+") as output:
-            pickle.dump(self, output, pickle.HIGHEST_PROTOCOL)
-
-    def get(self, prop):
-        """Get property from molecules."""
-        properties = []
-        for molecule in self.molecules:
-            properties.append(getattr(molecule, prop))
-        return properties
-
-    def setprop(self, prop, list_of_values):
-        """Set property for molecules."""
-        for molecule, value in zip(self.molecules, list_of_values):
-            setattr(molecule, prop, value)
-
-    def appendprop(self, prop, list_of_values):
-        for molecule, value in zip(self.molecules, list_of_values):
-            if value:
-                getattr(molecule, prop).append(value)
-
-    def sortby(self, prop, reverse=False):
-        """Sort molecule based on score."""
-        if reverse:
-            self.molecules.sort(
-                key=lambda x: float("inf") if np.isnan(x.get(prop)) else x.get(prop),
-                reverse=reverse,
-            )
-        else:
-            self.molecules.sort(
-                key=lambda x: float("inf") if np.isnan(x.get(prop)) else x.get(prop),
-                reverse=reverse,
-            )
-
-    def set_results(self, results):
-        """Extract the scoring results and set the Individual properties."""
-        energies = [res[0] for res in results]
-        geometries = [res[1] for res in results]
-        geometries2 = [res[2] for res in results]
-        min_conf = [res[3] for res in results]
-
-        self.setprop("energy", energies)
-        self.setprop("pre_score", energies)
-        self.setprop("structure", geometries)
-        self.setprop("structure2", geometries2)
-        self.setprop("min_conf", min_conf)
-        self.setprop("score", energies)
-
-    def handle_results(self, results):
-        """Extract the scoring results and set the properties on the Individual
-        objects."""
-        optimized_mol1 = [res[0] for res in results]
-        optimized_mol2 = [res[1] for res in results]
-        en_dicts = [res[2] for res in results]
-        self.setprop("energy_dict", en_dicts)
-
-        # Extract scores and set on the Individals
-        self.setprop("score", [en["score"] for en in en_dicts])
-        self.setprop("pre_score", [en["score"] for en in en_dicts])
-        self.setprop("energy", [en["score"] for en in en_dicts])
-
-        for mol, opt1, opt2 in zip(self.molecules, optimized_mol1, optimized_mol2):
-            mol.optimized_mol1 = opt1
-            mol.optimized_mol2 = opt2
-
-    def conf2pd_dft(self):
-        """Get dataframe of population."""
-        columns = (
-            [
-                "smiles",
-                "idx",
-                "cut_idx",
-                "score",
-                "energy",
-                "dft_singlepoint_conf",
-                "final_dft_opt",
-                "scoring_function",
-            ],
+        self.executor = submitit.AutoExecutor(
+            folder=Path(self.args["output_dir"]) / "scoring_tmp",
+            slurm_max_num_timeout=0,
+            cluster="debug",
         )
-        df = pd.DataFrame(list(map(list, zip(*[self.get(prop) for prop in columns]))))
-        df.columns = columns
-        return df
+        self.executor.update_parameters(
+            name=name,
+            cpus_per_task=self.args["cpus_per_task"],
+            slurm_mem_per_cpu=self.args["mem_per_cpu"],
+            timeout_min=self.args["timeout"],
+            slurm_partition=self.args["partition"],
+            slurm_array_parallelism=100,
+        )
+
+
+class DataLoader:
+    def __init__(self, args):
+        self.args = args
+        self.filename = args["filename"]
+
+    def load_data(self):
+        """Create starting population from csv file."""
+
+        # Get mol generator from file
+        mol_generator = read_file(self.filename)
+        initial_population = []
+
+        for i in range(self.args["population_size"]):
+
+            candidate_match = False
+            while not candidate_match:
+                mol = next(mol_generator)
+                # Match amines, not bound to amines in rings or other amines
+                candidate_match = mol.GetSubstructMatches(Chem.MolFromSmarts("*"))
+
+            # TODO process mol
+
+            initial_population.append(Individual(rdkit_mol=mol))
+
+        return initial_population
+
+    def load_debug(self):
+
+        initial_population = []
+
+        # Smiles with primary amines and corresponding cut idx
+        smiles = ["CCN", "NC1CCC1", "CCN", "CCN"]
+        idx = [2, 0, 2, 2]
+
+        for i in range(smiles):
+            ligand = Chem.MolFromSmiles(smiles[i])
+            cut_idx = [[idx[i]]]
+            initial_population.append(Individual(ligand, cut_idx=cut_idx[0][0]))
+
+        return initial_population

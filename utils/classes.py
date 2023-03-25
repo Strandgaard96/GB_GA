@@ -3,6 +3,7 @@
 import os
 import pickle
 from dataclasses import dataclass, field
+from inspect import getmembers, isfunction
 from pathlib import Path
 
 import pandas as pd
@@ -10,7 +11,10 @@ import submitit
 from rdkit import Chem
 from tabulate import tabulate
 
+from scoring import scoring_functions as sc
 from utils.utils import catch, read_file
+
+functions_dict = dict(getmembers(sc, isfunction))
 
 
 @dataclass(eq=True)
@@ -155,7 +159,7 @@ class OutputHandler:
         return df
 
 
-class Scoring:
+class SubmitIt:
     """Score a population of molecules."""
 
     def __init__(self, args):
@@ -166,7 +170,7 @@ class Scoring:
         # Setup submitit executor
         self._initialize_submitit(name=f"sc_g{molecules[0].idx[0]}")
 
-        jobs = self.executor.map_array(self.args["scoring_function"], molecules)
+        jobs = self.executor.map_array(self.selected_function, molecules)
 
         # Get the jobs results.
         scored_molecules = [
@@ -191,6 +195,15 @@ class Scoring:
             slurm_partition=self.args["partition"],
             slurm_array_parallelism=100,
         )
+
+
+class ScoringFunction(SubmitIt):
+    def scoring_submitter(self, population):
+
+        self.selected_function = functions_dict[self.args["scoring_function"]]
+        scored_molecules = self.score_population(population)
+
+        return scored_molecules
 
 
 class DataLoader:

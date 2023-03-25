@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Scoring module handling the scoring of molecule candidates."""
+"""SubmitIt module handling the scoring of molecule candidates."""
 import copy
 import json
 import logging
 import os
+import socket
 import sys
 import time
 import uuid
@@ -11,7 +12,7 @@ from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import rdDistGeom
+from rdkit.Chem import Descriptors, rdDistGeom
 
 from utils.utils import energy_filter
 from utils.xtb import xtb_calculate
@@ -21,6 +22,7 @@ _logger = logging.getLogger(__name__)
 scoring_dir = os.path.dirname(__file__)
 sys.path.append(scoring_dir)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import math
 
 from utils.make_structures import (
     connect_ligand,
@@ -54,25 +56,6 @@ GAS_ENERGIES = {
 hartree2kcalmol = 627.51
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data")))
-file = str(source / "templates/core_dummy.sdf")
-core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
-"""Mol:
-mol object of the Mo core with dummy atoms instead of ligands
-"""
-file_NH3 = str(source / "templates/core_NH3_dummy.sdf")
-core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
-"""Mol:
-mol object of the Mo core with NH3 in axial position and
-dummy atoms instead of ligands
-"""
-
-file_N2_NH3 = str(source / "templates/core_N2_NH3_dummy.sdf")
-core_N2_NH3 = Chem.SDMolSupplier(file_N2_NH3, removeHs=False, sanitize=False)
-"""Mol:
-mol object of the Mo core with NH3 in axial position and
-dummy atoms instead of ligands
-"""
-
 
 with open(str(source / "intermediate_smiles.json"), "r", encoding="utf-8") as f:
     smi_dict = json.load(f)
@@ -80,32 +63,6 @@ with open(str(source / "intermediate_smiles.json"), "r", encoding="utf-8") as f:
 Dictionary that contains the smiles string for each N-related intermediate
 and the charge and spin for the specific intermediate
 """
-
-
-def scoring_submitter(mol, scoring_args):
-    """Utility function to distribute molecules to their designates scoring
-    function.
-
-    Args:
-        mol (Chem.mol): The mol object to score
-        scoring_args (dict): Scoring arguments.
-
-    Returns:
-    """
-
-    scoring_args["output_dir"] = scoring_args["output_dir"] / mol.scoring_function
-
-    if mol.scoring_function == "rdkit_embed_scoring":
-        new_mol, new_mol2, en_dict = rdkit_embed_scoring(mol, scoring_args)
-    elif mol.scoring_function == "rdkit_embed_scoring_NH3toN2":
-        new_mol, new_mol2, en_dict = rdkit_embed_scoring_NH3toN2(mol, scoring_args)
-    elif mol.scoring_function == "rdkit_embed_scoring_NH3plustoNH3":
-        new_mol, new_mol2, en_dict = rdkit_embed_scoring_NH3plustoNH3(mol, scoring_args)
-    else:
-        print("Non valid scoring function")
-        return None
-
-    return new_mol, new_mol2, en_dict
 
 
 def rdkit_embed_scoring(ligand, scoring_args):
@@ -391,14 +348,26 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
     return new_mol, new_mol2, en_dict
 
 
-def calculate_score_logP():
-    return
+def calculate_score_logP(ind):
+    start = time.time()
+
+    mol = Chem.AddHs(ind.rdkit_mol)
+    try:
+        cid = rdDistGeom.EmbedMolecule(mol, useRandomCoords=True)
+        if cid != 0:
+            raise Exception("Embedding failed")
+        logP = Descriptors.MolLogP(mol)
+    except Exception as e:
+        error = str(e)
+        logP = math.nan
+    ind.score = logP
+    return ind
 
 
 def calculate_score(ind, n_cores: int = 1, envvar_scratch: str = "SCRATCH"):
-    import socket
 
     print(socket.gethostname())
+
     # Setup scrach directory
     scratch = os.environ.get(envvar_scratch, ".")
     calc_dir = Path(scratch)
@@ -415,30 +384,27 @@ def calculate_score(ind, n_cores: int = 1, envvar_scratch: str = "SCRATCH"):
 
     start = time.time()
 
-    mol = Chem.AddHs(ind.rdkit_mol)
+    ind.rdkit_mol = Chem.AddHs(ind.rdkit_mol)
     cid = rdDistGeom.EmbedMultipleConfs(
-        mol,
+        ind.rdkit_mol,
         numConfs=1,
         useRandomCoords=True,
         pruneRmsThresh=0.25,
     )
-    if cid == 0:
-        pass
 
     _logger.info(f"Embedded {ind.rdkit_mol.GetNumConformers()} conformers.")
 
     # Determine connectivity for mol4
-    mol_adj = Chem.GetAdjacencyMatrix(mol)
+    mol_adj = Chem.GetAdjacencyMatrix(ind.rdkit_mol)
 
-    mol_atoms = [a.GetSymbol() for a in mol.GetAtoms()]
-    mol4_results = []
-    fail_results = []
+    mol_atoms = [a.GetSymbol() for a in ind.rdkit_mol.GetAtoms()]
+
     _logger.info(f"{ROW_FORMAT1.format(*HEADER1)}")
-    for conf in mol.GetConformers():
+    for conf in ind.rdkit_mol.GetConformers():
         cid = conf.GetId()
         mol_coords = conf.GetPositions()
 
-        # Pre-optimization of mol4
+        # Pre-optimization of mol
         _, mol_opt_coords, energy = xtb_calculate(
             atoms=mol_atoms,
             coords=mol_coords,
@@ -448,5 +414,5 @@ def calculate_score(ind, n_cores: int = 1, envvar_scratch: str = "SCRATCH"):
         )
 
     ind.score = energy
-    ind.rdkit_mol = mol
+
     return ind

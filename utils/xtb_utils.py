@@ -326,7 +326,7 @@ class XTB_optimize_schrock(XTB_optimizer):
 
         Args:
             mol (Chem.rdchem.Mol): Mol object to score
-            scoring_options (dict): Scoring options for xtb
+            scoring_options (dict): SubmitIt options for xtb
         """
 
         # Inherit the basic xtb functionality from XTB_OPTIMIZER

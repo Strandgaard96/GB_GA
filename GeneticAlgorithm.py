@@ -16,7 +16,7 @@ from rdkit import Chem
 
 import crossover as co
 import mutate as mu
-from utils.classes import DataLoader, Individual, OutputHandler, Scoring
+from utils.classes import DataLoader, Individual, OutputHandler, ScoringFunction
 from utils.sa import SaScorer
 
 
@@ -34,7 +34,7 @@ class GeneticAlgorithm(ABC):
         self.args = args
         self.generation_num = 0
         self.data_loader = DataLoader(args)
-        self.scorer = Scoring(args)
+        self.scorer = ScoringFunction(args)
         self.sascorer = SaScorer()
         self.output_handler = OutputHandler(args)
 
@@ -144,7 +144,7 @@ class GeneticAlgorithm(ABC):
 
         self.population = self.data_loader.load_debug()
 
-        self.population = self.scorer.score_population(self.population)
+        self.population = self.scorer.scoring_submitter(self.population)
 
         # Save current population for debugging
         self.save(directory=self.args["output_dir"], name="GA_debug_firstit.pkl")

@@ -15,8 +15,6 @@ import sys
 import time
 from pathlib import Path
 
-from scoring.scoring_functions import calculate_score
-
 _logger = logging.getLogger(__name__)
 
 import crossover as co
@@ -140,11 +138,8 @@ def get_arguments(arg_list=None):
     )
     parser.add_argument("--cleanup", action="store_true")
     parser.add_argument(
-        "--scoring_func",
-        dest="func",
-        choices=[
-            "logP",
-        ],
+        "--scoring_function",
+        choices=["calculate_score_logP", "calculate_score"],
         required=True,
         help="""Choose one of the specified scoring functions to be run.""",
     )
@@ -193,11 +188,8 @@ def main():
     """Main function that starts the GA."""
     args = get_arguments()
 
-    funcs = {"logP": calculate_score}
-
     # Get arguments as dict and add scoring function to dict.
     args_dict = vars(args)
-    args_dict["scoring_function"] = funcs[args.func]
 
     # Create list of dicts for the distributed GAs
     GA_args = args_dict

@@ -68,7 +68,7 @@ def energy_filter(confs, energies, optimized_mol, scoring_args):
         confs: Sequnce of conformers objects.
         energies (List): List of conformer energies
         optimized_mol (Chem.Mol): Optimized mol object
-        scoring_args: Scoring function arg dict
+        scoring_args: SubmitIt function arg dict
 
     Returns:
         energies: Filtered energies

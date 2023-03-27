@@ -17,9 +17,12 @@ from pathlib import Path
 
 _logger = logging.getLogger(__name__)
 
+from catalystGA.utils import MoleculeOptions
+
 import crossover as co
 import filters
 from GeneticAlgorithm import GeneticAlgorithm
+from schrock import Schrock
 from utils.utils import get_git_revision_short_hash
 
 molecule_filter = filters.get_molecule_filters(None, "./filters/alert_collection.csv")
@@ -198,6 +201,12 @@ def main():
     co.average_size = args.average_size
     co.size_stdev = args.size_stdev
 
+    # Set Options for Molecule
+    mol_options = MoleculeOptions(
+        individual_type=Schrock,
+        max_size=10,
+    )
+
     # Run the GA
     for i in range(args.n_tries):
         # Start the time
@@ -223,8 +232,14 @@ def main():
 
         # Log the argparse set values
         logging.info("Input args: %r", args)
-        GA = GeneticAlgorithm(GA_args)
-        GA.run()
+
+        # Initialize GA
+        ga = GeneticAlgorithm(args=args_dict, mol_options=mol_options)
+
+        # Run the GA
+        results = ga.debug_run()
+
+        print("breakpoint")
 
         # Final output handling and logging
         t1 = time.time()
@@ -235,4 +250,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()

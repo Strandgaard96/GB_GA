@@ -9,18 +9,27 @@ import math
 import os
 import pickle
 import random
-from abc import ABC
+from typing import List
 
 import numpy as np
+from catalystGA import Ligand, Metal
+from catalystGA.ga import GA
 from rdkit import Chem
 
 import crossover as co
 import mutate as mu
+from schrock import Schrock
 from utils.classes import DataLoader, Individual, OutputHandler, ScoringFunction
-from utils.sa import SaScorer
+
+# read ligands
+ligands_list = []
+with open("/home/magstr/git/catalystGA/examples/data/ligands.smi", "r") as f:
+    for line in f:
+        ligands_list.append(Ligand(Chem.MolFromSmiles(line.rstrip())))
+metals_list = [Metal("Mo")]
 
 
-class GeneticAlgorithm(ABC):
+class GeneticAlgorithm(GA):
     """
 
     Args:
@@ -30,13 +39,14 @@ class GeneticAlgorithm(ABC):
         gen: MoleculeHandler class that contains the results of the final generation
     """
 
-    def __init__(self, args):
+    def __init__(self, args, mol_options):
         self.args = args
         self.generation_num = 0
         self.data_loader = DataLoader(args)
         self.scorer = ScoringFunction(args)
-        self.sascorer = SaScorer()
         self.output_handler = OutputHandler(args)
+        super().__init__(mol_options)
+        # self.sascorer = SaScorer()
 
     def reproduce(self, population_size, mutation_rate, molecule_filter) -> list:
 
@@ -110,6 +120,66 @@ class GeneticAlgorithm(ABC):
         ]
         self.setprop("score", new_scores)
 
+    def make_initial_population(self) -> List[Schrock]:
+        """Make initial population as a list of Schrocks."""
+        population = []
+        while len(population) < self.population_size:
+            metal = random.choice(metals_list)
+            ligands = random.choices(
+                ligands_list, k=self.mol_options.individual_type.n_ligands
+            )
+            cat = self.mol_options.individual_type(metal, ligands)
+            # remove duplicates
+            if cat not in population:
+                population.append(cat)
+        return population
+
+    @staticmethod
+    def crossover(ind1: Schrock, ind2: Schrock) -> Schrock or None:
+        """Crossover the graphs of two ligands of Schrock."""
+        ind_type = type(ind1)
+        # choose one ligand at random from ind1 and crossover with random ligand from ind2, then replace this ligand in ind1 with new ligand
+        ind1_ligands = copy.deepcopy(ind1.ligands)
+        new_mol = None
+        counter = 0
+        while not new_mol:
+            idx1 = random.randint(0, len(ind1_ligands) - 1)
+            idx2 = random.randint(0, len(ind2.ligands) - 1)
+            new_mol = graph_crossover(ind1.ligands[idx1].mol, ind2.ligands[idx2].mol)
+            counter += 1
+            if counter > 10:
+                return None
+        try:
+            Chem.SanitizeMol(new_mol)
+            # this will catch if new_mol has no donor atom
+            new_ligand = Ligand(new_mol)
+            ind1_ligands[idx1] = new_ligand
+            child = ind_type(ind1.metal, ind1_ligands)
+            child.assemble()
+            return child
+        except Exception:
+            return None
+
+    @staticmethod
+    def mutate(ind: Schrock) -> Schrock or None:
+        """Mutate the graph of one ligand of a Schrock."""
+        # pick one ligand at random, mutate and replace in ligand list
+        idx = random.randint(0, len(ind.ligands) - 1)
+        new_mol = None
+        counter = 0
+        while not new_mol:
+            new_mol = graph_mutate(ind.ligands[idx].mol)
+            counter += 1
+            if counter > 10:
+                return None
+        try:
+            Chem.SanitizeMol(new_mol)
+            ind.ligands[idx] = Ligand(new_mol)
+            ind.assemble()
+            return ind
+        except Exception:
+            return None
+
     def calculate_normalized_fitness(self):
         """Normalize the scores to get probabilities for mating selection."""
 
@@ -140,11 +210,20 @@ class GeneticAlgorithm(ABC):
         for i, molecule in enumerate(self.population):
             setattr(molecule, "idx", (self.generation_num, i))
 
+    def debug_run(self):
+        self.population = self.make_initial_population()
+
+        self.population = self.calculate_scores(self.population, gen_id=0)
+
     def run(self):
 
-        self.population = self.data_loader.load_debug()
+        # self.population = self.data_loader.load_debug()
+        # Julius make population
+        self.population = self.make_initial_population()
 
-        self.population = self.scorer.scoring_submitter(self.population)
+        self.population = self.calculate_scores(self.population, gen_id=0)
+
+        # self.population = self.scorer.scoring_submitter(self.population)
 
         # Save current population for debugging
         self.save(directory=self.args["output_dir"], name="GA_debug_firstit.pkl")

@@ -20,13 +20,18 @@ import crossover as co
 import mutate as mu
 from schrock import Schrock
 from utils.classes import DataLoader, Individual, OutputHandler, ScoringFunction
+from utils.utils import read_file
 
-# read ligands
-ligands_list = []
-with open("/home/magstr/git/catalystGA/examples/data/ligands.smi", "r") as f:
-    for line in f:
-        ligands_list.append(Ligand(Chem.MolFromSmiles(line.rstrip())))
 metals_list = [Metal("Mo")]
+
+# Get mol generator from file
+mol_generator = read_file("/home/magstr/Documents/GB_GA/data/ZINC_250k.smi")
+
+ligands_list = []
+for i, elem in enumerate(mol_generator):
+    ligands_list.append(Ligand(elem))
+    if i == 100:
+        break
 
 
 class GeneticAlgorithm(GA):
@@ -214,6 +219,8 @@ class GeneticAlgorithm(GA):
         self.population = self.make_initial_population()
 
         self.population = self.calculate_scores(self.population, gen_id=0)
+
+        self.save(directory=".")
 
     def run(self):
 

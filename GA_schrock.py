@@ -203,7 +203,9 @@ def GA(args):
 
     # Create initial population and get initial score. Option for debugging.
     if args["debug"]:
-        population = ga.make_initial_population_debug(population_size=2)
+        population = ga.make_initial_population_debug(
+            population_size=args["population_size"]
+        )
     else:
         population = ga.make_initial_population(
             args["population_size"], args["file_name"]
@@ -322,10 +324,6 @@ def GA(args):
         current_gen.save(
             directory=args["output_dir"], name=f"GA{generation_num:02d}.pkl"
         )
-
-        # Print gen table to output file
-        current_gen.print()
-        current_gen.print_fails()
 
         # Print to individual generation files to keep track on the fly
         with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:

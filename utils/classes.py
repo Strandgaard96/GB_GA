@@ -205,11 +205,12 @@ class Generation:
         table = []
         if population == "molecules":
             population = self.molecules
+            print(f"\nCurrent top population for generation {self.generation_num:02d}")
         elif population == "new_molecules":
+            print(f"\nChildren scores for generation {self.generation_num:02d}")
             population = self.new_molecules
         for individual in population:
             table.append(individual.list_of_props())
-        print(f"\nGeneration {self.generation_num:02d}")
         print(
             tabulate(
                 table,

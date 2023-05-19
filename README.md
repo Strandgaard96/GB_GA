@@ -2,7 +2,7 @@
 # GB-GA
 [Graph-based genetic algorithm](http://dx.doi.org/10.1039/C8SC05372C)
 
-Repository for the paper: *Genetic algorithm for nitrogen fixation.*
+Repository for the paper: *Genetic algorithm-based re-optimization of the Schrock catalyst for dinitrogen fixation*
 
 1. [GA](#gb-ga)
 2. [Run](#how-to-run)
@@ -17,7 +17,7 @@ For simple use of the GA install with conda install the env file.
 
 To run the ga activate the relevant environment and run the following for a quick run on a local installation:
 ```
-python GA_schrock.py --supress_amines --debug --average_size 10 --size_stdev 2 --scoring_func rdkit_embed_scoringNH3toN2 --cpus_per_task 2 --population_size 3 --mating_pool_size 4
+python GA_schrock.py --supress_amines --debug --average_size 10 --size_stdev 2 --scoring_func rdkit_embed_scoring_NH3toN2 --cpus_per_task 2 --population_size 3 --mating_pool_size 4
 ```
 
 ## Parameters
@@ -55,6 +55,7 @@ A list of possible arguments.
 
 # Authors
 __Magnus Strandgaard__<sup>1</sup>
+__Julius Seumer__<sup>1</sup>
 __Jan H. Jensen__<sup>1</sup>
 
 <sup>1</sup> Department of Chemistry, University of Copenhagen, 2100 Copenhagen Ø, Denmark.

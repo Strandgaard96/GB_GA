@@ -4,7 +4,7 @@
 # GB-GA
 [Graph-based genetic algorithm](http://dx.doi.org/10.1039/C8SC05372C)
 
-Repository for the paper: *Genetic algorithm for nitrogen fixation.*
+Repository for the paper: *Genetic algorithm-based re-optimization of the Schrock catalyst for dinitrogen fixation*
 
 1. [GA](#gb-ga)
 2. [Run](#how-to-run)

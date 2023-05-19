@@ -7,6 +7,7 @@ import re
 import sys
 from pathlib import Path
 
+import numpy as np
 from rdkit import Chem
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -46,10 +47,10 @@ def get_arguments(arg_list=None):
         help="Path to folder containing xyz files",
     )
     parser.add_argument(
-        "--GA_dir",
-        type=Path,
-        default="debug/",
-        help="Path to folder containing GA pickle files",
+        "--GA_pickle",
+        type=str,
+        default="GA00.pkl",
+        help="Path to folder containing GA pickle file",
     )
     parser.add_argument(
         "--output_dir",
@@ -172,7 +173,6 @@ def conformer_opt(args):
 
     # Loop over all the structures
     for idx_l, elem in zip(retained_idx, molecules):
-
         # Format the idx
         idx = re.sub(r"[()]", "", str(elem.idx))
         idx = idx.replace(",", "_").replace(" ", "")
@@ -180,7 +180,6 @@ def conformer_opt(args):
         # xyzfile ame
         xyzfile = "struct.xyz"
         for key, value in elem.final_structs.items():
-
             # Create folders based on idx and intermediates
             mol_dir = output_dir / f"{idx_l}" / f"{idx}" / key
             mol_dir.mkdir(exist_ok=True, parents=True)
@@ -189,10 +188,61 @@ def conformer_opt(args):
             elem.save(directory=(output_dir / f"{idx_l}" / f"{idx}"))
 
             with cd(mol_dir):
-
                 # Create xtb input file from struct
                 with open(xyzfile, "w+") as f:
                     f.writelines(value)
+
+                submit_orca(args, key, xyzfile)
+
+    return
+
+
+def pickle_opt(args):
+    """Function to optimize structures from pickle files from GA output.
+
+    Args:
+        args (dict): Relevant args
+
+    Returns:
+        None
+    """
+    # Load conformer pickle object1
+    with open(args.GA_pickle, "rb") as f:
+        population = load(f)
+
+    # Create output folder
+    args.output_dir.mkdir(exist_ok=True)
+    output_dir = args.output_dir
+
+    # Get slice of population to do calcs on
+    molecules = population.molecules[args.no_molecules[0] : args.no_molecules[1]]
+
+    # idx for labeling folders
+    retained_idx = [i for i in range(args.no_molecules[0], args.no_molecules[1])]
+
+    # Loop over all the structures
+    for population_idx, molecule in zip(retained_idx, molecules):
+        # Format the idx
+        idx = re.sub(r"[()]", "", str(molecule.idx))
+        idx = idx.replace(",", "_").replace(" ", "")
+
+        # xyzfile
+        xyzfile = "struct.xyz"
+        for key, value in molecule.results_dict.items():
+            # Create folders based on idx and intermediates
+            mol_dir = output_dir / f"{population_idx}" / f"{idx}" / key
+            mol_dir.mkdir(exist_ok=True, parents=True)
+
+            # Save indvidual object for easier processing later
+            molecule.save(directory=(output_dir / f"{population_idx}" / f"{idx}"))
+
+            struct = value["optimized_mol"]
+            with cd(mol_dir):
+                min_idx = np.argmin(value["energies"])
+                Chem.MolToXYZFile(struct, xyzfile, confId=min_idx)
+                # Create xtb input file from struct
+                with open(xyzfile, "w+") as f:
+                    f.writelines(struct)
 
                 submit_orca(args, key, xyzfile)
 
@@ -247,7 +297,6 @@ def GA_singlepoints(args):
     for i, molecule in enumerate(
         gen.molecules[args.no_molecules[0] : args.no_molecules[1]]
     ):
-
         scoring = args.scoring_function
         if scoring == "rdkit_embed_scoring":
             key1 = "Mo_N2_NH3"
@@ -283,7 +332,6 @@ def GA_singlepoints(args):
         molecule.save(directory=output_dir / f"{idx}")
 
         with cd(mol_dir1):
-
             write_xtb_from_struct(low_conf, molecule.optimized_mol1, xyzfile)
 
             submit_orca(args, key1, xyzfile)
@@ -297,7 +345,6 @@ def GA_singlepoints(args):
         low_conf = confs[0]
 
         with cd(mol_dir2):
-
             write_xtb_from_struct(low_conf, molecule.optimized_mol2, xyzfile)
             submit_orca(args, key2, xyzfile)
 
@@ -329,7 +376,6 @@ def folder_orca_driver(args):
 
     # Loop over folders
     for path in paths:
-
         # Get the key for the current structure
         key = str(path.parent.name)
 
@@ -338,7 +384,6 @@ def folder_orca_driver(args):
 
 
 def conformersearch_dft_driver(args):
-
     """Do DFT optimization on structures based on conformer search."""
 
     # Directory for the conformer object
@@ -354,7 +399,6 @@ def conformersearch_dft_driver(args):
 
     # Loop over all the structures with no bond changes
     for i, molecule in enumerate(conf.molecules):
-
         # THE ORDERING OF THE KEYS MATTER HERE
         # Get scoring intermediates and charge/spin
         scoring = molecule.scoring_function
@@ -399,12 +443,10 @@ def conformersearch_dft_driver(args):
 
         # Loop the conformer dirs
         for i, conf in enumerate(confs[args.no_molecules[0] : args.no_molecules[1]]):
-
             conf_dir1 = mol_dir1 / f"conf{i:03d}"
             conf_dir1.mkdir(exist_ok=True)
 
             with cd(conf_dir1):
-
                 # Create xtb input file from struct
                 write_xtb_from_struct(conf, molecule.optimized_mol1, xyzfile)
 
@@ -420,7 +462,6 @@ def conformersearch_dft_driver(args):
             conf_dir2.mkdir(exist_ok=True)
 
             with cd(conf_dir2):
-
                 # Create input file
                 write_xtb_from_struct(conf, molecule.optimized_mol2, xyzfile)
                 submit_orca(args, key2, xyzfile)
@@ -438,7 +479,6 @@ def parts_opts(args):
 
     # Loop over folders
     for path in paths:
-
         with cd(path.parent):
             # Get the charge ans spin from default.in file
             with open("default.in", "r") as f:
@@ -481,6 +521,7 @@ def main():
         "parts_opts": parts_opts,
         "conformer_dft": conformersearch_dft_driver,
         "conformer_opt": conformer_opt,
+        "pickle_opt": pickle_opt,
     }
 
     args = get_arguments()

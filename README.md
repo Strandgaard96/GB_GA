@@ -22,10 +22,10 @@ python GA_schrock.py --supress_amines --debug --average_size 10 --size_stdev 2 -
 
 ## Parameters
 
-A list of possible arguments.
+A list of possible commandline arguments.
 
 | Arg                  | Description                                                                                                          |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------- | --- |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `-h` or `--help`     | Prints help message.                                                                                                 |
 | `--population_size`  | Sets the size of the population pool.                                                                                |
 | `--mating_pool_size` | Sets the size of the mating pool.                                                                                    |
@@ -37,7 +37,7 @@ A list of possible arguments.
 | `--mutation_rate`    | Decides the probability of performing a mutation operation instead of crossover.                                     |
 | `--sa_screening`     | Decides if synthetic accessibility score is enabled. Highly recommended to turn this on.                             |
 | `--file_name`        | Path to the database extract to create starting population.                                                          |
-| `--output_dir`       | Sets output directory for all files generated during generations.                                                    |     |
+| `--output_dir`       | Sets output directory for all files generated during generations.                                                    |
 | `--timeout`          | How many minutes each slurm job is allowed to run                                                                    |
 | `--debug`            | If set the starting population is a set of 4 small molecules that can run fast locally. Used for debugging.          |
 | `--ga_scoring`       | If set, removes all higher energy conformers in GA.                                                                  |

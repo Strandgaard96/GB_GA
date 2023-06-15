@@ -20,7 +20,7 @@ from utils.gaussians import number_of_rotatable_bonds_target_clipped
 
 @dataclass
 class Individual:
-    """Dataclass for storing data for each molecule.
+    """Dataclass for storing data for each molecule in the GA.
 
     The central objects of the GA. The moles themselves plus various
     attributes and debugging fields are set.
@@ -32,7 +32,7 @@ class Individual:
          Used for the SA score.
         optimized_mol1: The mol object of Schrock core + moiety for the first structure in the scoring
         function. The mol contains the optimized geometries.
-        ptimized_mol2: The mol object of Schrock core + moiety for the second structure in the scoring
+        optimized_mol2: The mol object of Schrock core + moiety for the second structure in the scoring
         function. The mol contains the optimized geometries.
         cut_idx: The index of the primary amine that denotes the attachment point.
         idx: The generation idx of the molecule.
@@ -200,43 +200,27 @@ class Generation:
         self.molecules = self.molecules[:population_size]
         self.size = len(self.molecules)
 
-    def print(self, population="molecules", pass_text=None):
+    def get_text(self, population="molecules", pass_text=None):
         """Print nice table of population attributes."""
         table = []
         if population == "molecules":
             population = self.molecules
-            print(f"\nCurrent top population for generation {self.generation_num:02d}")
         elif population == "new_molecules":
-            print(f"\nChildren scores for generation {self.generation_num:02d}")
             population = self.new_molecules
         for individual in population:
             table.append(individual.list_of_props())
-        print(
-            tabulate(
-                table,
-                headers=[
-                    "idx",
-                    "normalized_fitness",
-                    "score",
-                    "energy",
-                    "sa_score",
-                    "smiles",
-                ],
-            )
+        txt = tabulate(
+            table,
+            headers=[
+                "idx",
+                "normalized_fitness",
+                "score",
+                "energy",
+                "sa_score",
+                "smiles",
+            ],
         )
-        if pass_text:
-            txt = tabulate(
-                table,
-                headers=[
-                    "idx",
-                    "normalized_fitness",
-                    "score",
-                    "energy",
-                    "sa_score",
-                    "smiles",
-                ],
-            )
-            return txt
+        return txt
 
     def print_fails(self):
         """Log how many calcs in population failed."""
@@ -287,23 +271,19 @@ class Generation:
     def update_property_cache(self):
         """Update rdkit data to prevent errors."""
         for mol in self.molecules:
-
             # Done to prevent ringinfo error
             Chem.GetSymmSSSR(mol.rdkit_mol)
             mol.rdkit_mol.UpdatePropertyCache()
 
     def modify_population(self, supress_amines=False):
-        """Molecule mol modifier function.
+        """Molecule mol modifier function. Preps molecules in population for
+        scoring. Ensures that there is one primary amine attachment point.
 
-        Preps molecules in population for scoring. Ensures that there is one
-        primary amine attachment point
-
-        supresss_amines: Decides whether primary amines other than the
+        supress_amines: Decides whether primary amines other than the
         attachment point are changed to hydrogen.
         """
         # Loop over molecules in popualtion
         for mol in self.molecules:
-
             # Check for primary amine
             match = mol.rdkit_mol.GetSubstructMatches(
                 Chem.MolFromSmarts("[NX3;H2;!$(*n);!$(*N)]")
@@ -336,7 +316,6 @@ class Generation:
 
                 # Remove additional primary amine groups to prevent XTB exploit
                 if supress_amines:
-
                     # Check for N-N bound amines
                     nn_match = mol.rdkit_mol.GetSubstructMatches(
                         Chem.MolFromSmarts("[NX3;H2;$(*N),$(*n)]")
@@ -345,7 +324,6 @@ class Generation:
                     # Enable NH2 amine supressor if there are multiple
                     # primary amines
                     if len(match) > 1:
-
                         # Substructure match the NH3
                         prim_match = Chem.MolFromSmarts("[NX3;H2]")
 
@@ -362,7 +340,6 @@ class Generation:
                         mol.smiles = Chem.MolToSmiles(removed_mol)
 
                     elif nn_match:
-
                         # Replace tricky primary amines in the frag:
                         prim_match = Chem.MolFromSmarts("[NX3;H2;$(*N),$(*n)]")
 
@@ -442,10 +419,7 @@ class Generation:
             individual.normalized_fitness = shifted_score / sum_scores
 
     def set_sa(self, sa_scores):
-        """Set sa score.
-
-        If score is high, then score is not modified
-        """
+        """Set sa score."""
         for individual, sa_score in zip(self.molecules, sa_scores):
             individual.sa_score = sa_score
             # Scale the score with the sa_score (which is max 1)

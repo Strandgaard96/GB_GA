@@ -1,13 +1,12 @@
-
 # GB-GA
+
 [Graph-based genetic algorithm](http://dx.doi.org/10.1039/C8SC05372C)
 
-Repository for the paper: *Genetic algorithm-based re-optimization of the Schrock catalyst for dinitrogen fixation*
+Repository for the paper: _Genetic algorithm-based re-optimization of the Schrock catalyst for dinitrogen fixation_
 
 1. [GA](#gb-ga)
 2. [Run](#how-to-run)
 3. [Parameters](#parameters)
-
 
 ## How to run
 
@@ -16,15 +15,17 @@ For simple use of the GA install with conda install the env file.
     conda env create --file environment.yml
 
 To run the ga activate the relevant environment and run the following for a quick run on a local installation:
+
 ```
 python GA_schrock.py --supress_amines --debug --average_size 10 --size_stdev 2 --scoring_func rdkit_embed_scoring_NH3toN2 --cpus_per_task 2 --population_size 3 --mating_pool_size 4
 ```
 
 ## Parameters
+
 A list of possible arguments.
 
 | Arg                  | Description                                                                                                          |
-|----------------------|----------------------------------------------------------------------------------------------------------------------|
+| -------------------- | -------------------------------------------------------------------------------------------------------------------- | --- |
 | `-h` or `--help`     | Prints help message.                                                                                                 |
 | `--population_size`  | Sets the size of the population pool.                                                                                |
 | `--mating_pool_size` | Sets the size of the mating pool.                                                                                    |
@@ -36,7 +37,7 @@ A list of possible arguments.
 | `--mutation_rate`    | Decides the probability of performing a mutation operation instead of crossover.                                     |
 | `--sa_screening`     | Decides if synthetic accessibility score is enabled. Highly recommended to turn this on.                             |
 | `--file_name`        | Path to the database extract to create starting population.                                                          |
-| `--output_dir`       | Sets output directory for all files generated during generations.                                                    |                                                                                   |
+| `--output_dir`       | Sets output directory for all files generated during generations.                                                    |     |
 | `--timeout`          | How many minutes each slurm job is allowed to run                                                                    |
 | `--debug`            | If set the starting population is a set of 4 small molecules that can run fast locally. Used for debugging.          |
 | `--ga_scoring`       | If set, removes all higher energy conformers in GA.                                                                  |
@@ -52,11 +53,15 @@ A list of possible arguments.
 | `--average_size`     | Average number of atoms in molecules resulting from crossover.                                                       |
 | `--size-stdev`       | STD of crossover molecule size distribution                                                                          |
 
+## Notes
+
+This codebase is slightly outdated for the work we do on catalyst design with GAs. For the interested, this is a more robust codebase we are currently using for catalyst design: [catalystGA](https://github.com/juius/catalystGA)
 
 # Authors
-__Magnus Strandgaard__<sup>1</sup>
-__Julius Seumer__<sup>1</sup>
-__Jan H. Jensen__<sup>1</sup>
+
+**Magnus Strandgaard**<sup>1</sup>
+**Julius Seumer**<sup>1</sup>
+**Jan H. Jensen**<sup>1</sup>
 
 <sup>1</sup> Department of Chemistry, University of Copenhagen, 2100 Copenhagen Ø, Denmark.
-Heres my email: _mastr@chem.ku.dk_.
+For any questions regarding the code, please dont hestitate to contact me at : _mastr@chem.ku.dk_.

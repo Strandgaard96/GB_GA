@@ -26,6 +26,8 @@ from make_structures import (
 from utils.utils import cd
 from utils.xtb_utils import XTB_optimize_schrock
 
+# Constants for getting score reaction energies.
+# Obtained from xTB gfn1/gfn2 electronic energies.
 NH3_ENERGY_gfn2 = -4.427496335658
 N2_ENERGY_gfn2 = -5.766345142003
 CP_RED_ENERGY_gfn2 = 0.2788559959203811
@@ -39,11 +41,13 @@ GAS_ENERGIES = {
 hartree2kcalmol = 627.51
 
 source = Path(os.path.abspath(os.path.join(os.path.dirname(__file__), "../data")))
+
 file = str(source / "templates/core_dummy.sdf")
 core = Chem.SDMolSupplier(file, removeHs=False, sanitize=False)
 """Mol:
 mol object of the Mo core with dummy atoms instead of ligands
 """
+
 file_NH3 = str(source / "templates/core_NH3_dummy.sdf")
 core_NH3 = Chem.SDMolSupplier(file_NH3, removeHs=False, sanitize=False)
 """Mol:
@@ -124,7 +128,6 @@ def rdkit_embed_scoring(ligand, scoring_args):
 
     # Go into the output directory
     with cd(scoring_args["output_dir"]):
-
         # Instantiate optimizer class
         scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_N2_NH3"
         scoring_args["charge"] = smi_dict["Mo_N2_NH3"]["charge"]
@@ -145,7 +148,7 @@ def rdkit_embed_scoring(ligand, scoring_args):
     # Create duplicate mol object for removing conformers
     single_conf = copy.deepcopy(new_mol)
 
-    # During GA scoring, only one conformer is needed for the next step.
+    # During GA scoring, only the last energy conformer is needed for the next step.
     # The rest of the conformers are discarded.
     if scoring_args.get("ga_scoring", False):
         # Remove higher energy conformes from mol object
@@ -161,7 +164,6 @@ def rdkit_embed_scoring(ligand, scoring_args):
     Mo_NH3_3d = Chem.AddHs(Mo_NH3_3d)
 
     with cd(scoring_args["output_dir"]):
-
         # Instantiate optimizer class
         scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3"
         scoring_args["charge"] = smi_dict["Mo_NH3"]["charge"]
@@ -215,7 +217,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
     )
 
     with cd(scoring_args["output_dir"]):
-
         # Instantiate optimizer class
         scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3"
         scoring_args["charge"] = smi_dict["Mo_NH3"]["charge"]
@@ -269,7 +270,6 @@ def rdkit_embed_scoring_NH3toN2(ligand, scoring_args):
         )
 
     with cd(scoring_args["output_dir"]):
-
         # Instantiate optimizer class
         scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_N2"
         scoring_args["charge"] = smi_dict["Mo_N2"]["charge"]
@@ -322,7 +322,6 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
     )
 
     with cd(scoring_args["output_dir"]):
-
         # Instantiate optimizer class
         scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3+"
         scoring_args["charge"] = smi_dict["Mo_NH3+"]["charge"]
@@ -351,7 +350,6 @@ def rdkit_embed_scoring_NH3plustoNH3(ligand, scoring_args):
             single_conf.RemoveConformer(elem)
 
     with cd(scoring_args["output_dir"]):
-
         # Instantiate optimizer class
         scoring_args["name"] = f"{idx[0]:03d}_{idx[1]:03d}_Mo_NH3"
         scoring_args["charge"] = smi_dict["Mo_NH3"]["charge"]

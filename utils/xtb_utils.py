@@ -56,7 +56,7 @@ def run_xtb(args):
 
     # Hardcoded wait time. Stops the xtb optimization after 8 minutes. This is done to ensure that something
     # is returned from each conformer xtb opt. Otherwise, one conformer failing would result in
-    # the whole molecule returning 0
+    # the whole molecule getting a nan score.
     try:
         output, err = popen.communicate(timeout=8 * 60)
     except subprocess.TimeoutExpired:
@@ -174,7 +174,6 @@ def check_bonds(mol, conf_paths, charge):
 
     bond_changes = []
     for path in conf_paths:
-
         try:
             # Get optimized structure path
             file = path + f"/xtbopt.xyz"
@@ -253,7 +252,6 @@ class XTB_optimizer:
     """Base XTB optimizer class."""
 
     def __init__(self):
-
         # Initialize default xtb values
         self.method = "ff"
         self.workers = 1
@@ -525,7 +523,6 @@ class XTB_optimize_schrock(XTB_optimizer):
 
         # Decides if final Mo-NxHx optmization is preformed
         if self.options.get("bond_opt", False):
-
             # Get constrain file for only Mo plus NH3 or N2 atoms.
             self._make_input_constrain_file(
                 self.mol,
@@ -586,7 +583,6 @@ class XTB_optimize_schrock(XTB_optimizer):
         for i, res in enumerate(result):
             if res:
                 if not bond_changes[i] and res["energy"]:
-
                     energies.append(res["energy"])
                     self._add_conformer2mol(
                         mol=mol_opt,

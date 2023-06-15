@@ -1,4 +1,4 @@
-"""Driver script for running a GA algorithm.
+"""Driver script for running the genetic algorithm on the Schrock catalyst.
 
 Written by Magnus Strandgaard 2023
 
@@ -97,31 +97,33 @@ def get_arguments(arg_list=None):
         "--mutation_rate",
         type=float,
         default=0.5,
-        help="Mutation rate",
+        help="Probability of mutation of new children",
     )
     parser.add_argument(
         "--sa_screening",
         dest="sa_screening",
         default=False,
         action="store_true",
+        help="Activates score scaling with synthetic accessibility",
     )
     parser.add_argument(
         "--file_name",
         type=str,
         default="data/ZINC_250k.smi",
-        help="",
+        help="The data used to create the starting database. Needs to be a \
+        file with smiles",
     )
     parser.add_argument(
         "--output_dir",
         type=str,
         default="generation_debug",
-        help="Directory to put output files",
+        help="Directory to put all results/output files",
     )
     parser.add_argument(
         "--timeout",
         type=int,
         default=12,
-        help="Minutes before timeout in xTB optimization",
+        help="Slurm timeout for scoring jobs.",
     )
     parser.add_argument(
         "--partition",
@@ -129,16 +131,32 @@ def get_arguments(arg_list=None):
         default="kemi1",
         help="Which cluster partition to run scoring on",
     )
-    parser.add_argument("--debug", action="store_true")
-    parser.add_argument("--ga_scoring", action="store_true")
-    parser.add_argument("--supress_amines", action="store_true")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Flag to do faster calculations on small population for debugging",
+    )
+    parser.add_argument(
+        "--ga_scoring",
+        action="store_true",
+        help="Flag used to distinguish conformer search scoring and GA scoring",
+    )
+    parser.add_argument(
+        "--supress_amines",
+        action="store_true",
+        help="Flag to remove extra primary amines during GA runs",
+    )
     parser.add_argument(
         "--energy_cutoff",
         type=float,
         default=0.0159,
-        help="Cutoff for conformer energies",
+        help="Cutoff for conformer energies relative to the lowest conformer during GA runs",
     )
-    parser.add_argument("--cleanup", action="store_true")
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Flag to delete calculation folders after runs. Pickles with GA generation data are still saved",
+    )
     parser.add_argument(
         "--scoring_func",
         dest="func",
@@ -174,13 +192,13 @@ def get_arguments(arg_list=None):
         "--input",
         type=str,
         default="./xcontrol.inp",
-        help="Name of input file that is created",
+        help="Name of xTB input file that is created",
     )
     parser.add_argument(
         "--average_size",
         type=int,
         default=12,
-        help="Average number of atoms resulting from crossover",
+        help="Average number of heavy atoms resulting from crossover",
     )
     parser.add_argument(
         "--size_stdev",
@@ -214,18 +232,18 @@ def GA(args):
     # Score initial population
     results = sc.slurm_scoring(args["scoring_function"], population, args)
 
-    # Set results and do some rdkit hack to prevent weird molecules
+    # Set results on population class and do some rdkit hack to prevent weird molecules
     population.handle_results(results)
     population.update_property_cache()
 
     # Save current population for debugging
     population.save(directory=args["output_dir"], name="GA_debug_firstit.pkl")
 
-    # Functionality to check synthetic accessibility
+    # Functionality to scale score with synthetic accessibility
     if args["sa_screening"]:
         population.get_sa()
 
-    # Reweight by rotatable bonds
+    # Reweight score by rotatable bonds
     population.reweigh_rotatable_bonds()
 
     # Normalize the score of population individuals to value between 0 and 1
@@ -234,9 +252,11 @@ def GA(args):
 
     # Save the generation as pickle file and print current output
     population.save(directory=args["output_dir"], name="GA00.pkl")
-    population.print()
+    logging.info(
+        f"\n --- Current top generation for gen_no 0 ---\n {population.get_text()}"
+    )
     with open(args["output_dir"] + "/GA0.out", "w") as f:
-        f.write(population.print(population="molecules", pass_text=True) + "\n")
+        f.write(population.get_text(population="molecules") + "\n")
         f.write(population.print_fails())
 
     logging.info("Finished initial generation")
@@ -274,7 +294,7 @@ def GA(args):
 
         logging.info("Creating attachment points for new population")
 
-        # Process population to ensure good attachment points
+        # Process population to ensure primary amine attachment points
         new_population.modify_population(supress_amines=True)
 
         # Assign generation and population idx to the population
@@ -297,7 +317,6 @@ def GA(args):
         # Reweight by rotatable bonds
         new_population.reweigh_rotatable_bonds()
 
-        # Sort scores, possibly scaled by SA screening
         new_population.sortby("score")
 
         # Create tmp population from current best molecules
@@ -326,11 +345,12 @@ def GA(args):
         )
 
         # Print to individual generation files to keep track on the fly
+        logging.info(
+            f"\n --- Current top generation for gen_no {generation_num} ---\n {population.get_text()}"
+        )
         with open(args["output_dir"] + f"/GA{generation_num}.out", "w") as f:
-            f.write(current_gen.print(population="molecules", pass_text=True) + "\n")
-            f.write(
-                current_gen.print(population="new_molecules", pass_text=True) + "\n"
-            )
+            f.write(current_gen.get_text(population="molecules") + "\n")
+            f.write(current_gen.get_text(population="new_molecules") + "\n")
             f.write(current_gen.print_fails())
 
     return current_gen

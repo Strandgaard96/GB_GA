@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module that contains submitit functionality to submitit scoring function."""
+"""Module that contains submitit functionality to submit scoring function."""
 
 import shutil
 from pathlib import Path
@@ -11,7 +11,8 @@ from scoring.scoring import scoring_submitter
 
 
 def slurm_scoring(sc_function, population, scoring_args):
-    """Evaluates a scoring function for population on SLURM cluster
+    """Evaluates a scoring function for population on SLURM cluster.
+
     Args:
         sc_function (function): Scoring function to use for each molecule
         population List(Individual): List of molecules objects to score
@@ -19,6 +20,8 @@ def slurm_scoring(sc_function, population, scoring_args):
     Returns:
         results List(tuple): List of tuples containing result for each molecule
     """
+
+    # Initialize AutoExecutor
     executor = submitit.AutoExecutor(
         folder=Path(scoring_args["output_dir"]) / "scoring_tmp",
         slurm_max_num_timeout=0,
@@ -37,7 +40,6 @@ def slurm_scoring(sc_function, population, scoring_args):
     )
 
     # Get the jobs results. Assign None variables if an error is returned for the given molecule
-    # (np.nan, None, None, None) for (energy, geometry1, geometry2, minidx)
     results = [
         catch(
             job.result,
@@ -50,14 +52,16 @@ def slurm_scoring(sc_function, population, scoring_args):
         for job in jobs
     ]
 
+    # Remove slurm log dir
     if scoring_args["cleanup"]:
-        shutil.rmtree("scoring_tmp")
+        shutil.rmtree(Path(scoring_args["output_dir"]) / "scoring_tmp")
 
     return results
 
 
 def slurm_scoring_conformers(conformers, scoring_args):
-    """Evaluates a scoring function for population on SLURM cluster
+    """Evaluates a scoring function for population on SLURM cluster.
+
     Args:
         conformers List(Individual): List of molecules objects to do conformers search for
         scoring_args (dict): Relevant scoring args for submitit or XTB
@@ -85,7 +89,6 @@ def slurm_scoring_conformers(conformers, scoring_args):
     )
 
     # Get the jobs results. Assign None variables if an error is returned for the given molecule
-    # (np.nan, None, None, None) for (energy, geometry1, geometry2, minidx)
     results = [
         catch(
             job.result,

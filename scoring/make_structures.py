@@ -186,7 +186,7 @@ def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
     # Sanitation ensures that it is a reasonable molecule.
     Chem.SanitizeMol(mol)
 
-    # Ensure not coordinates exist yet.
+    # Ensure no coordinates exist yet.
     mol.RemoveAllConformers()
 
     return mol
@@ -194,7 +194,7 @@ def connect_ligand(core, ligand, NH3_flag=None, N2_flag=None):
 
 def create_prim_amine(input_ligand):
     """A function that takes a ligand and splits on a nitrogen bond, and then
-    gives a ligand that has a primary amine and a cut_idx that specifies the
+    returns a ligand that has a primary amine and a cut_idx that specifies the
     location of the primary amine.
 
     Args:
@@ -246,7 +246,6 @@ def create_prim_amine(input_ligand):
     # Loop through matching amines and find one that works
     indices = []
     for match in l:
-
         # Get the atom object for the mathing atom
         atom = input_ligand.GetAtomWithIdx(match[0])
 
@@ -392,7 +391,7 @@ def embed_rdkit(
     """Embedding driver function.
 
     Args:
-        mol (Mol): Core+ligand
+        mol (Mol): Core+ligand mol object.
         core (Mol): Core with dummy atoms on ligand positions
         numConfs (int): How many conformers to get from embedding
         coreConfId (int): If core has multiple conformers this indicates which one to choose
@@ -416,6 +415,7 @@ def embed_rdkit(
         corePtI = coreConf.GetAtomPosition(i)
         coordMap[idxI] = corePtI
 
+    # Embed the mol object constrained to the core.
     cids = AllChem.EmbedMultipleConfs(
         mol=mol,
         numConfs=numConfs,

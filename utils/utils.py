@@ -10,22 +10,17 @@ from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import Trajectory, read
 from rdkit import Chem
 
-# Needed for debugging
-sys.path.insert(0, "../scoring")
-
-
-def mol_from_xyz(xyz_file, charge=0):
-    atoms, _, xyz_coordinates = read_xyz_file(xyz_file)
-    mol = xyz2mol(atoms, xyz_coordinates, charge)
-    return mol
-
-
-def sdf2mol(sdf_file):
-    mol = Chem.SDMolSupplier(sdf_file, removeHs=False, sanitize=True)[0]
-    return mol
-
 
 def mols_from_smi_file(smi_file, n_mols=None):
+    """Create list of mol files.
+
+    Args:
+        smi_file (str): Path to smiles file
+        n_mols (int): How many mols to extract
+
+    Returns:
+        mols List(rdkit.Mol): List of mol objects
+    """
     mols = []
     with open(smi_file) as _file:
         for i, line in enumerate(_file):
@@ -37,7 +32,8 @@ def mols_from_smi_file(smi_file, n_mols=None):
 
 
 def write_to_traj(args):
-    """Write xtblog files to traj file."""
+    """Write last geometry from xtblog file to traj file with energy
+    attached."""
 
     traj_dir, trajfile = args
     traj = Trajectory(traj_dir, mode="a")
@@ -87,7 +83,7 @@ def energy_filter(confs, energies, optimized_mol, scoring_args):
 
 
 def shell(args, shell=False):
-    """Subprocess handler function where output is stored in files.
+    """Subprocess handler function where output is stored in out files.
 
     Args:
         cmd (str): String to pass to bash shell
